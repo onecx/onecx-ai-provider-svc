@@ -1,10 +1,10 @@
 ---
 openapi: 3.0.3
 info:
- title: onecx-ai external v1 service
+ title: onecx-ai-provider external v1 service
  version: 1.0.0
 servers:
- - url: "http://onecx-ai-management-svc:8080"
+ - url: "http://onecx-ai-provider-svc:8080"
 tags:
  - name: dispatch
 paths:

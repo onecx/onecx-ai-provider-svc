@@ -10,7 +10,8 @@
         <version>2.3.0</version>
     </parent>
 
-    <artifactId>onecx-ai-management-svc</artifactId>
+    <artifactId>onecx-ai-provider-svc</artifactId>
+    <name>OneCX AI Provider Backend Service</name>
     <version>999-SNAPSHOT</version>
     <dependencies>
         <dependency>
@@ -218,8 +219,8 @@
                         </goals>
                         <configuration>
                             <inputSpec>src/main/openapi/onecx-ai-internal.yaml</inputSpec>
-                            <apiPackage>gen.io.github.onecx.ai.rs.internal</apiPackage>
-                            <modelPackage>gen.io.github.onecx.ai.rs.internal.model</modelPackage>
+                            <apiPackage>gen.org.tkit.onecx.ai.provider.rs.internal</apiPackage>
+                            <modelPackage>gen.org.tkit.onecx.ai.provider.rs.internal.model</modelPackage>
                             <modelNameSuffix>DTO</modelNameSuffix>
                         </configuration>
                     </execution>
@@ -230,8 +231,8 @@
                         </goals>
                         <configuration>
                             <inputSpec>src/main/openapi/onecx-ai-v1.yaml</inputSpec>
-                            <apiPackage>gen.io.github.onecx.ai.rs.external.v1</apiPackage>
-                            <modelPackage>gen.io.github.onecx.ai.rs.external.v1.model</modelPackage>
+                            <apiPackage>gen.org.tkit.onecx.ai.provider.rs.external.v1</apiPackage>
+                            <modelPackage>gen.org.tkit.onecx.ai.provider.rs.external.v1.model</modelPackage>
                             <modelNameSuffix>DTOV1</modelNameSuffix>
                             <apiNameSuffix>V1Api</apiNameSuffix>
                         </configuration>

@@ -1,7 +1,7 @@
 app:
   name: svc
   image:
-    repository: "onecx-apps/onecx-ai-management-svc"
+    repository: "onecx/onecx-ai-provider-svc"
     tag: 999-SNAPSHOT
   db:
     enabled: true
@@ -14,5 +14,5 @@ app:
             defaultClientScopes: [ ocx-tn:read ]
     microservice:
       spec:
-        description: OneCX AI Management Backend Service
-        name: OneCX AI Management SVC
+        description: OneCX AI Provider Backend Service
+        name: OneCX AI Provider SVC

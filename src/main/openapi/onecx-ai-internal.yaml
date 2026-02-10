@@ -1,10 +1,10 @@
 ---
 openapi: 3.0.3
 info:
-  title: onecx-ai internal service
+  title: onecx-ai-provider internal service
   version: 1.0.0
 servers:
-  - url: "http://onecx-ai-management-svc:8080"
+  - url: "http://onecx-ai-provider-svc:8080"
 tags:
   - name: configurationInternal
   - name: providerInternal
