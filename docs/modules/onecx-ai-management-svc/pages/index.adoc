@@ -1,0 +1,9 @@
+include::onecx-ai-management-svc-attributes.adoc[opts=optional]
+
+= onecx-ai-management-svc
+
+
+== Configuration
+include::onecx-ai-management-svc.adoc[opts=optional]
+
+include::onecx-ai-management-svc-docs.adoc[opts=optional]

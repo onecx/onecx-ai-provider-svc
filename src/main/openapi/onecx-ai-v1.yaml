@@ -1,0 +1,229 @@
+---
+openapi: 3.0.3
+info:
+ title: onecx-ai-provider external v1 service
+ version: 1.0.0
+servers:
+ - url: "http://onecx-ai-provider-svc:8080"
+tags:
+ - name: dispatch
+paths:
+  /v1/dispatch/chat:
+   post:
+    security:
+     - oauth2: [ ocx-ai:read ]
+    tags:
+     - dispatch
+    summary: Chat with AI
+    operationId: chat
+    requestBody:
+     required: true
+     content:
+      application/json:
+       schema:
+        $ref: '#/components/schemas/ChatRequest'
+    responses:
+     '200':
+      description: OK
+      content:
+       application/json:
+        schema:
+         $ref: '#/components/schemas/ChatMessage'
+     '400':
+      description: Bad Request
+      content:
+       application/json:
+        schema:
+         $ref: '#/components/schemas/ProblemDetailResponse'
+components:
+ securitySchemes:
+  oauth2:
+   type: oauth2
+   flows:
+    clientCredentials:
+     tokenUrl: https://oauth.simple.api/token
+     scopes:
+      ocx-ai:read: Grants read access
+ schemas:
+  ChatRequest:
+   type: object
+   required:
+    - chatMessage
+   properties:
+    requestContext:
+     $ref: '#/components/schemas/RequestContext'
+    chatMessage:
+     $ref: '#/components/schemas/ChatMessage'
+    conversation:
+     $ref: '#/components/schemas/Conversation'
+  RequestContext:
+    type: object
+    properties:
+     filter:
+      $ref: '#/components/schemas/ConfigurationFilter'
+     aiContext:
+      type: object
+      additionalProperties:
+        type: string
+  ConfigurationFilter:
+   type: object
+   properties:
+    key:
+     type: string
+     enum:
+      - APP_ID
+    value:
+     type: string
+  ChatMessage:
+   type: object
+   properties:
+    conversationId:
+     type: string
+    message:
+     type: string
+     maxLength: 10000
+    type:
+     type: string
+     enum: [ ASSISTANT, SYSTEM, USER, ACTION ]
+    creationDate:
+     type: integer
+     format: int64
+  Conversation:
+   type: object
+   properties:
+    conversationId:
+     type: string
+    history:
+     type: array
+     items:
+      $ref: '#/components/schemas/ChatMessage'
+    conversationType:
+     type: string
+     enum: [ Q_AND_A ]
+  Provider:
+   required:
+    - name
+    - modelName
+   type: object
+   properties:
+    modificationCount:
+     format: int32
+     type: integer
+    creationDate:
+     $ref: '#/components/schemas/OffsetDateTime'
+    creationUser:
+     type: string
+    modificationDate:
+     $ref: '#/components/schemas/OffsetDateTime'
+    modificationUser:
+     type: string
+    id:
+     type: string
+    name:
+     type: string
+    type:
+     $ref: '#/components/schemas/ProviderType'
+    description:
+     type: string
+    llmUrl:
+     type: string
+    modelName:
+     type: string
+    apiKey:
+     type: string
+  MCPServer:
+   type: object
+   properties:
+    modificationCount:
+     format: int32
+     type: integer
+    creationDate:
+     $ref: '#/components/schemas/OffsetDateTime'
+    creationUser:
+     type: string
+    modificationDate:
+     $ref: '#/components/schemas/OffsetDateTime'
+    modificationUser:
+     type: string
+    id:
+     type: string
+    name:
+     type: string
+    url:
+     type: string
+    apiKey:
+     type: string
+    executionPolicy:
+     $ref: '#/components/schemas/ExecutionPolicy'
+  ExecutionPolicy:
+   type: string
+   enum:
+    - ALWAYS_ASK
+    - NEVER_ASK
+  ProviderType:
+   type: string
+   enum:
+    - OLLAMA
+  Context:
+   required:
+    - name
+   type: object
+   properties:
+    modificationCount:
+     format: int32
+     type: integer
+    creationDate:
+     $ref: '#/components/schemas/OffsetDateTime'
+    creationUser:
+     type: string
+    modificationDate:
+     $ref: '#/components/schemas/OffsetDateTime'
+    modificationUser:
+     type: string
+    id:
+     type: string
+    name:
+     type: string
+    description:
+     type: string
+    llmSystemMessage:
+     type: string
+    llmProvider:
+     $ref: '#/components/schemas/Provider'
+    mcpServers:
+     type: array
+     items:
+      $ref: '#/components/schemas/MCPServer'
+  OffsetDateTime:
+   format: date-time
+   type: string
+   example: 2022-03-10T12:15:50-04:00
+  ProblemDetailResponse:
+   type: object
+   properties:
+    errorCode:
+     type: string
+    detail:
+     type: string
+    params:
+     type: array
+     items:
+      $ref: '#/components/schemas/ProblemDetailParam'
+    invalidParams:
+     type: array
+     items:
+      $ref: '#/components/schemas/ProblemDetailInvalidParam'
+  ProblemDetailParam:
+   type: object
+   properties:
+    key:
+     type: string
+    value:
+     type: string
+  ProblemDetailInvalidParam:
+   type: object
+   properties:
+    name:
+     type: string
+    message:
+     type: string

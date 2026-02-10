@@ -1,0 +1,7 @@
+include::onecx-ai-provider-svc-attributes.adoc[opts=optional]
+
+= OneCX AI Provider Backend Service
+
+
+
+include::onecx-ai-provider-svc-docs.adoc[opts=optional]

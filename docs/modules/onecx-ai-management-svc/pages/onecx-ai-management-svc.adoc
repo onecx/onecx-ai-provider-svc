@@ -1,0 +1,200 @@
+[.configuration-legend]
+icon:lock[title=Fixed at build time] Configuration property fixed at build time - All other configuration properties are overridable at runtime
+[.configuration-reference.searchable, cols="80,.^10,.^10"]
+|===
+
+h|[.header-title]##Configuration property##
+h|Type
+h|Default
+
+a| [[onecx-ai-management-svc_onecx-ai-dispatch-mcp-max-iterations]] [.property-path]##link:#onecx-ai-management-svc_onecx-ai-dispatch-mcp-max-iterations[`onecx.ai.dispatch.mcp.max-iterations`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++onecx.ai.dispatch.mcp.max-iterations+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Maximum number of iterations for tool calls in MCP processing
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++ONECX_AI_DISPATCH_MCP_MAX_ITERATIONS+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++ONECX_AI_DISPATCH_MCP_MAX_ITERATIONS+++`
+endif::add-copy-button-to-env-var[]
+--
+|long
+|`+++3+++`
+
+a| [[onecx-ai-management-svc_onecx-ai-dispatch-mcp-timeout]] [.property-path]##link:#onecx-ai-management-svc_onecx-ai-dispatch-mcp-timeout[`onecx.ai.dispatch.mcp.timeout`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++onecx.ai.dispatch.mcp.timeout+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Maximum timeout in seconds for MCP processing
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++ONECX_AI_DISPATCH_MCP_TIMEOUT+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++ONECX_AI_DISPATCH_MCP_TIMEOUT+++`
+endif::add-copy-button-to-env-var[]
+--
+|long
+|`+++60+++`
+
+a| [[onecx-ai-management-svc_onecx-ai-dispatch-mcp-log-response]] [.property-path]##link:#onecx-ai-management-svc_onecx-ai-dispatch-mcp-log-response[`onecx.ai.dispatch.mcp.log-response`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++onecx.ai.dispatch.mcp.log-response+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Whether to log the full response from MCP calls
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++ONECX_AI_DISPATCH_MCP_LOG_RESPONSE+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++ONECX_AI_DISPATCH_MCP_LOG_RESPONSE+++`
+endif::add-copy-button-to-env-var[]
+--
+|boolean
+|`+++false+++`
+
+a| [[onecx-ai-management-svc_onecx-ai-dispatch-mcp-log-requests]] [.property-path]##link:#onecx-ai-management-svc_onecx-ai-dispatch-mcp-log-requests[`onecx.ai.dispatch.mcp.log-requests`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++onecx.ai.dispatch.mcp.log-requests+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Whether to log the full requests to MCP calls
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++ONECX_AI_DISPATCH_MCP_LOG_REQUESTS+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++ONECX_AI_DISPATCH_MCP_LOG_REQUESTS+++`
+endif::add-copy-button-to-env-var[]
+--
+|boolean
+|`+++false+++`
+
+a| [[onecx-ai-management-svc_onecx-ai-dispatch-mcp-max-tool-execution-retries]] [.property-path]##link:#onecx-ai-management-svc_onecx-ai-dispatch-mcp-max-tool-execution-retries[`onecx.ai.dispatch.mcp.max-tool-execution-retries`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++onecx.ai.dispatch.mcp.max-tool-execution-retries+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Maximum number of retries for tool execution in MCP processing
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++ONECX_AI_DISPATCH_MCP_MAX_TOOL_EXECUTION_RETRIES+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++ONECX_AI_DISPATCH_MCP_MAX_TOOL_EXECUTION_RETRIES+++`
+endif::add-copy-button-to-env-var[]
+--
+|long
+|`+++3+++`
+
+a| [[onecx-ai-management-svc_onecx-ai-dispatch-mcp-tool-execution-retry-delay]] [.property-path]##link:#onecx-ai-management-svc_onecx-ai-dispatch-mcp-tool-execution-retry-delay[`onecx.ai.dispatch.mcp.tool-execution-retry-delay`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++onecx.ai.dispatch.mcp.tool-execution-retry-delay+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Delay in milliseconds between retries for tool execution in MCP processing
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++ONECX_AI_DISPATCH_MCP_TOOL_EXECUTION_RETRY_DELAY+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++ONECX_AI_DISPATCH_MCP_TOOL_EXECUTION_RETRY_DELAY+++`
+endif::add-copy-button-to-env-var[]
+--
+|long
+|`+++1000+++`
+
+a| [[onecx-ai-management-svc_onecx-ai-dispatch-provider-timeout]] [.property-path]##link:#onecx-ai-management-svc_onecx-ai-dispatch-provider-timeout[`onecx.ai.dispatch.provider.timeout`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++onecx.ai.dispatch.provider.timeout+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Timeout in seconds for provider calls
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++ONECX_AI_DISPATCH_PROVIDER_TIMEOUT+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++ONECX_AI_DISPATCH_PROVIDER_TIMEOUT+++`
+endif::add-copy-button-to-env-var[]
+--
+|long
+|`+++60+++`
+
+a| [[onecx-ai-management-svc_onecx-ai-dispatch-provider-log-response]] [.property-path]##link:#onecx-ai-management-svc_onecx-ai-dispatch-provider-log-response[`onecx.ai.dispatch.provider.log-response`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++onecx.ai.dispatch.provider.log-response+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Whether to log the full response from provider calls
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++ONECX_AI_DISPATCH_PROVIDER_LOG_RESPONSE+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++ONECX_AI_DISPATCH_PROVIDER_LOG_RESPONSE+++`
+endif::add-copy-button-to-env-var[]
+--
+|boolean
+|`+++false+++`
+
+a| [[onecx-ai-management-svc_onecx-ai-dispatch-provider-log-requests]] [.property-path]##link:#onecx-ai-management-svc_onecx-ai-dispatch-provider-log-requests[`onecx.ai.dispatch.provider.log-requests`]##
+ifdef::add-copy-button-to-config-props[]
+config_property_copy_button:+++onecx.ai.dispatch.provider.log-requests+++[]
+endif::add-copy-button-to-config-props[]
+
+
+[.description]
+--
+Whether to log the full requests to provider calls
+
+
+ifdef::add-copy-button-to-env-var[]
+Environment variable: env_var_with_copy_button:+++ONECX_AI_DISPATCH_PROVIDER_LOG_REQUESTS+++[]
+endif::add-copy-button-to-env-var[]
+ifndef::add-copy-button-to-env-var[]
+Environment variable: `+++ONECX_AI_DISPATCH_PROVIDER_LOG_REQUESTS+++`
+endif::add-copy-button-to-env-var[]
+--
+|boolean
+|`+++false+++`
+
+|===
+

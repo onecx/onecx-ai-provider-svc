@@ -1,0 +1,807 @@
+---
+openapi: 3.0.3
+info:
+  title: onecx-ai-provider internal service
+  version: 1.0.0
+servers:
+  - url: "http://onecx-ai-provider-svc:8080"
+tags:
+  - name: configurationInternal
+  - name: providerInternal
+  - name: mcpServerInternal
+paths:
+  /internal/configurations:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags:
+        - configurationInternal
+      description: Create an Configuration
+      operationId: createConfiguration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateConfigurationRequest'
+      responses:
+        "201":
+          description: Configuration created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Configuration'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /internal/configurations/{id}:
+    get:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags:
+        - configurationInternal
+      description: Get Configuration
+      operationId: getConfiguration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Configuration'
+        "404":
+          description: Not found
+    delete:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:delete ]
+      tags:
+        - configurationInternal
+      description: Delete Configuration
+      operationId: deleteConfiguration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Configuration deleted
+    put:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags:
+        - configurationInternal
+      description: Update an Configuration
+      operationId: updateConfiguration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateConfigurationRequest'
+      responses:
+        "200":
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Configuration'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        "404":
+          description: Configuration not found
+
+  /internal/configurations/search:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags:
+        - configurationInternal
+      description: Find Configuration by Search Criteria
+      operationId: findConfigurationBySearchCriteria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigurationSearchCriteria'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationPageResult'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+
+  /internal/providers:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags:
+        - providerInternal
+      description: Create an Provider
+      operationId: createProvider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProviderRequest'
+      responses:
+        "201":
+          description: New Provider created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Provider'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+
+  /internal/providers/{id}:
+    get:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags:
+        - providerInternal
+      description: Return Provider by ID
+      operationId: getProvider
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Provider'
+        "404":
+          description: Not found
+    put:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags:
+        - providerInternal
+      description: Update an Provider
+      operationId: updateProvider
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProviderRequest'
+      responses:
+        "200":
+          description: Provider updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Provider'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        "404":
+          description: Provider not found
+    delete:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:delete ]
+      tags:
+        - providerInternal
+      description: Delete an Provider
+      operationId: deleteProvider
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+
+  /internal/providers/search:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags:
+        - providerInternal
+      description: Find Providers by Search Criteria
+      operationId: findProviderBySearchCriteria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderSearchCriteria'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderPageResult'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /internal/mcpServer:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags:
+        - mcpServerInternal
+      description: Create an MCP Server
+      operationId: createMCPServer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMCPServerRequest'
+      responses:
+        "201":
+          description: MCP Server created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPServer'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /internal/mcpServer/{id}:
+    get:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags:
+        - mcpServerInternal
+      description: Get MCP Server by id
+      operationId: getMCPServerById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPServer'
+        "404":
+          description: Not found
+    delete:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:delete ]
+      tags:
+        - mcpServerInternal
+      description: Delete MCP Server by id
+      operationId: deleteMCPServerById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: MCP Server deleted successfully
+    put:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags:
+        - mcpServerInternal
+      description: Update an MCP Server
+      operationId: updateMCPServerById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMCPServerRequest'
+      responses:
+        "200":
+          description: MCP Server updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPServer'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        "404":
+          description: MCP Server not found
+
+  /internal/mcpServer/search:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags:
+        - mcpServerInternal
+      description: Find MCPServer by Search Criteria
+      operationId: findMCPServerByCriteria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MCPServerSearchCriteria'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPServerPageResult'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://oauth.simple.api/token
+          scopes:
+            ocx-ai:all: Grants access to all operations
+            ocx-ai:read: Grants read access
+            ocx-ai:write: Grants write access
+            ocx-ai:delete: Grants access to delete operations
+  schemas:
+    MCPServer:
+      type: object
+      properties:
+        modificationCount:
+          format: int32
+          type: integer
+        creationDate:
+          $ref: '#/components/schemas/OffsetDateTime'
+        creationUser:
+          type: string
+        modificationDate:
+          $ref: '#/components/schemas/OffsetDateTime'
+        modificationUser:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        apiKey:
+          type: string
+        executionPolicy:
+          $ref: '#/components/schemas/ExecutionPolicy'
+    MCPServerPageResult:
+      type: object
+      properties:
+        totalElements:
+          format: int64
+          type: integer
+        number:
+          format: int32
+          type: integer
+        size:
+          format: int32
+          type: integer
+        totalPages:
+          format: int64
+          type: integer
+        stream:
+          type: array
+          items:
+            $ref: '#/components/schemas/MCPServer'
+    MCPServerSearchCriteria:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        apiKey:
+          type: string
+        pageNumber:
+          format: int32
+          description: The number of page.
+          default: 0
+          type: integer
+        pageSize:
+          format: int32
+          description: The size of page
+          default: 10
+          maximum: 100
+          type: integer
+    CreateMCPServerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        apiKey:
+          type: string
+        executionPolicy:
+          $ref: '#/components/schemas/ExecutionPolicy'
+    UpdateMCPServerRequest:
+      type: object
+      required:
+        - modificationCount
+      properties:
+        modificationCount:
+          format: int32
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        apiKey:
+          type: string
+        executionPolicy:
+          $ref: '#/components/schemas/ExecutionPolicy'
+    ProviderSearchCriteria:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          $ref: '#/components/schemas/ProviderType'
+        llmUrl:
+          type: string
+        modelName:
+          type: string
+        apiKey:
+          type: string
+        pageNumber:
+          format: int32
+          description: The number of page.
+          default: 0
+          type: integer
+        pageSize:
+          format: int32
+          description: The size of page
+          default: 10
+          maximum: 100
+          type: integer
+    ConfigurationSearchCriteria:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        pageNumber:
+          format: int32
+          description: The number of page.
+          default: 0
+          type: integer
+        pageSize:
+          format: int32
+          description: The size of page
+          default: 10
+          maximum: 100
+          type: integer
+    CreateProviderRequest:
+      required:
+        - name
+        - modelName
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/ProviderType'
+        description:
+          type: string
+        llmUrl:
+          type: string
+        modelName:
+          type: string
+        apiKey:
+          type: string
+    UpdateProviderRequest:
+      required:
+        - name
+        - modelName
+        - modificationCount
+      type: object
+      properties:
+        modificationCount:
+          format: int32
+          type: integer
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/ProviderType'
+        description:
+          type: string
+        llmUrl:
+          type: string
+        modelName:
+          type: string
+        apiKey:
+          type: string
+    Provider:
+      required:
+        - name
+        - modelName
+      type: object
+      properties:
+        modificationCount:
+          format: int32
+          type: integer
+        creationDate:
+          $ref: '#/components/schemas/OffsetDateTime'
+        creationUser:
+          type: string
+        modificationDate:
+          $ref: '#/components/schemas/OffsetDateTime'
+        modificationUser:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/ProviderType'
+        description:
+          type: string
+        llmUrl:
+          type: string
+        modelName:
+          type: string
+        apiKey:
+          type: string
+    ProviderPageResult:
+      type: object
+      properties:
+        totalElements:
+          format: int64
+          description: The total elements in the resource.
+          type: integer
+        number:
+          format: int32
+          type: integer
+        size:
+          format: int32
+          type: integer
+        totalPages:
+          format: int64
+          type: integer
+        stream:
+          type: array
+          items:
+            $ref: '#/components/schemas/Provider'
+    CreateConfigurationRequest:
+      required:
+        - name
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        llmSystemMessage:
+          type: string
+        filter:
+          $ref: '#/components/schemas/ConfigurationFilter'
+        llmProvider:
+          $ref: '#/components/schemas/Provider'
+        mcpServers:
+          type: array
+          items:
+            $ref: '#/components/schemas/MCPServer'
+    UpdateConfigurationRequest:
+      required:
+        - modificationCount
+      type: object
+      properties:
+        modificationCount:
+          format: int32
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        filter:
+          $ref: '#/components/schemas/ConfigurationFilter'
+        llmSystemMessage:
+          type: string
+        llmProvider:
+          $ref: '#/components/schemas/Provider'
+        mcpServers:
+          type: array
+          items:
+            $ref: '#/components/schemas/MCPServer'
+    ConfigurationAbstract:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        filter:
+          $ref: '#/components/schemas/ConfigurationFilter'
+        llmSystemMessage:
+          type: string
+    Configuration:
+      required:
+        - name
+      type: object
+      properties:
+        modificationCount:
+          format: int32
+          type: integer
+        creationDate:
+          $ref: '#/components/schemas/OffsetDateTime'
+        creationUser:
+          type: string
+        modificationDate:
+          $ref: '#/components/schemas/OffsetDateTime'
+        modificationUser:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        filter:
+          $ref: '#/components/schemas/ConfigurationFilter'
+        llmSystemMessage:
+          type: string
+        llmProvider:
+          $ref: '#/components/schemas/Provider'
+        mcpServers:
+          type: array
+          items:
+            $ref: '#/components/schemas/MCPServer'
+    ConfigurationFilter:
+      type: object
+      properties:
+        key:
+          type: string
+          enum:
+            - APP_ID
+        value:
+          type: string
+    ConfigurationPageResult:
+      type: object
+      properties:
+        totalElements:
+          format: int64
+          description: The total elements in the resource.
+          type: integer
+        number:
+          format: int32
+          type: integer
+        size:
+          format: int32
+          type: integer
+        totalPages:
+          format: int64
+          type: integer
+        stream:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigurationAbstract'
+    ExecutionPolicy:
+      type: string
+      enum:
+        - ALWAYS_ASK
+        - NEVER_ASK
+    ProviderType:
+      type: string
+      enum:
+        - OLLAMA
+    OffsetDateTime:
+      format: date-time
+      type: string
+      example: 2022-03-10T12:15:50-04:00
+    ProblemDetailResponse:
+      type: object
+      properties:
+        errorCode:
+          type: string
+        detail:
+          type: string
+        params:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProblemDetailParam'
+        invalidParams:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProblemDetailInvalidParam'
+    ProblemDetailParam:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+    ProblemDetailInvalidParam:
+      type: object
+      properties:
+        name:
+          type: string
+        message:
+          type: string

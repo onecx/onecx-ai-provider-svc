@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+	<!-- Provider -->
+	<PROVIDER guid="provider-11-111" optlock="0" name="provider1" description="provider_description_1" llm_url="http://some.url.org" model_name="model1" tenant_id="default" creationuser="user1"/>
+	<PROVIDER guid="provider-22-222" optlock="0" name="provider2" description="provider_description_2" llm_url="http://some.url.org" model_name="model2" tenant_id="default" creationuser="user1" />
+	<PROVIDER guid="provider-DELETE_1" optlock="0" name="provider3" description="provider_description_3" llm_url="http://some.url.org" model_name="model3" tenant_id="default" creationuser="user2"/>
+
+	<!-- Configuration -->
+	<CONFIGURATION guid="configuration-11-111" optlock="0" name="configuration1" description="configuration_description_1" llm_system_message="configuration_llm_system_message_1" tenant_id="default" provider_id="provider-11-111" creationuser="user1"/>
+	<CONFIGURATION guid="configuration-22-222" optlock="0" name="configuration2" description="configuration_description_2" llm_system_message="configuration_llm_system_message_2" tenant_id="default" creationuser="user1"/>
+	<CONFIGURATION guid="configuration-DELETE_1" optlock="0" name="configuration3" description="configuration_description_3" llm_system_message="configuration_llm_system_message_3" tenant_id="default" creationuser="user2"  filter_key="APP_ID" filter_value="onecx-*"/>
+
+	<!-- MCP SERVER -->
+	<MCP_SERVER guid="mcp-server-11-111" optlock="0" name="mcpServer1" description="mcp_server_description_1" url="http://mcp.server.org" api_key="api_key_1" execution_policy="ALWAYS_ASK" tenant_id="default" creationuser="user1"/>
+	<MCP_SERVER guid="mcp-server-22-222" optlock="0" name="mcpServer2" description="mcp_server_description_2" url="http://mcp.server.org" api_key="api_key_2" execution_policy="ALWAYS_ASK" tenant_id="default" creationuser="user1"/>
+	<MCP_SERVER guid="mcp-server-DELETE_1" optlock="0" name="mcpServer3" description="mcp_server_description_3" url="http://mcp.server.org" api_key="api_key_3" execution_policy="NEVER_ASK" tenant_id="default" creationuser="user2"/>
+
+</dataset>
