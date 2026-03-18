@@ -18,13 +18,14 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 @TestHTTPEndpoint(ProviderRestController.class)
 @WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, deleteAfterTest = true, rinseAndRepeat = true)
-@GenerateKeycloakClient(clientName = "testClient", scopes = { "ocx-ai:all", "ocx-ai:read", "ocx-ai:write", "ocx-ai:delete" })
+@GenerateKeycloakClient(clientName = "testClient", scopes = { "ocx-ai-provider:all", "ocx-ai-provider:read",
+        "ocx-ai-provider:write", "ocx-ai-provider:delete" })
 class ProviderRestControllerTest extends AbstractTest {
 
     @Test
     void createProviderTest() {
         // create provider
-        var providerDto = new CreateProviderRequestDTO();
+        var providerDto = new CreateProviderRequestDTO().key("providerKey");
         providerDto.setName("Provider");
         providerDto.setModelName("ModelName");
 

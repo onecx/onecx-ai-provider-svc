@@ -31,7 +31,7 @@ public interface ProviderMapper {
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     Provider map(ProviderDTO provider);
 
-    ProviderSearchCriteria mapCriteria(ProviderSearchCriteriaDTO aiProviderSearchCriteriaDTO);
+    ProviderSearchCriteria mapCriteria(ProviderSearchCriteriaDTO providerSearchCriteriaDTO);
 
     @Mapping(target = "removeStreamItem", ignore = true)
     ProviderPageResultDTO mapPageResult(PageResult<Provider> result);
@@ -41,8 +41,9 @@ public interface ProviderMapper {
     @Mapping(target = "modificationUser", ignore = true)
     @Mapping(target = "modificationDate", ignore = true)
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "key", ignore = true)
     @Mapping(target = "creationUser", ignore = true)
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
-    void update(UpdateProviderRequestDTO aiProviderDTO, @MappingTarget Provider provider);
+    void update(UpdateProviderRequestDTO providerDTO, @MappingTarget Provider provider);
 }

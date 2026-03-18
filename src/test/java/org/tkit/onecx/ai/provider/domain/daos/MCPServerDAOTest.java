@@ -28,8 +28,10 @@ class MCPServerDAOTest {
 
     @Test
     void methodExceptionTests() {
-        methodExceptionTests(() -> dao.findMCPServersByCriteria(null),
+        methodExceptionTests(() -> dao.findByCriteria(null),
                 MCPServerDAO.ErrorKeys.ERROR_FIND_MCP_SERVER_BY_CRITERIA);
+        methodExceptionTests(() -> dao.findByKeys(null),
+                MCPServerDAO.ErrorKeys.ERROR_FIND_MCP_SERVERS_BY_KEYS);
     }
 
     void methodExceptionTests(Executable fn, Enum<?> key) {

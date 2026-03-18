@@ -12,6 +12,7 @@ import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.reactive.RestResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.tkit.onecx.ai.provider.common.exceptions.ChatExceptionBadRequest;
 import org.tkit.quarkus.jpa.exceptions.ConstraintException;
 import org.tkit.quarkus.rs.mappers.OffsetDateTimeMapper;
 
@@ -22,8 +23,13 @@ import gen.org.tkit.onecx.ai.provider.rs.internal.model.ProblemDetailResponseDTO
 @Mapper(uses = { OffsetDateTimeMapper.class })
 public interface ExceptionMapper {
 
+    default RestResponse<ProblemDetailResponseDTO> chatConstraint(ChatExceptionBadRequest ex) {
+        var dto = exception(ErrorKeys.CHAT_BAD_REQUEST.name(), ex.getMessage());
+        return RestResponse.status(Response.Status.BAD_REQUEST, dto);
+    }
+
     default RestResponse<ProblemDetailResponseDTO> constraint(ConstraintViolationException ex) {
-        var dto = exception("CONSTRAINT_VIOLATIONS", ex.getMessage());
+        var dto = exception(ErrorKeys.CONSTRAINT_VIOLATIONS.name(), ex.getMessage());
         dto.setInvalidParams(createErrorValidationResponse(ex.getConstraintViolations()));
         return RestResponse.status(Response.Status.BAD_REQUEST, dto);
     }
@@ -63,5 +69,11 @@ public interface ExceptionMapper {
 
     default String mapPath(Path path) {
         return path.toString();
+    }
+
+    public enum ErrorKeys {
+
+        CHAT_BAD_REQUEST,
+        CONSTRAINT_VIOLATIONS;
     }
 }

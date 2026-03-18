@@ -12,12 +12,17 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "MCP_SERVER")
+@Table(name = "MCP_SERVER", uniqueConstraints = {
+        @UniqueConstraint(name = "MCP_SERVER_KEY", columnNames = { "KEY", "TENANT_ID" })
+})
 public class MCPServer extends TraceableEntity {
 
     @TenantId
     @Column(name = "TENANT_ID")
     private String tenantId;
+
+    @Column(name = "KEY")
+    private String key;
 
     @Column(name = "NAME")
     private String name;

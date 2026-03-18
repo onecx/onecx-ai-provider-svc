@@ -10,8 +10,7 @@ import jakarta.inject.Inject;
 
 import org.eclipse.microprofile.faulttolerance.Fallback;
 import org.eclipse.microprofile.faulttolerance.Retry;
-import org.tkit.onecx.ai.provider.common.models.DispatchConfig;
-import org.tkit.onecx.ai.provider.domain.models.Configuration;
+import org.tkit.onecx.ai.provider.common.config.DispatchConfig;
 import org.tkit.onecx.ai.provider.domain.models.MCPServer;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -33,20 +32,20 @@ public class McpService {
     /**
      * Creates a tool registry from all MCP servers defined in the context.
      */
-    public McpToolRegistry createToolRegistry(Configuration configuration) {
-        if (configuration == null || configuration.getMcpServers() == null || configuration.getMcpServers().isEmpty()) {
+    public McpToolRegistry createToolRegistry(List<MCPServer> mcpServers) {
+        if (mcpServers == null || mcpServers.isEmpty()) {
             log.debug("No MCP servers configured in context");
             return McpToolRegistry.empty();
         }
 
         List<McpTool> allTools = new ArrayList<>();
 
-        for (MCPServer mcpServer : configuration.getMcpServers()) {
+        for (MCPServer mcpServer : mcpServers) {
             allTools.addAll(discoverToolsFromServer(mcpServer));
         }
 
         log.info("Created tool registry with {} tools from {} servers",
-                allTools.size(), configuration.getMcpServers().size());
+                allTools.size(), mcpServers.size());
 
         return new McpToolRegistry(allTools);
     }

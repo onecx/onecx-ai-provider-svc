@@ -4,6 +4,7 @@ import static org.tkit.quarkus.jpa.utils.QueryCriteriaUtil.addSearchStringPredic
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.criteria.Predicate;
@@ -20,7 +21,19 @@ import org.tkit.quarkus.jpa.models.AbstractTraceableEntity_;
 @ApplicationScoped
 public class MCPServerDAO extends AbstractDAO<MCPServer> {
 
-    public PageResult<MCPServer> findMCPServersByCriteria(MCPServerSearchCriteria criteria) {
+    public List<MCPServer> findByKeys(Set<String> keys) {
+        try {
+            var cb = this.getEntityManager().getCriteriaBuilder();
+            var cq = cb.createQuery(MCPServer.class);
+            var root = cq.from(MCPServer.class);
+            cq.where(root.get(MCPServer_.KEY).in(keys));
+            return this.getEntityManager().createQuery(cq).getResultList();
+        } catch (Exception e) {
+            throw new DAOException(ErrorKeys.ERROR_FIND_MCP_SERVERS_BY_KEYS, e);
+        }
+    }
+
+    public PageResult<MCPServer> findByCriteria(MCPServerSearchCriteria criteria) {
         try {
             var cb = this.getEntityManager().getCriteriaBuilder();
             var cq = cb.createQuery(MCPServer.class);
@@ -43,5 +56,6 @@ public class MCPServerDAO extends AbstractDAO<MCPServer> {
 
     public enum ErrorKeys {
         ERROR_FIND_MCP_SERVER_BY_CRITERIA,
+        ERROR_FIND_MCP_SERVERS_BY_KEYS,
     }
 }

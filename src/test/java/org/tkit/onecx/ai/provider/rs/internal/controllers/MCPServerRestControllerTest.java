@@ -18,13 +18,14 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 @TestHTTPEndpoint(MCPServerRestController.class)
 @WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, deleteAfterTest = true, rinseAndRepeat = true)
-@GenerateKeycloakClient(clientName = "testClient", scopes = { "ocx-ai:all", "ocx-ai:read", "ocx-ai:write", "ocx-ai:delete" })
+@GenerateKeycloakClient(clientName = "testClient", scopes = { "ocx-ai-provider:all", "ocx-ai-provider:read",
+        "ocx-ai-provider:write", "ocx-ai-provider:delete" })
 class MCPServerRestControllerTest extends AbstractTest {
 
     @Test
     void createMCPServerTest() {
         // create mcpServer
-        var mcpServerDto = new CreateMCPServerRequestDTO();
+        var mcpServerDto = new CreateMCPServerRequestDTO().key("key1");
         mcpServerDto.setName("MCPServer");
         mcpServerDto.setUrl("someUrl");
         mcpServerDto.setApiKey("someAPIkey");

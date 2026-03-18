@@ -13,7 +13,7 @@ paths:
   /internal/configurations:
     post:
       security:
-        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+        - oauth2: [ ocx-ai-provider:all, ocx-ai-provider:write ]
       tags:
         - configurationInternal
       description: Create an Configuration
@@ -40,7 +40,7 @@ paths:
   /internal/configurations/{id}:
     get:
       security:
-        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+        - oauth2: [ ocx-ai-provider:all, ocx-ai-provider:read ]
       tags:
         - configurationInternal
       description: Get Configuration
@@ -62,7 +62,7 @@ paths:
           description: Not found
     delete:
       security:
-        - oauth2: [ ocx-ai:all, ocx-ai:delete ]
+        - oauth2: [ ocx-ai-provider:all, ocx-ai-provider:delete ]
       tags:
         - configurationInternal
       description: Delete Configuration
@@ -78,7 +78,7 @@ paths:
           description: Configuration deleted
     put:
       security:
-        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+        - oauth2: [ ocx-ai-provider:all, ocx-ai-provider:write ]
       tags:
         - configurationInternal
       description: Update an Configuration
@@ -114,7 +114,7 @@ paths:
   /internal/configurations/search:
     post:
       security:
-        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+        - oauth2: [ ocx-ai-provider:all, ocx-ai-provider:read ]
       tags:
         - configurationInternal
       description: Find Configuration by Search Criteria
@@ -142,7 +142,7 @@ paths:
   /internal/providers:
     post:
       security:
-        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+        - oauth2: [ ocx-ai-provider:all, ocx-ai-provider:write ]
       tags:
         - providerInternal
       description: Create an Provider
@@ -170,7 +170,7 @@ paths:
   /internal/providers/{id}:
     get:
       security:
-        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+        - oauth2: [ ocx-ai-provider:all, ocx-ai-provider:read ]
       tags:
         - providerInternal
       description: Return Provider by ID
@@ -192,7 +192,7 @@ paths:
           description: Not found
     put:
       security:
-        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+        - oauth2: [ ocx-ai-provider:all, ocx-ai-provider:write ]
       tags:
         - providerInternal
       description: Update an Provider
@@ -226,7 +226,7 @@ paths:
           description: Provider not found
     delete:
       security:
-        - oauth2: [ ocx-ai:all, ocx-ai:delete ]
+        - oauth2: [ ocx-ai-provider:all, ocx-ai-provider:delete ]
       tags:
         - providerInternal
       description: Delete an Provider
@@ -244,7 +244,7 @@ paths:
   /internal/providers/search:
     post:
       security:
-        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+        - oauth2: [ ocx-ai-provider:all, ocx-ai-provider:read ]
       tags:
         - providerInternal
       description: Find Providers by Search Criteria
@@ -271,7 +271,7 @@ paths:
   /internal/mcpServer:
     post:
       security:
-        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+        - oauth2: [ ocx-ai-provider:all, ocx-ai-provider:write ]
       tags:
         - mcpServerInternal
       description: Create an MCP Server
@@ -298,7 +298,7 @@ paths:
   /internal/mcpServer/{id}:
     get:
       security:
-        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+        - oauth2: [ ocx-ai-provider:all, ocx-ai-provider:read ]
       tags:
         - mcpServerInternal
       description: Get MCP Server by id
@@ -320,7 +320,7 @@ paths:
           description: Not found
     delete:
       security:
-        - oauth2: [ ocx-ai:all, ocx-ai:delete ]
+        - oauth2: [ ocx-ai-provider:all, ocx-ai-provider:delete ]
       tags:
         - mcpServerInternal
       description: Delete MCP Server by id
@@ -336,7 +336,7 @@ paths:
           description: MCP Server deleted successfully
     put:
       security:
-        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+        - oauth2: [ ocx-ai-provider:all, ocx-ai-provider:write ]
       tags:
         - mcpServerInternal
       description: Update an MCP Server
@@ -372,7 +372,7 @@ paths:
   /internal/mcpServer/search:
     post:
       security:
-        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+        - oauth2: [ ocx-ai-provider:all, ocx-ai-provider:read ]
       tags:
         - mcpServerInternal
       description: Find MCPServer by Search Criteria
@@ -404,10 +404,10 @@ components:
         clientCredentials:
           tokenUrl: https://oauth.simple.api/token
           scopes:
-            ocx-ai:all: Grants access to all operations
-            ocx-ai:read: Grants read access
-            ocx-ai:write: Grants write access
-            ocx-ai:delete: Grants access to delete operations
+            ocx-ai-provider:all: Grants access to all operations
+            ocx-ai-provider:read: Grants read access
+            ocx-ai-provider:write: Grants write access
+            ocx-ai-provider:delete: Grants access to delete operations
   schemas:
     MCPServer:
       type: object
@@ -424,6 +424,8 @@ components:
         modificationUser:
           type: string
         id:
+          type: string
+        key:
           type: string
         name:
           type: string
@@ -480,7 +482,12 @@ components:
           type: integer
     CreateMCPServerRequest:
       type: object
+      required:
+        - key
+        - name
       properties:
+        key:
+          type: string
         name:
           type: string
         description:
@@ -561,9 +568,12 @@ components:
       required:
         - name
         - modelName
+        - key
       type: object
       properties:
         name:
+          type: string
+        key:
           type: string
         type:
           $ref: '#/components/schemas/ProviderType'
@@ -618,6 +628,8 @@ components:
           type: string
         name:
           type: string
+        key:
+          type: string
         type:
           $ref: '#/components/schemas/ProviderType'
         description:
@@ -662,11 +674,11 @@ components:
         filter:
           $ref: '#/components/schemas/ConfigurationFilter'
         llmProvider:
-          $ref: '#/components/schemas/Provider'
+          type: string
         mcpServers:
           type: array
           items:
-            $ref: '#/components/schemas/MCPServer'
+            type: string
     UpdateConfigurationRequest:
       required:
         - modificationCount
@@ -684,11 +696,11 @@ components:
         llmSystemMessage:
           type: string
         llmProvider:
-          $ref: '#/components/schemas/Provider'
+          type: string
         mcpServers:
           type: array
           items:
-            $ref: '#/components/schemas/MCPServer'
+            type: string
     ConfigurationAbstract:
       type: object
       properties:
@@ -729,11 +741,11 @@ components:
         llmSystemMessage:
           type: string
         llmProvider:
-          $ref: '#/components/schemas/Provider'
+          type: string
         mcpServers:
           type: array
           items:
-            $ref: '#/components/schemas/MCPServer'
+            type: string
     ConfigurationFilter:
       type: object
       properties:

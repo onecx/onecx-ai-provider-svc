@@ -11,7 +11,6 @@ import jakarta.ws.rs.core.Response;
 
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
-import org.tkit.onecx.ai.provider.common.services.configuration.ConfigurationService;
 import org.tkit.onecx.ai.provider.domain.daos.ConfigurationDAO;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ConfigurationMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ExceptionMapper;
@@ -38,11 +37,11 @@ public class ConfigurationRestController implements ConfigurationInternalApi {
     ConfigurationMapper mapper;
 
     @Inject
-    ConfigurationService configurationService;
+    ConfigurationDAO configurationDAO;
 
     @Override
     public Response createConfiguration(CreateConfigurationRequestDTO createConfigurationRequestDTO) {
-        var context = configurationService.createConfiguration(mapper.mapCreate(createConfigurationRequestDTO));
+        var context = configurationDAO.create(mapper.mapCreate(createConfigurationRequestDTO));
         return Response.status(Response.Status.CREATED).entity(mapper.map(context)).build();
     }
 
@@ -53,9 +52,9 @@ public class ConfigurationRestController implements ConfigurationInternalApi {
     }
 
     @Override
-    public Response findConfigurationBySearchCriteria(ConfigurationSearchCriteriaDTO aiConfigurationSearchCriteriaDTO) {
-        var criteria = mapper.mapCriteria(aiConfigurationSearchCriteriaDTO);
-        var result = dao.findAIConfigurationsByCriteria(criteria);
+    public Response findConfigurationBySearchCriteria(ConfigurationSearchCriteriaDTO configurationSearchCriteriaDTO) {
+        var criteria = mapper.mapCriteria(configurationSearchCriteriaDTO);
+        var result = dao.findByCriteria(criteria);
         return Response.ok(mapper.mapPage(result)).build();
     }
 
@@ -69,12 +68,15 @@ public class ConfigurationRestController implements ConfigurationInternalApi {
     }
 
     @Override
-    public Response updateConfiguration(String id, UpdateConfigurationRequestDTO updateAIConfigurationRequestDTO) {
-        var context = configurationService.updateConfiguration(updateAIConfigurationRequestDTO, id);
-        if (context == null) {
+    public Response updateConfiguration(String id, UpdateConfigurationRequestDTO updateConfigurationRequestDTO) {
+        var configuration = configurationDAO.findById(id);
+        if (configuration == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
-        return Response.status(Response.Status.OK).entity(mapper.map(context)).build();
+
+        mapper.updateConfiguration(updateConfigurationRequestDTO, configuration);
+        configuration = configurationDAO.update(configuration);
+        return Response.status(Response.Status.OK).entity(mapper.map(configuration)).build();
     }
 
     @ServerExceptionMapper

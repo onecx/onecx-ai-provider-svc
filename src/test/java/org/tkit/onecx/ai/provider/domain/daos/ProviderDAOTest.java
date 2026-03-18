@@ -28,8 +28,10 @@ class ProviderDAOTest {
 
     @Test
     void methodExceptionTests() {
-        methodExceptionTests(() -> dao.findProvidersByCriteria(null),
+        methodExceptionTests(() -> dao.findByCriteria(null),
                 ProviderDAO.ErrorKeys.ERROR_FIND_PROVIDERS_BY_CRITERIA);
+        methodExceptionTests(() -> dao.findByKey(null),
+                ProviderDAO.ErrorKeys.ERROR_FIND_PROVIDER_BY_KEY);
     }
 
     void methodExceptionTests(Executable fn, Enum<?> key) {

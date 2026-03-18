@@ -4,7 +4,7 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd"
         objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
-    <changeSet author="dev (generated)" id="1769092345352-1">
+    <changeSet author="dev (generated)" id="1773836453912-1">
         <createTable tableName="configuration">
             <column name="optlock" type="INTEGER">
                 <constraints nullable="false"/>
@@ -13,13 +13,13 @@
             <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
             <column name="description" type="VARCHAR(255)"/>
             <column name="filter_key" type="VARCHAR(255)"/>
+            <column name="filter_value" type="VARCHAR(255)"/>
             <column name="guid" type="VARCHAR(255)">
                 <constraints nullable="false" primaryKey="true" primaryKeyName="configuration_pkey"/>
             </column>
             <column name="llm_system_message" type="VARCHAR(255)"/>
-            <column name="filter_value" type="VARCHAR(255)"/>
             <column name="name" type="VARCHAR(255)"/>
-            <column name="provider_id" type="VARCHAR(255)"/>
+            <column name="provider_key" type="VARCHAR(255)"/>
             <column name="tenant_id" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
@@ -27,7 +27,7 @@
             <column name="modificationuser" type="VARCHAR(255)"/>
         </createTable>
     </changeSet>
-    <changeSet author="dev (generated)" id="1769092345352-2">
+    <changeSet author="dev (generated)" id="1773836453912-2">
         <createTable tableName="mcp_server">
             <column name="optlock" type="INTEGER">
                 <constraints nullable="false"/>
@@ -40,6 +40,7 @@
             <column name="guid" type="VARCHAR(255)">
                 <constraints nullable="false" primaryKey="true" primaryKeyName="mcp_server_pkey"/>
             </column>
+            <column name="key" type="VARCHAR(255)"/>
             <column name="name" type="VARCHAR(255)"/>
             <column name="tenant_id" type="VARCHAR(255)">
                 <constraints nullable="false"/>
@@ -49,7 +50,7 @@
             <column name="modificationuser" type="VARCHAR(255)"/>
         </createTable>
     </changeSet>
-    <changeSet author="dev (generated)" id="1769092345352-3">
+    <changeSet author="dev (generated)" id="1773836453912-3">
         <createTable tableName="provider">
             <column name="optlock" type="INTEGER">
                 <constraints nullable="false"/>
@@ -61,6 +62,7 @@
             <column name="guid" type="VARCHAR(255)">
                 <constraints nullable="false" primaryKey="true" primaryKeyName="provider_pkey"/>
             </column>
+            <column name="key" type="VARCHAR(255)"/>
             <column name="llm_url" type="VARCHAR(255)"/>
             <column name="model_name" type="VARCHAR(255)"/>
             <column name="name" type="VARCHAR(255)"/>
@@ -72,33 +74,23 @@
             <column name="modificationuser" type="VARCHAR(255)"/>
         </createTable>
     </changeSet>
-    <changeSet author="dev (generated)" id="1769092345352-4">
-        <createTable tableName="configuration_mcp_server">
+    <changeSet author="dev (generated)" id="1773836453912-4">
+        <createTable tableName="mcp_servers">
             <column name="configuration_id" type="VARCHAR(255)">
-                <constraints nullable="false" primaryKey="true" primaryKeyName="configuration_mcp_server_pkey"/>
+                <constraints nullable="false" primaryKey="true" primaryKeyName="mcp_servers_pkey"/>
             </column>
-            <column name="mcp_server_id" type="VARCHAR(255)">
-                <constraints nullable="false" primaryKey="true" primaryKeyName="configuration_mcp_server_pkey"/>
+            <column name="mcp_server_keys" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="mcp_servers_pkey"/>
             </column>
         </createTable>
-        <createTable tableName="dataimportlog">
-            <column name="id" type="VARCHAR(255)">
-                <constraints nullable="false" primaryKey="true" primaryKeyName="dataimportlog_pkey"/>
-            </column>
-            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
-            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
-            <column name="file" type="VARCHAR(255)"/>
-            <column name="md5" type="VARCHAR(255)"/>
-            <column name="error" type="VARCHAR(255)"/>
-        </createTable>
     </changeSet>
-    <changeSet author="dev (generated)" id="1769092345352-5">
-        <addForeignKeyConstraint baseColumnNames="mcp_server_id" baseTableName="configuration_mcp_server" constraintName="fk4trvf9l7iohs5mhcksav2css8" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="mcp_server" validate="true"/>
+    <changeSet author="dev (generated)" id="1773836453912-5">
+        <addUniqueConstraint columnNames="key, tenant_id" constraintName="mcp_server_key" tableName="mcp_server"/>
     </changeSet>
-    <changeSet author="dev (generated)" id="1769092345352-6">
-        <addForeignKeyConstraint baseColumnNames="configuration_id" baseTableName="configuration_mcp_server" constraintName="fkc8q49aqexiosj3490nwknbqtf" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="configuration" validate="true"/>
+    <changeSet author="dev (generated)" id="1773836453912-6">
+        <addUniqueConstraint columnNames="key, tenant_id" constraintName="provider_key" tableName="provider"/>
     </changeSet>
-    <changeSet author="dev (generated)" id="1769092345352-7">
-        <addForeignKeyConstraint baseColumnNames="provider_id" baseTableName="configuration" constraintName="fkkm6v785dqwlv8ag2blsb6xtld" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="provider" validate="true"/>
+    <changeSet author="dev (generated)" id="1773836453912-7">
+        <addForeignKeyConstraint baseColumnNames="configuration_id" baseTableName="mcp_servers" constraintName="fkn8iib7muitcjgr1v6bigvx1jr" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="configuration" validate="true"/>
     </changeSet>
 </databaseChangeLog>

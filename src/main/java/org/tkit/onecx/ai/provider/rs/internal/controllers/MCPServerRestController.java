@@ -48,7 +48,7 @@ public class MCPServerRestController implements McpServerInternalApi {
     @Override
     public Response findMCPServerByCriteria(MCPServerSearchCriteriaDTO criteriaDTO) {
         var criteria = mapper.mapCriteria(criteriaDTO);
-        var result = mcpServerDAO.findMCPServersByCriteria(criteria);
+        var result = mcpServerDAO.findByCriteria(criteria);
         return Response.status(Response.Status.OK).entity(mapper.mapPageResult(result)).build();
     }
 

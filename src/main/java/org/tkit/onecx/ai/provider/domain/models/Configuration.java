@@ -14,10 +14,7 @@ import lombok.Setter;
 @Setter
 @Entity
 @Table(name = "CONFIGURATION")
-@NamedEntityGraph(name = Configuration.AI_CONFIGURATION_LOAD, includeAllAttributes = true)
 public class Configuration extends TraceableEntity {
-
-    public static final String AI_CONFIGURATION_LOAD = "AI_CONFIGURATION_LOAD";
 
     @TenantId
     @Column(name = "TENANT_ID")
@@ -32,15 +29,15 @@ public class Configuration extends TraceableEntity {
     @Column(name = "LLM_SYSTEM_MESSAGE")
     private String llmSystemMessage;
 
-    @ManyToOne(cascade = CascadeType.PERSIST)
-    @JoinColumn(name = "PROVIDER_ID")
-    private Provider provider;
+    @Column(name = "PROVIDER_KEY")
+    private String llmProvider;
 
     @Embedded
     private Filter filter;
 
-    @ManyToMany
-    @JoinTable(name = "CONFIGURATION_MCP_SERVER", joinColumns = @JoinColumn(name = "CONFIGURATION_ID"), inverseJoinColumns = @JoinColumn(name = "MCP_SERVER_ID"))
-    private Set<MCPServer> mcpServers;
+    @ElementCollection(targetClass = String.class, fetch = FetchType.EAGER)
+    @CollectionTable(name = "MCP_SERVERS", joinColumns = @JoinColumn(name = "CONFIGURATION_ID"))
+    @Column(name = "MCP_SERVER_KEYS", nullable = false)
+    private Set<String> mcpServers;
 
 }

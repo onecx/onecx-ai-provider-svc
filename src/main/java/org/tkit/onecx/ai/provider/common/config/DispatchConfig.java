@@ -1,4 +1,4 @@
-package org.tkit.onecx.ai.provider.common.models;
+package org.tkit.onecx.ai.provider.common.config;
 
 import io.quarkus.runtime.annotations.ConfigDocFilename;
 import io.quarkus.runtime.annotations.ConfigPhase;

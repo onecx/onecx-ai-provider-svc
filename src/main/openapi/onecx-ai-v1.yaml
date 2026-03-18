@@ -11,7 +11,7 @@ paths:
   /v1/dispatch/chat:
    post:
     security:
-     - oauth2: [ ocx-ai:read ]
+     - oauth2: [ ocx-ai-provider:read ]
     tags:
      - dispatch
     summary: Chat with AI
@@ -29,6 +29,8 @@ paths:
        application/json:
         schema:
          $ref: '#/components/schemas/ChatMessage'
+     '404':
+        description: Not Found
      '400':
       description: Bad Request
       content:
@@ -43,7 +45,7 @@ components:
     clientCredentials:
      tokenUrl: https://oauth.simple.api/token
      scopes:
-      ocx-ai:read: Grants read access
+      ocx-ai-provider:read: Grants read access
  schemas:
   ChatRequest:
    type: object

@@ -4,10 +4,16 @@ import java.time.Duration;
 import java.util.*;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.HttpHeaders;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.tkit.onecx.ai.provider.common.exceptions.ChatException;
+import org.tkit.onecx.ai.provider.common.exceptions.ChatExceptionBadRequest;
+import org.tkit.onecx.ai.provider.common.models.ChatRequestModel;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpToolRegistry;
 import org.tkit.onecx.ai.provider.domain.models.Configuration;
+import org.tkit.onecx.ai.provider.domain.models.MCPServer;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -16,33 +22,32 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.ollama.OllamaChatModel;
-import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
 import io.quarkiverse.langchain4j.jaxrsclient.JaxRsHttpClientBuilderFactory;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @ApplicationScoped
 public class OllamaLlmService extends AbstractLlmService {
 
+    private static final Logger log = LoggerFactory.getLogger(OllamaLlmService.class);
+
     @Override
-    public Response chat(Configuration configuration, ChatRequestDTOV1 chatRequestDTO) {
-        // Resolve configuration by queryContext
-        Provider provider = configuration.getProvider();
+    public ChatResponse chat(Configuration configuration, Provider provider, List<MCPServer> mcpServers,
+            ChatRequestModel request) throws ChatException {
+
         // Build message list: history (if present) + current message
         List<ChatMessage> messages = new ArrayList<>();
 
-        if (chatRequestDTO.getConversation() != null
-                && chatRequestDTO.getConversation().getHistory() != null
-                && !chatRequestDTO.getConversation().getHistory().isEmpty()) {
-            messages.addAll(mapToLangChainMessages(chatRequestDTO.getConversation().getHistory()));
+        if (request.getConversation() != null
+                && request.getConversation().getHistory() != null
+                && !request.getConversation().getHistory().isEmpty()) {
+            messages.addAll(mapToLangChainMessages(request.getConversation().getHistory()));
         }
 
-        messages.add(new UserMessage(chatRequestDTO.getChatMessage().getMessage()));
+        messages.add(new UserMessage(request.getChatMessage().getMessage()));
 
         // Build custom headers for authentication
         Map<String, String> customHeaders = new HashMap<>();
         if (provider.getApiKey() != null) {
-            customHeaders.put("Authorization", provider.getApiKey());
+            customHeaders.put(HttpHeaders.AUTHORIZATION, provider.getApiKey());
         }
 
         // Build the Ollama model
@@ -57,7 +62,7 @@ public class OllamaLlmService extends AbstractLlmService {
                 .build();
 
         // Create tool registry from MCP servers (if configured)
-        McpToolRegistry toolRegistry = createToolRegistry(configuration);
+        McpToolRegistry toolRegistry = createToolRegistry(mcpServers);
         try {
             List<ToolSpecification> toolSpecifications = toolRegistry.getToolSpecifications();
 
@@ -75,9 +80,7 @@ public class OllamaLlmService extends AbstractLlmService {
 
             if (chatResponse == null) {
                 log.error("Failed to get response from model after retries");
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity("Failed to get response from model")
-                        .build();
+                throw new ChatExceptionBadRequest("Failed to get response from model");
             }
 
             // Handle tool execution loop
@@ -105,9 +108,7 @@ public class OllamaLlmService extends AbstractLlmService {
                 // Check if follow-up request failed
                 if (chatResponse == null) {
                     log.error("Failed to get follow-up response from model during tool execution iteration {}", iterations);
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity("Failed to get follow-up response from model during tool execution")
-                            .build();
+                    throw new ChatExceptionBadRequest("Failed to get follow-up response from model during tool execution");
                 }
             }
 
@@ -116,14 +117,10 @@ public class OllamaLlmService extends AbstractLlmService {
             }
 
             // Get final response text
-            String responseMessage = chatResponse.aiMessage().text();
-            var responseDTO = mapToChatMessageResponseDTO(responseMessage);
-            return Response.ok(responseDTO).build();
+            return chatResponse;
         } catch (Exception e) {
             log.error("Unexpected error during chat processing", e);
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Unexpected error: " + e.getMessage())
-                    .build();
+            throw new ChatExceptionBadRequest("Unexpected error during chat processing: " + e.getMessage());
         } finally {
             toolRegistry.close();
         }

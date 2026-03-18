@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.persistence.NoResultException;
 import jakarta.persistence.criteria.Predicate;
 
 import org.tkit.onecx.ai.provider.domain.criteria.ProviderSearchCriteria;
@@ -20,7 +21,23 @@ import org.tkit.quarkus.jpa.models.AbstractTraceableEntity_;
 @ApplicationScoped
 public class ProviderDAO extends AbstractDAO<Provider> {
 
-    public PageResult<Provider> findProvidersByCriteria(ProviderSearchCriteria criteria) {
+    public Provider findByKey(String key) {
+        try {
+            var cb = this.getEntityManager().getCriteriaBuilder();
+            var cq = cb.createQuery(Provider.class);
+            var root = cq.from(Provider.class);
+            cq.where(cb.equal(root.get(Provider_.key), key));
+
+            return this.getEntityManager().createQuery(cq).getSingleResult();
+
+        } catch (NoResultException nre) {
+            return null;
+        } catch (Exception ex) {
+            throw new DAOException(ErrorKeys.ERROR_FIND_PROVIDER_BY_KEY, ex);
+        }
+    }
+
+    public PageResult<Provider> findByCriteria(ProviderSearchCriteria criteria) {
         try {
             var cb = this.getEntityManager().getCriteriaBuilder();
             var cq = cb.createQuery(Provider.class);
@@ -40,5 +57,6 @@ public class ProviderDAO extends AbstractDAO<Provider> {
 
     public enum ErrorKeys {
         ERROR_FIND_PROVIDERS_BY_CRITERIA,
+        ERROR_FIND_PROVIDER_BY_KEY
     }
 }

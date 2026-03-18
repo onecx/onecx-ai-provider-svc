@@ -8,6 +8,7 @@ import java.util.List;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.criteria.Predicate;
 
+import org.tkit.onecx.ai.provider.common.models.ConfigurationFilter;
 import org.tkit.onecx.ai.provider.domain.criteria.ConfigurationSearchCriteria;
 import org.tkit.onecx.ai.provider.domain.models.Configuration;
 import org.tkit.onecx.ai.provider.domain.models.Configuration_;
@@ -20,7 +21,42 @@ import org.tkit.quarkus.jpa.models.AbstractTraceableEntity_;
 @ApplicationScoped
 public class ConfigurationDAO extends AbstractDAO<Configuration> {
 
-    public PageResult<Configuration> findAIConfigurationsByCriteria(ConfigurationSearchCriteria criteria) {
+    public Configuration findConfigurationsByRequestContext(ConfigurationFilter filter) {
+
+        String filterKey = null;
+        String tmp = null;
+        if (filter != null) {
+            if (filter.getKey() != null) {
+                filterKey = filter.getKey().name();
+            }
+            if (filter.getValue() != null) {
+                tmp = filter.getValue();
+            }
+        }
+        String filterValue = tmp;
+
+        var configurations = findByFilterKey(filterKey);
+
+        if (filterValue == null) {
+            return configurations.stream()
+                    .filter(c -> c.getFilter() == null || c.getFilter().getValue() == null)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        return configurations.stream()
+                .filter(c -> c.getFilter() != null
+                        && c.getFilter().getValue() != null
+                        && filterValue.matches(c.getFilter().getValue().replace("*", ".*")))
+                .max((c1, c2) -> {
+                    int len1 = c1.getFilter().getValue().replace("*", "").length();
+                    int len2 = c2.getFilter().getValue().replace("*", "").length();
+                    return Integer.compare(len1, len2);
+                })
+                .orElse(null);
+    }
+
+    public PageResult<Configuration> findByCriteria(ConfigurationSearchCriteria criteria) {
         try {
             var cb = this.getEntityManager().getCriteriaBuilder();
             var cq = cb.createQuery(Configuration.class);
@@ -41,7 +77,7 @@ public class ConfigurationDAO extends AbstractDAO<Configuration> {
         }
     }
 
-    public List<Configuration> findAllConfigurationsByFilterKey(String filterKey) {
+    public List<Configuration> findByFilterKey(String filterKey) {
         try {
             var cb = this.getEntityManager().getCriteriaBuilder();
             var cq = cb.createQuery(Configuration.class);

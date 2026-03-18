@@ -12,15 +12,17 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "PROVIDER")
-@NamedEntityGraph(name = Provider.AI_PROVIDER_LOAD, includeAllAttributes = true)
+@Table(name = "PROVIDER", uniqueConstraints = {
+        @UniqueConstraint(name = "PROVIDER_KEY", columnNames = { "KEY", "TENANT_ID" })
+})
 public class Provider extends TraceableEntity {
-
-    public static final String AI_PROVIDER_LOAD = "AI_PROVIDER_LOAD";
 
     @TenantId
     @Column(name = "TENANT_ID")
     private String tenantId;
+
+    @Column(name = "KEY")
+    private String key;
 
     @Column(name = "NAME")
     private String name;

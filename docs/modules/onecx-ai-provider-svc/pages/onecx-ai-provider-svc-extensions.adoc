@@ -12,13 +12,13 @@ h| Version
 
 | https://onecx.github.io/docs/onecx-quarkus/current/onecx-quarkus/onecx-core.html[Link]
 | 
-| 2.3.0
+| 2.4.0
 
 | onecx-tenant
 
 | https://onecx.github.io/docs/onecx-quarkus/current/onecx-quarkus/onecx-tenant.html[Link]
-| https://github.com/onecx/onecx-quarkus/blob/2.3.0/docs/modules/onecx-quarkus/pages/includes/onecx-tenant.adoc[Link]
-| 2.3.0
+| https://github.com/onecx/onecx-quarkus/blob/2.4.0/docs/modules/onecx-quarkus/pages/includes/onecx-tenant.adoc[Link]
+| 2.4.0
 
 | tkit-quarkus-rest-context
 
@@ -30,12 +30,6 @@ h| Version
 
 | https://1000kit.github.io/tkit-quarkus/current/tkit-quarkus/tkit-quarkus-jpa-tenant.html[Link]
 | https://github.com/1000kit/tkit-quarkus/blob/4.6.0/docs/modules/tkit-quarkus/pages/includes/tkit-quarkus-jpa-tenant.adoc[Link]
-| 4.6.0
-
-| tkit-quarkus-data-import
-
-| https://1000kit.github.io/tkit-quarkus/current/tkit-quarkus/tkit-quarkus-data-import.html[Link]
-| https://github.com/1000kit/tkit-quarkus/blob/4.6.0/docs/modules/tkit-quarkus/pages/includes/tkit-quarkus-data-import.adoc[Link]
 | 4.6.0
 
 | tkit-quarkus-jpa

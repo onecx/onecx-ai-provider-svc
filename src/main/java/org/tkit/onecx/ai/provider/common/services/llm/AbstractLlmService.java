@@ -1,36 +1,33 @@
 package org.tkit.onecx.ai.provider.common.services.llm;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
-import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.Response;
 
 import org.eclipse.microprofile.faulttolerance.Fallback;
 import org.eclipse.microprofile.faulttolerance.Retry;
-import org.tkit.onecx.ai.provider.common.models.DispatchConfig;
+import org.tkit.onecx.ai.provider.common.config.DispatchConfig;
+import org.tkit.onecx.ai.provider.common.exceptions.ChatException;
+import org.tkit.onecx.ai.provider.common.models.*;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpService;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpTool;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpToolRegistry;
 import org.tkit.onecx.ai.provider.domain.models.Configuration;
+import org.tkit.onecx.ai.provider.domain.models.MCPServer;
+import org.tkit.onecx.ai.provider.domain.models.Provider;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
-import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@ApplicationScoped
 public abstract class AbstractLlmService {
 
     @Inject
@@ -39,13 +36,14 @@ public abstract class AbstractLlmService {
     @Inject
     DispatchConfig dispatchConfig;
 
-    public abstract Response chat(Configuration configuration, ChatRequestDTOV1 chatRequestDTO);
+    public abstract ChatResponse chat(Configuration configuration, Provider provider, List<MCPServer> mcpServers,
+            ChatRequestModel chatRequest) throws ChatException;
 
     /**
      * Creates a tool registry from the MCP servers defined in the context.
      */
-    protected McpToolRegistry createToolRegistry(Configuration aiConfiguration) {
-        return mcpService.createToolRegistry(aiConfiguration);
+    protected McpToolRegistry createToolRegistry(List<MCPServer> mcpServers) {
+        return mcpService.createToolRegistry(mcpServers);
     }
 
     /**
@@ -66,8 +64,9 @@ public abstract class AbstractLlmService {
      * @param toolRegistry The registry containing available tools
      * @return List of messages including the AI message and tool execution results
      */
-    protected List<ChatMessage> executeToolRequests(ChatResponse response, McpToolRegistry toolRegistry) {
-        List<ChatMessage> resultMessages = new ArrayList<>();
+    protected List<dev.langchain4j.data.message.ChatMessage> executeToolRequests(ChatResponse response,
+            McpToolRegistry toolRegistry) {
+        List<dev.langchain4j.data.message.ChatMessage> resultMessages = new ArrayList<>();
 
         AiMessage aiMessage = response.aiMessage();
         resultMessages.add(aiMessage);
@@ -106,9 +105,9 @@ public abstract class AbstractLlmService {
         return "Error: Tool execution failed for '" + toolRequest.name() + "'";
     }
 
-    protected List<ChatMessage> mapToLangChainMessages(List<ChatMessageDTOV1> history) {
-        List<ChatMessage> chatMessageList = new ArrayList<>();
-        for (ChatMessageDTOV1 msg : history) {
+    protected List<dev.langchain4j.data.message.ChatMessage> mapToLangChainMessages(List<ChatMessage> history) {
+        List<dev.langchain4j.data.message.ChatMessage> chatMessageList = new ArrayList<>();
+        for (ChatMessage msg : history) {
             switch (msg.getType()) {
                 case USER -> chatMessageList.add(new UserMessage(msg.getMessage()));
                 case ASSISTANT -> chatMessageList.add(new AiMessage(msg.getMessage()));
@@ -116,14 +115,6 @@ public abstract class AbstractLlmService {
             }
         }
         return chatMessageList;
-    }
-
-    protected ChatMessageDTOV1 mapToChatMessageResponseDTO(String responseMessage) {
-        ChatMessageDTOV1 chatMessageDTOV1 = new ChatMessageDTOV1();
-        chatMessageDTOV1.setMessage(responseMessage);
-        chatMessageDTOV1.setType(ChatMessageDTOV1.TypeEnum.ASSISTANT);
-        chatMessageDTOV1.setCreationDate(new Date().getTime());
-        return chatMessageDTOV1;
     }
 
     @Retry

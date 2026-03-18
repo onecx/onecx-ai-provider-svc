@@ -28,9 +28,9 @@ class ConfigurationDAOTest {
 
     @Test
     void methodExceptionTests() {
-        methodExceptionTests(() -> dao.findAIConfigurationsByCriteria(null),
+        methodExceptionTests(() -> dao.findByCriteria(null),
                 ConfigurationDAO.ErrorKeys.ERROR_FIND_CONFIGURATIONS_BY_CRITERIA);
-        methodExceptionTests(() -> dao.findAllConfigurationsByFilterKey(null),
+        methodExceptionTests(() -> dao.findByFilterKey(null),
                 ConfigurationDAO.ErrorKeys.ERROR_FIND_CONFIGURATIONS_BY_FILTER_KEY);
     }
 

@@ -42,11 +42,8 @@ public class ProviderRestController implements ProviderInternalApi {
     ProviderMapper mapper;
 
     @Override
-    public Response createProvider(CreateProviderRequestDTO aiProviderDTO) {
-
-        var provider = mapper.createProvider(aiProviderDTO);
-        provider = dao.create(provider);
-
+    public Response createProvider(CreateProviderRequestDTO providerDTO) {
+        var provider = dao.create(mapper.createProvider(providerDTO));
         return Response
                 .created(uriInfo.getAbsolutePathBuilder().path(provider.getId()).build())
                 .entity(mapper.map(provider))
@@ -55,26 +52,26 @@ public class ProviderRestController implements ProviderInternalApi {
     }
 
     @Override
-    public Response deleteProvider(String aiProviderId) {
-        dao.deleteQueryById(aiProviderId);
+    public Response deleteProvider(String providerId) {
+        dao.deleteQueryById(providerId);
         return Response.noContent().build();
     }
 
     @Override
-    public Response findProviderBySearchCriteria(ProviderSearchCriteriaDTO aiProviderSearchCriteriaDTO) {
-        var criteria = mapper.mapCriteria(aiProviderSearchCriteriaDTO);
-        var result = dao.findProvidersByCriteria(criteria);
+    public Response findProviderBySearchCriteria(ProviderSearchCriteriaDTO providerSearchCriteriaDTO) {
+        var criteria = mapper.mapCriteria(providerSearchCriteriaDTO);
+        var result = dao.findByCriteria(criteria);
         return Response.ok(mapper.mapPageResult(result)).build();
     }
 
     @Override
-    public Response updateProvider(String aiProviderId, UpdateProviderRequestDTO aiProviderDTO) {
-        var provider = dao.findById(aiProviderId);
+    public Response updateProvider(String providerId, UpdateProviderRequestDTO providerDTO) {
+        var provider = dao.findById(providerId);
         if (provider == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
 
-        mapper.update(aiProviderDTO, provider);
+        mapper.update(providerDTO, provider);
         provider = dao.update(provider);
         return Response.status(Response.Status.OK).entity(mapper.map(provider)).build();
     }
