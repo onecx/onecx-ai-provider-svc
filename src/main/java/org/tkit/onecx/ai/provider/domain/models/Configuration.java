@@ -5,6 +5,7 @@ import java.util.Set;
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.TenantId;
+import org.tkit.onecx.ai.provider.domain.models.enums.FilterKey;
 import org.tkit.quarkus.jpa.models.TraceableEntity;
 
 import lombok.Getter;
@@ -32,12 +33,16 @@ public class Configuration extends TraceableEntity {
     @Column(name = "PROVIDER_KEY")
     private String llmProvider;
 
-    @Embedded
-    private Filter filter;
+    @Column(name = "FILTER_KEY")
+    @Enumerated(EnumType.STRING)
+    private FilterKey filterKey;
+
+    @Column(name = "FILTER_VALUE")
+    private String filterValue;
 
     @ElementCollection(targetClass = String.class, fetch = FetchType.EAGER)
     @CollectionTable(name = "MCP_SERVERS", joinColumns = @JoinColumn(name = "CONFIGURATION_ID"))
-    @Column(name = "MCP_SERVER_KEYS", nullable = false)
+    @Column(name = "MCP_SERVER_KEY", nullable = false)
     private Set<String> mcpServers;
 
 }

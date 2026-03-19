@@ -10,6 +10,7 @@ import org.eclipse.microprofile.faulttolerance.Retry;
 import org.tkit.onecx.ai.provider.common.config.DispatchConfig;
 import org.tkit.onecx.ai.provider.common.exceptions.ChatException;
 import org.tkit.onecx.ai.provider.common.models.*;
+import org.tkit.onecx.ai.provider.common.models.ChatMessage;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpService;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpTool;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpToolRegistry;
@@ -18,10 +19,7 @@ import org.tkit.onecx.ai.provider.domain.models.MCPServer;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -36,26 +34,8 @@ public abstract class AbstractLlmService {
     @Inject
     DispatchConfig dispatchConfig;
 
-    public abstract ChatResponse chat(Configuration configuration, Provider provider, List<MCPServer> mcpServers,
+    public abstract ChatResponseModel chat(Configuration configuration, Provider provider, List<MCPServer> mcpServers,
             ChatRequestModel chatRequest) throws ChatException;
-
-    /**
-     * Creates a tool registry from the MCP servers defined in the context.
-     */
-    protected McpToolRegistry createToolRegistry(List<MCPServer> mcpServers) {
-        return mcpService.createToolRegistry(mcpServers);
-    }
-
-    /**
-     * Checks if the LLM response contains tool execution requests.
-     */
-    protected boolean hasToolExecutionRequests(ChatResponse response) {
-        AiMessage aiMessage = response.aiMessage();
-        return aiMessage != null
-                && aiMessage.hasToolExecutionRequests()
-                && aiMessage.toolExecutionRequests() != null
-                && !aiMessage.toolExecutionRequests().isEmpty();
-    }
 
     /**
      * Executes all tool requests from the LLM response and returns the results as messages.

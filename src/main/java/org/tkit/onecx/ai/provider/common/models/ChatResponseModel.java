@@ -5,16 +5,17 @@ import lombok.Setter;
 
 @Setter
 @Getter
-public class ChatMessage {
+public class ChatResponseModel {
 
+    private String conversationId;
     private String message;
     private Type type;
 
     public enum Type {
-
         ASSISTANT,
         SYSTEM,
         USER,
         ACTION;
     }
+
 }

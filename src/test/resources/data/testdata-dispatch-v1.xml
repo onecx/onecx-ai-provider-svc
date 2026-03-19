@@ -1,17 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
     <!-- Provider -->
-    <PROVIDER guid="provider-11-111" optlock="0" key="provider1" name="provider1" description="provider_description_1" type="OLLAMA" llm_url="http://localhost:1088" model_name="model1" tenant_id="default" creationuser="user1"/>
-    <PROVIDER guid="provider-22-222" optlock="0" key="provider2" name="provider2" description="provider_description_2" type="OLLAMA" llm_url="http://localhost:1088" model_name="model2" tenant_id="default" creationuser="user1" />
+    <PROVIDER guid="provider-0" optlock="0" key="provider0" name="provider0" description="provider_description_0" type="OLLAMA" llm_url="http://localhost:1088/provider0" model_name="model1" tenant_id="default" api_key="api_key_1" />
+    <PROVIDER guid="provider-11-111" optlock="0" key="provider1" name="provider1" description="provider_description_1" type="OLLAMA" llm_url="http://localhost:1088/provider1" model_name="model1" tenant_id="default" />
+    <PROVIDER guid="provider-22-222" optlock="0" key="provider2" name="provider2" description="provider_description_2" type="OLLAMA" llm_url="http://localhost:1088/provider2" model_name="model2" tenant_id="default"  />
 
     <!-- Configuration -->
-    <CONFIGURATION guid="config-simple" optlock="0" name="configuration1" description="configuration_description_1" llm_system_message="configuration_llm_system_message_1" tenant_id="default" provider_key="provider1" creationuser="user1"/>
-    <CONFIGURATION guid="config-with-mcp" optlock="0" name="configuration2" description="configuration_description_2" llm_system_message="configuration_llm_system_message_2" tenant_id="default" creationuser="user1" filter_key="APP_ID" filter_value="onecx-*"/>
+    <CONFIGURATION guid="config-simple" optlock="0" name="configuration1" description="configuration_description_1" llm_system_message="configuration_llm_system_message_1" tenant_id="default" provider_key="provider1" />
+    <CONFIGURATION guid="config-simple-2" optlock="0" name="config-simple-2" description="configuration_description_1" llm_system_message="configuration_llm_system_message_1" tenant_id="default" filter_key="APP_ID" />
+    <CONFIGURATION guid="config-with-mcp" optlock="0" name="configuration2" description="configuration_description_2" llm_system_message="configuration_llm_system_message_2" tenant_id="default"  filter_key="APP_ID" filter_value="onecx-*"/>
     <CONFIGURATION guid="config-no-provider" optlock="0" name="no-provider"  tenant_id="default" filter_key="APP_ID" filter_value="test-no-provider" />
     <CONFIGURATION guid="config-wrong-provider" optlock="0" name="no-provider" provider_key="does-not-exists" tenant_id="default" filter_key="APP_ID" filter_value="test-wrong-provider" />
+    <CONFIGURATION guid="config-test-with-mcp-servers-0" optlock="0" name="no-provider" provider_key="provider0" tenant_id="default" filter_key="APP_ID" filter_value="test-with-mcp-servers-0" />
+    <CONFIGURATION guid="config-test-with-mcp-servers-1" optlock="0" name="no-provider" provider_key="provider1" tenant_id="default" filter_key="APP_ID" filter_value="test-with-mcp-servers-1" />
 
     <!-- MCP SERVER -->
-    <MCP_SERVER guid="mcp-server-11-111" optlock="0" key="mcpServer1" name="mcpServer1" description="mcp_server_description_1" url="http://localhost:1088" api_key="api_key_1" execution_policy="ALWAYS_ASK" tenant_id="default" creationuser="user1"/>
-    <MCP_SERVER guid="mcp-server-22-222" optlock="0" key="mcpServer2" name="mcpServer2" description="mcp_server_description_2" url="http://localhost:1088" api_key="api_key_2" execution_policy="ALWAYS_ASK" tenant_id="default" creationuser="user1"/>
+    <MCP_SERVER guid="mcp-server-0" optlock="0" key="mcpServer0" name="mcpServer0" description="mcp_server_description_0" url="http://localhost:1088/mcp0" execution_policy="ALWAYS_ASK" tenant_id="default" />
+    <MCP_SERVER guid="mcp-server-1" optlock="0" key="mcpServer1" name="mcpServer1" description="mcp_server_description_1" url="http://localhost:1088/mcp1" api_key="api_key_1" execution_policy="ALWAYS_ASK" tenant_id="default" />
+    <MCP_SERVER guid="mcp-server-2" optlock="0" key="mcpServer2" name="mcpServer2" description="mcp_server_description_2" url="http://localhost:1088/mcp2" api_key="api_key_2" execution_policy="ALWAYS_ASK" tenant_id="default" />
 
+    <!-- CONFIG MCP SERVER -->
+    <MCP_SERVERS configuration_id="config-test-with-mcp-servers-0" mcp_server_key="mcpServer0"/>
+    <MCP_SERVERS configuration_id="config-test-with-mcp-servers-1" mcp_server_key="mcpServer1"/>
 </dataset>

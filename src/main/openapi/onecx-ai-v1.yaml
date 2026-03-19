@@ -78,6 +78,9 @@ components:
      type: string
   ChatMessage:
    type: object
+   required:
+    - type
+    - message
    properties:
     conversationId:
      type: string

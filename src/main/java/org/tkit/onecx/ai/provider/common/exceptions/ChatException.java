@@ -1,5 +1,8 @@
 package org.tkit.onecx.ai.provider.common.exceptions;
 
+import lombok.Getter;
+
+@Getter
 public class ChatException extends RuntimeException {
 
     private final ErrorType errorType;
@@ -7,10 +10,6 @@ public class ChatException extends RuntimeException {
     ChatException(ErrorType errorType, String message) {
         super(message);
         this.errorType = errorType;
-    }
-
-    public ErrorType getErrorType() {
-        return errorType;
     }
 
     public enum ErrorType {

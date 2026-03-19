@@ -8,7 +8,6 @@ import java.util.List;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.criteria.Predicate;
 
-import org.tkit.onecx.ai.provider.common.models.ConfigurationFilter;
 import org.tkit.onecx.ai.provider.domain.criteria.ConfigurationSearchCriteria;
 import org.tkit.onecx.ai.provider.domain.models.Configuration;
 import org.tkit.onecx.ai.provider.domain.models.Configuration_;
@@ -21,36 +20,23 @@ import org.tkit.quarkus.jpa.models.AbstractTraceableEntity_;
 @ApplicationScoped
 public class ConfigurationDAO extends AbstractDAO<Configuration> {
 
-    public Configuration findConfigurationsByRequestContext(ConfigurationFilter filter) {
-
-        String filterKey = null;
-        String tmp = null;
-        if (filter != null) {
-            if (filter.getKey() != null) {
-                filterKey = filter.getKey().name();
-            }
-            if (filter.getValue() != null) {
-                tmp = filter.getValue();
-            }
-        }
-        String filterValue = tmp;
+    public Configuration findConfigurationsByRequestContext(String filterKey, String filterValue) {
 
         var configurations = findByFilterKey(filterKey);
 
         if (filterValue == null) {
             return configurations.stream()
-                    .filter(c -> c.getFilter() == null || c.getFilter().getValue() == null)
+                    .filter(c -> c.getFilterValue() == null)
                     .findFirst()
                     .orElse(null);
         }
 
         return configurations.stream()
-                .filter(c -> c.getFilter() != null
-                        && c.getFilter().getValue() != null
-                        && filterValue.matches(c.getFilter().getValue().replace("*", ".*")))
+                .filter(c -> c.getFilterValue() != null
+                        && filterValue.matches(c.getFilterValue().replace("*", ".*")))
                 .max((c1, c2) -> {
-                    int len1 = c1.getFilter().getValue().replace("*", "").length();
-                    int len2 = c2.getFilter().getValue().replace("*", "").length();
+                    int len1 = c1.getFilterValue().replace("*", "").length();
+                    int len2 = c2.getFilterValue().replace("*", "").length();
                     return Integer.compare(len1, len2);
                 })
                 .orElse(null);
@@ -84,9 +70,9 @@ public class ConfigurationDAO extends AbstractDAO<Configuration> {
             var root = cq.from(Configuration.class);
 
             if (filterKey == null) {
-                cq.where(cb.isNull(root.get(Configuration_.filter)));
+                cq.where(cb.isNull(root.get(Configuration_.FILTER_KEY)));
             } else {
-                cq.where(cb.equal(root.get(Configuration_.filter).get("key"), filterKey));
+                cq.where(cb.equal(root.get(Configuration_.FILTER_KEY), filterKey));
             }
 
             return this.getEntityManager().createQuery(cq).getResultList();

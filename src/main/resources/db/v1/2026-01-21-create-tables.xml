@@ -79,7 +79,7 @@
             <column name="configuration_id" type="VARCHAR(255)">
                 <constraints nullable="false" primaryKey="true" primaryKeyName="mcp_servers_pkey"/>
             </column>
-            <column name="mcp_server_keys" type="VARCHAR(255)">
+            <column name="mcp_server_key" type="VARCHAR(255)">
                 <constraints nullable="false" primaryKey="true" primaryKeyName="mcp_servers_pkey"/>
             </column>
         </createTable>

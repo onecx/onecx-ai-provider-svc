@@ -1,0 +1,155 @@
+[
+  {
+    "id": "mcp-server-1-initialize",
+    "priority": 10,
+    "httpRequest": {
+      "method": "POST",
+      "headers": {
+        "Authorization": [
+          "api_key_1"
+        ]
+      },
+      "path": "/mcp1",
+      "body": {
+        "type": "JSON",
+        "matchType": "ONLY_MATCHING_FIELDS",
+        "json": {
+          "method": "initialize"
+        }
+      }
+    },
+    "httpResponse": {
+      "body": {
+        "type": "JSON",
+        "contentType": "application/json",
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 0,
+          "result": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {},
+            "serverInfo": {
+              "name": "mock-mcp-server",
+              "version": "1.0.0"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "mcp-server-1-notification-initialize",
+    "priority": 10,
+    "httpRequest": {
+      "method": "POST",
+      "headers": {
+        "Authorization": [
+          "api_key_1"
+        ]
+      },
+      "path": "/mcp1",
+      "body": {
+        "type": "JSON",
+        "matchType": "ONLY_MATCHING_FIELDS",
+        "json": {
+          "jsonrpc" : "2.0",
+          "method": "notifications/initialized"
+        }
+      }
+    },
+    "httpResponse": {
+      "body": {
+        "type": "JSON",
+        "contentType": "application/json",
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 0,
+          "result": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {},
+            "serverInfo": {
+              "name": "mock-mcp-server",
+              "version": "1.0.0"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "mcp-server-1-health-check",
+    "priority": 10,
+    "httpRequest": {
+      "method": "POST",
+      "headers": {
+        "Authorization": [
+          "api_key_1"
+        ]
+      },
+      "path": "/mcp1",
+      "body": {
+        "type": "JSON",
+        "matchType": "ONLY_MATCHING_FIELDS",
+        "json": {
+          "method": "ping"
+        }
+      }
+    },
+    "httpResponse": {
+      "body": {
+        "type": "JSON",
+        "contentType": "application/json",
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "result": {}
+        }
+      }
+    }
+  },
+  {
+    "id": "mcp-server-1-tools-list",
+    "priority": 10,
+    "httpRequest": {
+      "method": "POST",
+      "headers": {
+        "Authorization": [
+          "api_key_1"
+        ]
+      },
+      "path": "/mcp1",
+      "body": {
+        "type": "JSON",
+        "matchType": "ONLY_MATCHING_FIELDS",
+        "json": {
+          "method": "tools/list"
+        }
+      }
+    },
+    "httpResponse": {
+      "body": {
+        "type": "JSON",
+        "contentType": "application/json",
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 2,
+          "result": {
+            "tools": [
+              {
+                name: "searchTest",
+                description: "Search for available test",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string", description: "Name of the test" },
+                  },
+                  required: ["name"]
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+]

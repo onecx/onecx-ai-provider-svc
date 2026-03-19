@@ -1,14 +1,13 @@
 package org.tkit.onecx.ai.provider.common.models;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Setter
+@Getter
 public class RequestContext {
 
-    private ConfigurationFilter filter;
+    private String filterKey;
+    private String filterValue;
 
-    public ConfigurationFilter getFilter() {
-        return filter;
-    }
-
-    public void setFilter(ConfigurationFilter filter) {
-        this.filter = filter;
-    }
 }

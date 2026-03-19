@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.tkit.onecx.ai.provider.common.exceptions.ChatException;
 import org.tkit.onecx.ai.provider.common.exceptions.ChatExceptionBadRequest;
 import org.tkit.onecx.ai.provider.common.models.ChatRequestModel;
+import org.tkit.onecx.ai.provider.common.models.ChatResponseModel;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpToolRegistry;
 import org.tkit.onecx.ai.provider.domain.models.Configuration;
 import org.tkit.onecx.ai.provider.domain.models.MCPServer;
@@ -30,39 +31,34 @@ public class OllamaLlmService extends AbstractLlmService {
     private static final Logger log = LoggerFactory.getLogger(OllamaLlmService.class);
 
     @Override
-    public ChatResponse chat(Configuration configuration, Provider provider, List<MCPServer> mcpServers,
+    public ChatResponseModel chat(Configuration configuration, Provider provider, List<MCPServer> mcpServers,
             ChatRequestModel request) throws ChatException {
 
         // Build message list: history (if present) + current message
         List<ChatMessage> messages = new ArrayList<>();
 
-        if (request.getConversation() != null
-                && request.getConversation().getHistory() != null
-                && !request.getConversation().getHistory().isEmpty()) {
+        if (request.getConversation() != null) {
             messages.addAll(mapToLangChainMessages(request.getConversation().getHistory()));
         }
-
         messages.add(new UserMessage(request.getChatMessage().getMessage()));
 
-        // Build custom headers for authentication
-        Map<String, String> customHeaders = new HashMap<>();
-        if (provider.getApiKey() != null) {
-            customHeaders.put(HttpHeaders.AUTHORIZATION, provider.getApiKey());
-        }
-
         // Build the Ollama model
-        OllamaChatModel model = OllamaChatModel.builder()
+        var builder = OllamaChatModel.builder()
                 .baseUrl(provider.getLlmUrl())
                 .modelName(provider.getModelName())
-                .customHeaders(customHeaders)
                 .timeout(Duration.ofSeconds(dispatchConfig.providerConfig().timeout()))
                 .logRequests(dispatchConfig.providerConfig().logRequests())
                 .logResponses(dispatchConfig.providerConfig().logResponse())
-                .httpClientBuilder(new JaxRsHttpClientBuilderFactory().create())
-                .build();
+                .httpClientBuilder(new JaxRsHttpClientBuilderFactory().create());
+
+        // Build custom headers for authentication
+        if (provider.getApiKey() != null) {
+            builder.customHeaders(Map.of(HttpHeaders.AUTHORIZATION, provider.getApiKey()));
+        }
+        var model = builder.build();
 
         // Create tool registry from MCP servers (if configured)
-        McpToolRegistry toolRegistry = createToolRegistry(mcpServers);
+        McpToolRegistry toolRegistry = mcpService.createToolRegistry(mcpServers);
         try {
             List<ToolSpecification> toolSpecifications = toolRegistry.getToolSpecifications();
 
@@ -85,7 +81,8 @@ public class OllamaLlmService extends AbstractLlmService {
 
             // Handle tool execution loop
             int iterations = 0;
-            while (hasToolExecutionRequests(chatResponse) && iterations < dispatchConfig.mcpConfig().maxIterations()) {
+            while (chatResponse.aiMessage().hasToolExecutionRequests()
+                    && iterations < dispatchConfig.mcpConfig().maxIterations()) {
                 iterations++;
                 log.info("Tool execution iteration {}", iterations);
 
@@ -117,7 +114,15 @@ public class OllamaLlmService extends AbstractLlmService {
             }
 
             // Get final response text
-            return chatResponse;
+
+            var result = new ChatResponseModel();
+            result.setConversationId(chatResponse.id());
+            if (chatResponse.aiMessage() != null) {
+                result.setMessage(chatResponse.aiMessage().text());
+            }
+            result.setType(ChatResponseModel.Type.ASSISTANT);
+
+            return result;
         } catch (Exception e) {
             log.error("Unexpected error during chat processing", e);
             throw new ChatExceptionBadRequest("Unexpected error during chat processing: " + e.getMessage());

@@ -10,13 +10,12 @@ import org.slf4j.LoggerFactory;
 import org.tkit.onecx.ai.provider.common.exceptions.ChatException;
 import org.tkit.onecx.ai.provider.common.exceptions.ChatExceptionNotFound;
 import org.tkit.onecx.ai.provider.common.models.ChatRequestModel;
+import org.tkit.onecx.ai.provider.common.models.ChatResponseModel;
 import org.tkit.onecx.ai.provider.domain.daos.ConfigurationDAO;
 import org.tkit.onecx.ai.provider.domain.daos.MCPServerDAO;
 import org.tkit.onecx.ai.provider.domain.daos.ProviderDAO;
 import org.tkit.onecx.ai.provider.domain.models.MCPServer;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
-
-import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
  * Factory that selects the appropriate LLM service based on the provider configuration.
@@ -41,10 +40,17 @@ public class LlmServiceFactory {
     /**
      * Routes the chat request to the appropriate LLM service based on provider type.
      */
-    public ChatResponse chat(ChatRequestModel chatRequest) throws ChatException {
+    public ChatResponseModel chat(ChatRequestModel chatRequest) throws ChatException {
 
-        var filter = chatRequest.getRequestContext() != null ? chatRequest.getRequestContext().getFilter() : null;
-        var configuration = configurationService.findConfigurationsByRequestContext(filter);
+        String filterKey = null;
+        String filterValue = null;
+        var context = chatRequest.getRequestContext();
+        if (context != null) {
+            filterKey = context.getFilterKey();
+            filterValue = context.getFilterValue();
+        }
+
+        var configuration = configurationService.findConfigurationsByRequestContext(filterKey, filterValue);
         if (configuration == null) {
             log.error("No configuration found for request context: {}", chatRequest.getRequestContext());
             throw new ChatExceptionNotFound("No configuration found for the given request context");
@@ -58,8 +64,8 @@ public class LlmServiceFactory {
             log.error("No configuration provider found for key: {}", configuration.getLlmProvider());
             throw new ChatExceptionNotFound("No configuration provider found for key: " + configuration.getLlmProvider());
         }
-        List<MCPServer> mcpServers = null;
-        if (configuration.getMcpServers() != null && !configuration.getMcpServers().isEmpty()) {
+        List<MCPServer> mcpServers = List.of();
+        if (!configuration.getMcpServers().isEmpty()) {
             mcpServers = mcpServerDAO.findByKeys(configuration.getMcpServers());
         }
 

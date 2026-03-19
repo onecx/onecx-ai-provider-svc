@@ -5,7 +5,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.tkit.onecx.ai.provider.domain.criteria.ConfigurationSearchCriteria;
 import org.tkit.onecx.ai.provider.domain.models.Configuration;
-import org.tkit.onecx.ai.provider.domain.models.Filter;
+import org.tkit.onecx.ai.provider.domain.models.enums.FilterKey;
 import org.tkit.quarkus.jpa.daos.PageResult;
 import org.tkit.quarkus.rs.mappers.OffsetDateTimeMapper;
 
@@ -19,15 +19,17 @@ public interface ConfigurationMapper {
     @Mapping(target = "removeStreamItem", ignore = true)
     ConfigurationPageResultDTO mapPage(PageResult<Configuration> result);
 
-    ConfigurationAbstractDTO mapToAbstract(Configuration configuration);
+    @Mapping(target = "filter", expression = "java(mapFilter(item.getFilterKey(), item.getFilterValue()))")
+    ConfigurationAbstractDTO mapToAbstract(Configuration item);
 
+    @Mapping(target = "filter", expression = "java(mapFilter(item.getFilterKey(), item.getFilterValue()))")
     @Mapping(target = "removeMcpServersItem", ignore = true)
     ConfigurationDTO map(Configuration item);
 
-    ConfigurationFilterDTO map(Filter filter);
+    ConfigurationFilterDTO mapFilter(FilterKey key, String value);
 
-    Filter map(ConfigurationFilterDTO filterDTO);
-
+    @Mapping(target = "filterKey", source = "filter.key")
+    @Mapping(target = "filterValue", source = "filter.value")
     @Mapping(target = "tenantId", ignore = true)
     @Mapping(target = "persisted", ignore = true)
     @Mapping(target = "modificationUser", ignore = true)
@@ -39,6 +41,8 @@ public interface ConfigurationMapper {
     void updateConfiguration(UpdateConfigurationRequestDTO updateConfigurationRequestDTO,
             @MappingTarget Configuration configuration);
 
+    @Mapping(target = "filterKey", source = "filter.key")
+    @Mapping(target = "filterValue", source = "filter.value")
     @Mapping(target = "tenantId", ignore = true)
     @Mapping(target = "persisted", ignore = true)
     @Mapping(target = "modificationUser", ignore = true)
