@@ -25,7 +25,7 @@ class DispatchRestV1ControllerChatNoMcpServerTest extends AbstractConfigurationT
     void chatRequestProviderNoMCPServerTest() {
 
         var message = "Hallo";
-        ollamaCreateChat("test-chat-no-mcp-server", "test-chat-no-mcp-server", message, "Hallo! Wie kann ich dir helfen?");
+        ollamaCreateChat("test-chat-no-mcp-server", "test-chat-no-mcp-server", "Hallo! Wie kann ich dir helfen?");
 
         var request = new ChatRequestDTOV1()
                 .requestContext(new RequestContextDTOV1().filter(

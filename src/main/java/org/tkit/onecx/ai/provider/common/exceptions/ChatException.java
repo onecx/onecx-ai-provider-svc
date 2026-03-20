@@ -12,6 +12,11 @@ public class ChatException extends RuntimeException {
         this.errorType = errorType;
     }
 
+    ChatException(ErrorType errorType, String message, Throwable cause) {
+        super(message, cause);
+        this.errorType = errorType;
+    }
+
     public enum ErrorType {
         BAD_REQUEST,
         NOT_FOUND

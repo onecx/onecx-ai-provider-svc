@@ -82,6 +82,9 @@ public abstract class AbstractLlmService {
                 case USER -> chatMessageList.add(new UserMessage(msg.getMessage()));
                 case ASSISTANT -> chatMessageList.add(new AiMessage(msg.getMessage()));
                 case SYSTEM -> chatMessageList.add(new SystemMessage(msg.getMessage()));
+                default -> {
+                    // ignore
+                }
             }
         }
         return chatMessageList;
@@ -93,6 +96,7 @@ public abstract class AbstractLlmService {
         return chatModel.chat(chatRequest);
     }
 
+    @SuppressWarnings("java:S1172")
     protected ChatResponse modelChatFallback(ChatModel chatModel, ChatRequest chatRequest) {
         log.error("Chat request failed after retries. Unable to get response from LLM model");
         return null;

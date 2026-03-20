@@ -15,6 +15,7 @@ import lombok.Setter;
 @Table(name = "MCP_SERVER", uniqueConstraints = {
         @UniqueConstraint(name = "MCP_SERVER_KEY", columnNames = { "KEY", "TENANT_ID" })
 })
+@SuppressWarnings("squid:S2160")
 public class MCPServer extends TraceableEntity {
 
     @TenantId

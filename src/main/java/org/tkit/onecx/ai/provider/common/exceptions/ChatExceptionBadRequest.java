@@ -6,4 +6,8 @@ public class ChatExceptionBadRequest extends ChatException {
         super(ErrorType.BAD_REQUEST, message);
     }
 
+    public ChatExceptionBadRequest(String message, Throwable cause) {
+        super(ErrorType.BAD_REQUEST, message, cause);
+    }
+
 }

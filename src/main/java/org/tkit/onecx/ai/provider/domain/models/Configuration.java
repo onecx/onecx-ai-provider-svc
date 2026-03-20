@@ -15,6 +15,7 @@ import lombok.Setter;
 @Setter
 @Entity
 @Table(name = "CONFIGURATION")
+@SuppressWarnings("squid:S2160")
 public class Configuration extends TraceableEntity {
 
     @TenantId

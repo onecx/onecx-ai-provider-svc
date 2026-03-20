@@ -15,6 +15,7 @@ import lombok.Setter;
 @Table(name = "PROVIDER", uniqueConstraints = {
         @UniqueConstraint(name = "PROVIDER_KEY", columnNames = { "KEY", "TENANT_ID" })
 })
+@SuppressWarnings("squid:S2160")
 public class Provider extends TraceableEntity {
 
     @TenantId

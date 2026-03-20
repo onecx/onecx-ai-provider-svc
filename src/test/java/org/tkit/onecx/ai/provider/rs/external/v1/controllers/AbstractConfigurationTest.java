@@ -21,7 +21,7 @@ import org.tkit.onecx.ai.provider.test.AbstractTest;
 import dev.langchain4j.mcp.client.protocol.*;
 import io.quarkiverse.mockserver.test.InjectMockServerClient;
 
-class AbstractConfigurationTest extends AbstractTest {
+abstract class AbstractConfigurationTest extends AbstractTest {
 
     @InjectMockServerClient
     MockServerClient mockServerClient;
@@ -61,11 +61,11 @@ class AbstractConfigurationTest extends AbstractTest {
                         "arguments", arguments));
     }
 
-    protected void ollamaCreateChat(String name, String model, String message, String response) {
-        ollamaCreateChat(name, model, createAssistantMessage(message), createUserMessage(response));
+    protected void ollamaCreateChat(String name, String model, String response) {
+        ollamaCreateChat(name, model, createUserMessage(response));
     }
 
-    protected void ollamaCreateChat(String name, String model, Map<?, ?> message, Map<?, ?> response) {
+    protected void ollamaCreateChat(String name, String model, Map<?, ?> response) {
 
         var responseData = new HashMap<>();
         responseData.putAll(Map.of(

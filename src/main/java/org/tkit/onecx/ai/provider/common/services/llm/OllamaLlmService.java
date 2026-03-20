@@ -113,7 +113,7 @@ public class OllamaLlmService extends AbstractLlmService {
             return result;
         } catch (Exception e) {
             log.error("Unexpected error during chat processing", e);
-            throw new ChatExceptionBadRequest("Unexpected error during chat processing: " + e.getMessage());
+            throw new ChatExceptionBadRequest("Unexpected error during chat processing: " + e.getMessage(), e);
         } finally {
             toolRegistry.close();
         }

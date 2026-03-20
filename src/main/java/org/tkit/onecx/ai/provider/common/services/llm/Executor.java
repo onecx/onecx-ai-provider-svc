@@ -26,6 +26,7 @@ public class Executor {
         return result.resultText();
     }
 
+    @SuppressWarnings("java:S1172")
     public String toolExecutionFallback(McpTool tool, ToolExecutionRequest toolRequest) {
         log.error("Tool execution failed after {} retries for tool: {}", dispatchConfig.mcpConfig().maxToolExecutionRetries(),
                 toolRequest.name());

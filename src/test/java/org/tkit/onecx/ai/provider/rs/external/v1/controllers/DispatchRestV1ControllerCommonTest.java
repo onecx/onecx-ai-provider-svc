@@ -22,6 +22,7 @@ class DispatchRestV1ControllerCommonTest extends AbstractConfigurationTest {
     static final String CLIENT = "testExtCommonClient";
 
     @Test
+    @SuppressWarnings("java:S5976")
     void chatRequestWrongConfigurationTest() {
         var request = new ChatRequestDTOV1()
                 .requestContext(new RequestContextDTOV1().filter(
@@ -38,6 +39,7 @@ class DispatchRestV1ControllerCommonTest extends AbstractConfigurationTest {
     }
 
     @Test
+    @SuppressWarnings("java:S5976")
     void chatRequestConfigurationNoProviderTest() {
         var request = new ChatRequestDTOV1()
                 .requestContext(new RequestContextDTOV1().filter(
@@ -54,6 +56,7 @@ class DispatchRestV1ControllerCommonTest extends AbstractConfigurationTest {
     }
 
     @Test
+    @SuppressWarnings("java:S5976")
     void chatRequestConfigurationWrongProviderTest() {
         var request = new ChatRequestDTOV1()
                 .requestContext(new RequestContextDTOV1().filter(

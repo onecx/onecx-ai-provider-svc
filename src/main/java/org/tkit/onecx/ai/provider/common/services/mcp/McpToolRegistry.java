@@ -39,7 +39,6 @@ public record McpToolRegistry(
      * Closes all MCP clients.
      */
     public void close() {
-        System.out.println("## " + toolsByName);
         toolsByName.forEach((name, tool) -> {
             try {
                 tool.mcpClient().close();

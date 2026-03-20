@@ -35,7 +35,6 @@ class DispatchRestV1ControllerChatMcpServerTest extends AbstractConfigurationTes
         mcpCreateToolsCall("mcp-test-with-mcp-server");
 
         ollamaCreateChat("provider-test-with-mcp-server", "model1",
-                createUserMessage(message),
                 createAssistantMessage("Hallo!?",
                         createTooCall(0, "does-not-exists", Map.of("name", "Hallo")),
                         createTooCall(1, "searchTest", Map.of("name", "Hallo"))));
