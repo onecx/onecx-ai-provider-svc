@@ -26,8 +26,6 @@
             <column name="creationuser" type="VARCHAR(255)"/>
             <column name="modificationuser" type="VARCHAR(255)"/>
         </createTable>
-    </changeSet>
-    <changeSet author="dev (generated)" id="1773836453912-2">
         <createTable tableName="mcp_server">
             <column name="optlock" type="INTEGER">
                 <constraints nullable="false"/>
@@ -49,8 +47,6 @@
             <column name="creationuser" type="VARCHAR(255)"/>
             <column name="modificationuser" type="VARCHAR(255)"/>
         </createTable>
-    </changeSet>
-    <changeSet author="dev (generated)" id="1773836453912-3">
         <createTable tableName="provider">
             <column name="optlock" type="INTEGER">
                 <constraints nullable="false"/>
@@ -73,8 +69,6 @@
             <column name="creationuser" type="VARCHAR(255)"/>
             <column name="modificationuser" type="VARCHAR(255)"/>
         </createTable>
-    </changeSet>
-    <changeSet author="dev (generated)" id="1773836453912-4">
         <createTable tableName="mcp_servers">
             <column name="configuration_id" type="VARCHAR(255)">
                 <constraints nullable="false" primaryKey="true" primaryKeyName="mcp_servers_pkey"/>
@@ -83,14 +77,11 @@
                 <constraints nullable="false" primaryKey="true" primaryKeyName="mcp_servers_pkey"/>
             </column>
         </createTable>
-    </changeSet>
-    <changeSet author="dev (generated)" id="1773836453912-5">
+
         <addUniqueConstraint columnNames="key, tenant_id" constraintName="mcp_server_key" tableName="mcp_server"/>
-    </changeSet>
-    <changeSet author="dev (generated)" id="1773836453912-6">
+
         <addUniqueConstraint columnNames="key, tenant_id" constraintName="provider_key" tableName="provider"/>
-    </changeSet>
-    <changeSet author="dev (generated)" id="1773836453912-7">
+
         <addForeignKeyConstraint baseColumnNames="configuration_id" baseTableName="mcp_servers" constraintName="fkn8iib7muitcjgr1v6bigvx1jr" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="configuration" validate="true"/>
     </changeSet>
 </databaseChangeLog>

@@ -12,7 +12,6 @@ import org.tkit.onecx.ai.provider.common.exceptions.ChatException;
 import org.tkit.onecx.ai.provider.common.models.*;
 import org.tkit.onecx.ai.provider.common.models.ChatMessage;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpService;
-import org.tkit.onecx.ai.provider.common.services.mcp.McpTool;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpToolRegistry;
 import org.tkit.onecx.ai.provider.domain.models.Configuration;
 import org.tkit.onecx.ai.provider.domain.models.MCPServer;
@@ -33,6 +32,9 @@ public abstract class AbstractLlmService {
 
     @Inject
     DispatchConfig dispatchConfig;
+
+    @Inject
+    Executor executor;
 
     public abstract ChatResponseModel chat(Configuration configuration, Provider provider, List<MCPServer> mcpServers,
             ChatRequestModel chatRequest) throws ChatException;
@@ -64,25 +66,13 @@ public abstract class AbstractLlmService {
                         "Error: Tool '" + toolName + "' not found"));
                 continue;
             }
-            String result = executeToolRequestWithRetry(toolOpt.get(), toolRequest);
+            String result = executor.executeToolRequestWithRetry(toolOpt.get(), toolRequest);
             log.info("Tool '{}' executed successfully", toolName);
 
             resultMessages.add(ToolExecutionResultMessage.from(toolRequest, result));
         }
 
         return resultMessages;
-    }
-
-    @Retry
-    @Fallback(fallbackMethod = "toolExecutionFallback")
-    protected String executeToolRequestWithRetry(McpTool tool, ToolExecutionRequest toolRequest) {
-        return tool.execute(toolRequest);
-    }
-
-    protected String toolExecutionFallback(McpTool tool, ToolExecutionRequest toolRequest) {
-        log.error("Tool execution failed after {} retries for tool: {}", dispatchConfig.mcpConfig().maxToolExecutionRetries(),
-                toolRequest.name());
-        return "Error: Tool execution failed for '" + toolRequest.name() + "'";
     }
 
     protected List<dev.langchain4j.data.message.ChatMessage> mapToLangChainMessages(List<ChatMessage> history) {

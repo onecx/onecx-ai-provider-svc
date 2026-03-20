@@ -7,19 +7,17 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-import io.quarkus.runtime.annotations.RegisterForReflection;
 
 /**
  * Registry that holds all available MCP tools and allows lookup by tool name.
  */
-@RegisterForReflection
 public record McpToolRegistry(
         List<McpTool> tools,
         Map<String, McpTool> toolsByName) {
     public McpToolRegistry(List<McpTool> tools) {
         this(tools, tools.stream()
                 .collect(Collectors.toMap(
-                        McpTool::toolName,
+                        t -> t.toolSpecification().name(),
                         Function.identity())));
     }
 
@@ -41,15 +39,13 @@ public record McpToolRegistry(
      * Closes all MCP clients.
      */
     public void close() {
-        tools.stream()
-                .map(McpTool::mcpClient)
-                .distinct()
-                .forEach(client -> {
-                    try {
-                        client.close();
-                    } catch (Exception e) {
-                        // Ignore close exceptions
-                    }
-                });
+        System.out.println("## " + toolsByName);
+        toolsByName.forEach((name, tool) -> {
+            try {
+                tool.mcpClient().close();
+            } catch (Exception e) {
+                // Ignore close exceptions
+            }
+        });
     }
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Provider -->
+    <PROVIDER guid="p0" optlock="0" key="provider0" name="provider0" description="provider_description_0" type="OLLAMA" llm_url="http://localhost:1088/provider-test-with-mcp" model_name="model1" tenant_id="default" api_key="api_key_1" />
+
+    <!-- MCP SERVER -->
+    <MCP_SERVER guid="m0" optlock="0" key="mcp-test-with-mcp" name="mcp-test-with-mcp" description="mcp_server_description_0" url="http://localhost:1088/mcp-test-with-mcp" execution_policy="ALWAYS_ASK" tenant_id="default" />
+
+    <!-- Configuration -->
+    <CONFIGURATION guid="c0" optlock="0" name="no-provider" provider_key="provider0" tenant_id="default" filter_key="APP_ID" filter_value="test-with-mcp-servers" />
+
+    <!-- CONFIG MCP SERVER -->
+    <MCP_SERVERS configuration_id="c0" mcp_server_key="mcp-test-with-mcp"/>
+</dataset>

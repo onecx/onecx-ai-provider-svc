@@ -60,7 +60,7 @@ public class McpService {
             List<ToolSpecification> specs = client.listTools();
             log.info("Discovered {} tool(s) from {}", specs.size(), mcpServer.getUrl());
             return specs.stream()
-                    .map(spec -> new McpTool(mcpServer.getUrl(), spec, client))
+                    .map(spec -> new McpTool(spec, client))
                     .toList();
         } catch (Exception e) {
             log.error("Error discovering tools from {}: {}", mcpServer.getUrl(), e.getMessage(), e);

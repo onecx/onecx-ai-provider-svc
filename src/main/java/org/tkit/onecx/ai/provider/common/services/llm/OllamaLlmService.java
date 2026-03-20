@@ -86,13 +86,9 @@ public class OllamaLlmService extends AbstractLlmService {
                 iterations++;
                 log.info("Tool execution iteration {}", iterations);
 
-                try {
-                    // Execute tools and get result messages
-                    List<ChatMessage> toolResultMessages = executeToolRequests(chatResponse, toolRegistry);
-                    messages.addAll(toolResultMessages);
-                } catch (Exception e) {
-                    continue;
-                }
+                // Execute tools and get result messages
+                List<ChatMessage> toolResultMessages = executeToolRequests(chatResponse, toolRegistry);
+                messages.addAll(toolResultMessages);
 
                 // Send follow-up request with tool results
                 ChatRequest followUpRequest = ChatRequest.builder()

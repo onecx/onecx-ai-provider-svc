@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Configuration -->
+    <CONFIGURATION guid="config-no-provider" optlock="0" name="no-provider"  tenant_id="default" filter_key="APP_ID" filter_value="test-no-provider" />
+    <CONFIGURATION guid="config-no-filter-key-value" optlock="0" name="config-no-filter-key-value"  tenant_id="default" filter_value="test-wrong-provider" />
+    <CONFIGURATION guid="config-wrong-provider" optlock="0" name="no-provider" provider_key="does-not-exists" tenant_id="default" filter_key="APP_ID" filter_value="test-wrong-provider" />
+</dataset>

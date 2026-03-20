@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Provider -->
+    <PROVIDER guid="provider-test-chat-no-mcp-server" optlock="0" key="test-chat-no-mcp-server" name="test-chat-no-mcp-server" description="provider_description_2" type="OLLAMA" llm_url="http://localhost:1088/test-chat-no-mcp-server" model_name="test-chat-no-mcp-server" tenant_id="default"  />
+    <!-- Configuration -->
+    <CONFIGURATION guid="config-test-chat-no-mcp-server" optlock="0" name="config-no-mcp" description="configuration_description_1" llm_system_message="configuration_llm_system_message_1" tenant_id="default" provider_key="test-chat-no-mcp-server" filter_key="APP_ID" filter_value="test-chat-no-mcp-server" />
+</dataset>
