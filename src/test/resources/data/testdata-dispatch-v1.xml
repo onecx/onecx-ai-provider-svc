@@ -9,7 +9,10 @@
     <CONFIGURATION guid="config-simple" optlock="0" name="configuration1" description="configuration_description_1" llm_system_message="configuration_llm_system_message_1" tenant_id="default" provider_key="provider1" />
     <CONFIGURATION guid="config-simple-2" optlock="0" name="config-simple-2" description="configuration_description_1" llm_system_message="configuration_llm_system_message_1" tenant_id="default" filter_key="APP_ID" />
     <CONFIGURATION guid="config-with-mcp" optlock="0" name="configuration2" description="configuration_description_2" llm_system_message="configuration_llm_system_message_2" tenant_id="default"  filter_key="APP_ID" filter_value="onecx-*"/>
+    <CONFIGURATION guid="config-with-mcp-2" optlock="0" name="configuration3" description="configuration_description_2" llm_system_message="configuration_llm_system_message_2" tenant_id="default"  filter_key="APP_ID" filter_value="onecx-test-*"/>
     <CONFIGURATION guid="config-no-provider" optlock="0" name="no-provider"  tenant_id="default" filter_key="APP_ID" filter_value="test-no-provider" />
+    <CONFIGURATION guid="config-no-filter-value" optlock="0" name="config-no-filter-value"  tenant_id="default" filter_key="APP_ID" />
+    <CONFIGURATION guid="config-no-filter-key-value" optlock="0" name="config-no-filter-key-value"  tenant_id="default" filter_value="test-wrong-provider" />
     <CONFIGURATION guid="config-wrong-provider" optlock="0" name="no-provider" provider_key="does-not-exists" tenant_id="default" filter_key="APP_ID" filter_value="test-wrong-provider" />
     <CONFIGURATION guid="config-test-with-mcp-servers-0" optlock="0" name="no-provider" provider_key="provider0" tenant_id="default" filter_key="APP_ID" filter_value="test-with-mcp-servers-0" />
     <CONFIGURATION guid="config-test-with-mcp-servers-1" optlock="0" name="no-provider" provider_key="provider1" tenant_id="default" filter_key="APP_ID" filter_value="test-with-mcp-servers-1" />

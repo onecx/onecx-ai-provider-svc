@@ -30,6 +30,8 @@ class ConfigurationDAOTest {
     void methodExceptionTests() {
         methodExceptionTests(() -> dao.findByCriteria(null),
                 ConfigurationDAO.ErrorKeys.ERROR_FIND_CONFIGURATIONS_BY_CRITERIA);
+        methodExceptionTests(() -> dao.findByFilterKeyEmptyValue(null),
+                ConfigurationDAO.ErrorKeys.ERROR_FIND_CONFIGURATIONS_BY_FILTER_KEY_EMPTY_VALUE);
         methodExceptionTests(() -> dao.findByFilterKey(null),
                 ConfigurationDAO.ErrorKeys.ERROR_FIND_CONFIGURATIONS_BY_FILTER_KEY);
     }

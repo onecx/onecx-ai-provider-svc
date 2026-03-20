@@ -50,7 +50,7 @@ public class LlmServiceFactory {
             filterValue = context.getFilterValue();
         }
 
-        var configuration = configurationService.findConfigurationsByRequestContext(filterKey, filterValue);
+        var configuration = configurationService.findConfigurationsByFilter(filterKey, filterValue);
         if (configuration == null) {
             log.error("No configuration found for request context: {}", chatRequest.getRequestContext());
             throw new ChatExceptionNotFound("No configuration found for the given request context");

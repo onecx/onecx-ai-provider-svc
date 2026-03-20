@@ -153,4 +153,68 @@ public class DispatchRestV1ControllerTest extends AbstractTest {
                 .post()
                 .then().statusCode(Response.Status.OK.getStatusCode());
     }
+
+    @Test
+    void chatRequestWithMcpServersNoFilterValueTest() {
+        var request = new ChatRequestDTOV1()
+                .requestContext(new RequestContextDTOV1().filter(
+                        new ConfigurationFilterDTOV1().key(ConfigurationFilterDTOV1.KeyEnum.APP_ID)))
+                .conversation(new ConversationDTOV1().conversationId("test-conversation-id")
+                        .addHistoryItem(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.SYSTEM))
+                        .addHistoryItem(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.ASSISTANT))
+                        .addHistoryItem(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.USER))
+                        .addHistoryItem(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.ACTION)))
+                .chatMessage(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.USER));
+
+        given()
+                .auth().oauth2(getKeycloakClientToken("testExtClient"))
+                .contentType(APPLICATION_JSON)
+                .body(request)
+                .when()
+                .post()
+                .then().statusCode(Response.Status.NOT_FOUND.getStatusCode());
+    }
+
+    @Test
+    void chatRequestWithMcpServersNoFilterKeyValueTest() {
+        var request = new ChatRequestDTOV1()
+                .requestContext(new RequestContextDTOV1().filter(
+                        new ConfigurationFilterDTOV1().value("test-with-mcp-servers-1")))
+                .conversation(new ConversationDTOV1().conversationId("test-conversation-id")
+                        .addHistoryItem(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.SYSTEM))
+                        .addHistoryItem(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.ASSISTANT))
+                        .addHistoryItem(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.USER))
+                        .addHistoryItem(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.ACTION)))
+                .chatMessage(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.USER));
+
+        given()
+                .auth().oauth2(getKeycloakClientToken("testExtClient"))
+                .contentType(APPLICATION_JSON)
+                .body(request)
+                .when()
+                .post()
+                .then().statusCode(Response.Status.NOT_FOUND.getStatusCode());
+    }
+
+    @Test
+    void chatRequestWithMcpServersFilterRegexTest() {
+        var request = new ChatRequestDTOV1()
+                .requestContext(new RequestContextDTOV1().filter(
+                        new ConfigurationFilterDTOV1().key(ConfigurationFilterDTOV1.KeyEnum.APP_ID)
+                                .value("onecx-test-")))
+                .conversation(new ConversationDTOV1().conversationId("test-conversation-id")
+                        .addHistoryItem(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.SYSTEM))
+                        .addHistoryItem(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.ASSISTANT))
+                        .addHistoryItem(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.USER))
+                        .addHistoryItem(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.ACTION)))
+                .chatMessage(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.USER));
+
+        given()
+                .auth().oauth2(getKeycloakClientToken("testExtClient"))
+                .contentType(APPLICATION_JSON)
+                .body(request)
+                .when()
+                .post()
+                .then().statusCode(Response.Status.NOT_FOUND.getStatusCode());
+    }
 }

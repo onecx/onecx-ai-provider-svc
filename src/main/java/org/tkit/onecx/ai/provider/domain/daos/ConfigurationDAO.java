@@ -20,20 +20,15 @@ import org.tkit.quarkus.jpa.models.AbstractTraceableEntity_;
 @ApplicationScoped
 public class ConfigurationDAO extends AbstractDAO<Configuration> {
 
-    public Configuration findConfigurationsByRequestContext(String filterKey, String filterValue) {
-
-        var configurations = findByFilterKey(filterKey);
+    public Configuration findConfigurationsByFilter(String filterKey, String filterValue) {
 
         if (filterValue == null) {
-            return configurations.stream()
-                    .filter(c -> c.getFilterValue() == null)
-                    .findFirst()
-                    .orElse(null);
+            return findByFilterKeyEmptyValue(filterKey).stream().findFirst().orElse(null);
         }
 
+        var configurations = findByFilterKey(filterKey);
         return configurations.stream()
-                .filter(c -> c.getFilterValue() != null
-                        && filterValue.matches(c.getFilterValue().replace("*", ".*")))
+                .filter(c -> filterValue.matches(c.getFilterValue().replace("*", ".*")))
                 .max((c1, c2) -> {
                     int len1 = c1.getFilterValue().replace("*", "").length();
                     int len2 = c2.getFilterValue().replace("*", "").length();
@@ -63,6 +58,25 @@ public class ConfigurationDAO extends AbstractDAO<Configuration> {
         }
     }
 
+    public List<Configuration> findByFilterKeyEmptyValue(String filterKey) {
+        try {
+            var cb = this.getEntityManager().getCriteriaBuilder();
+            var cq = cb.createQuery(Configuration.class);
+            var root = cq.from(Configuration.class);
+
+            if (filterKey == null) {
+                cq.where(cb.isNull(root.get(Configuration_.FILTER_KEY)), cb.isNull(root.get(Configuration_.FILTER_VALUE)));
+            } else {
+                cq.where(cb.equal(root.get(Configuration_.FILTER_KEY), filterKey),
+                        cb.isNull(root.get(Configuration_.FILTER_VALUE)));
+            }
+
+            return this.getEntityManager().createQuery(cq).getResultList();
+        } catch (Exception ex) {
+            throw new DAOException(ErrorKeys.ERROR_FIND_CONFIGURATIONS_BY_FILTER_KEY_EMPTY_VALUE, ex);
+        }
+    }
+
     public List<Configuration> findByFilterKey(String filterKey) {
         try {
             var cb = this.getEntityManager().getCriteriaBuilder();
@@ -70,9 +84,10 @@ public class ConfigurationDAO extends AbstractDAO<Configuration> {
             var root = cq.from(Configuration.class);
 
             if (filterKey == null) {
-                cq.where(cb.isNull(root.get(Configuration_.FILTER_KEY)));
+                cq.where(cb.isNull(root.get(Configuration_.FILTER_KEY)), cb.isNotNull(root.get(Configuration_.FILTER_VALUE)));
             } else {
-                cq.where(cb.equal(root.get(Configuration_.FILTER_KEY), filterKey));
+                cq.where(cb.equal(root.get(Configuration_.FILTER_KEY), filterKey),
+                        cb.isNotNull(root.get(Configuration_.FILTER_VALUE)));
             }
 
             return this.getEntityManager().createQuery(cq).getResultList();
@@ -82,6 +97,7 @@ public class ConfigurationDAO extends AbstractDAO<Configuration> {
     }
 
     public enum ErrorKeys {
+        ERROR_FIND_CONFIGURATIONS_BY_FILTER_KEY_EMPTY_VALUE,
         ERROR_FIND_CONFIGURATIONS_BY_CRITERIA,
         ERROR_FIND_CONFIGURATIONS_BY_FILTER_KEY
     }
