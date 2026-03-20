@@ -32,9 +32,6 @@ quarkus.liquibase.validate-on-migrate=true
 %prod.quarkus.datasource.username=${DB_USER:onecx-ai-provider}
 %prod.quarkus.datasource.password=${DB_PWD:onecx-ai-provider}
 %prod.quarkus.oidc-client.client-id=${quarkus.application.name}
-quarkus.langchain4j.devservices.enabled=true
-quarkus.langchain4j.ollama.devservices.enabled=true
-quarkus.langchain4j.ollama.devservices.port=1089
 ----
 ====
 

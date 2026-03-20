@@ -217,4 +217,24 @@ public class DispatchRestV1ControllerTest extends AbstractTest {
                 .post()
                 .then().statusCode(Response.Status.NOT_FOUND.getStatusCode());
     }
+
+    @Test
+    void chatRequestProviderNoMCPTest() {
+        var request = new ChatRequestDTOV1()
+                .requestContext(new RequestContextDTOV1().filter(
+                        new ConfigurationFilterDTOV1().key(ConfigurationFilterDTOV1.KeyEnum.APP_ID)
+                                .value("provider-2")))
+                .conversation(new ConversationDTOV1().conversationId("test-conversation-id"))
+                .chatMessage(new ChatMessageDTOV1().message("Hallo").type(ChatMessageDTOV1.TypeEnum.USER));
+
+        given()
+                .auth().oauth2(getKeycloakClientToken("testExtClient"))
+                .contentType(APPLICATION_JSON)
+                .body(request)
+                .when()
+                .post()
+                .then()
+                .log().all()
+                .statusCode(Response.Status.OK.getStatusCode());
+    }
 }

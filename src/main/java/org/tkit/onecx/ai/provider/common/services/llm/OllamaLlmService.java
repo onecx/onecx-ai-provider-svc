@@ -101,12 +101,6 @@ public class OllamaLlmService extends AbstractLlmService {
                         .build();
 
                 chatResponse = modelChatRequestWithRetries(model, followUpRequest);
-
-                // Check if follow-up request failed
-                if (chatResponse == null) {
-                    log.error("Failed to get follow-up response from model during tool execution iteration {}", iterations);
-                    throw new ChatExceptionBadRequest("Failed to get follow-up response from model during tool execution");
-                }
             }
 
             if (iterations >= dispatchConfig.mcpConfig().maxIterations()) {
@@ -117,9 +111,7 @@ public class OllamaLlmService extends AbstractLlmService {
 
             var result = new ChatResponseModel();
             result.setConversationId(chatResponse.id());
-            if (chatResponse.aiMessage() != null) {
-                result.setMessage(chatResponse.aiMessage().text());
-            }
+            result.setMessage(chatResponse.aiMessage().text());
             result.setType(ChatResponseModel.Type.ASSISTANT);
 
             return result;
