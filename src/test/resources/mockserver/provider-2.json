@@ -30,19 +30,7 @@
           "created_at": "2026-03-19T10:00:00Z",
           "message": {
             "role": "assistant",
-            "content": "Hallo! Wie kann ich dir helfen?",
-            "tool_calls": [
-              {
-                "type": "function",
-                "function": {
-                  "index": 0,
-                  "name": "does-not-exists",
-                  "arguments": {
-                    "name":"Hallo"
-                  }
-                }
-              }
-            ]
+            "content": "Hallo! Wie kann ich dir helfen?"
           },
           "done_reason": "stop",
           "done": true,
