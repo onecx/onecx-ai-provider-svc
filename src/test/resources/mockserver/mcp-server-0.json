@@ -53,7 +53,6 @@
         "contentType": "application/json",
         "json": {
           "jsonrpc": "2.0",
-          "id": 0,
           "result": {
             "protocolVersion": "2025-06-18",
             "capabilities": {},

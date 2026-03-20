@@ -14,6 +14,7 @@
         "type": "JSON",
         "matchType": "ONLY_MATCHING_FIELDS",
         "json": {
+          "id": 0,
           "method": "initialize"
         }
       }
@@ -25,6 +26,45 @@
         "json": {
           "jsonrpc": "2.0",
           "id": 0,
+          "result": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {},
+            "serverInfo": {
+              "name": "mock-mcp-server",
+              "version": "1.0.0"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "mcp-server-1-initialize-1",
+    "priority": 10,
+    "httpRequest": {
+      "method": "POST",
+      "headers": {
+        "Authorization": [
+          "api_key_1"
+        ]
+      },
+      "path": "/mcp1",
+      "body": {
+        "type": "JSON",
+        "matchType": "ONLY_MATCHING_FIELDS",
+        "json": {
+          "id": 1,
+          "method": "initialize"
+        }
+      }
+    },
+    "httpResponse": {
+      "body": {
+        "type": "JSON",
+        "contentType": "application/json",
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 1,
           "result": {
             "protocolVersion": "2025-06-18",
             "capabilities": {},
@@ -63,7 +103,6 @@
         "contentType": "application/json",
         "json": {
           "jsonrpc": "2.0",
-          "id": 0,
           "result": {
             "protocolVersion": "2025-06-18",
             "capabilities": {},
@@ -91,6 +130,7 @@
         "type": "JSON",
         "matchType": "ONLY_MATCHING_FIELDS",
         "json": {
+          "id": 0,
           "method": "ping"
         }
       }
@@ -101,7 +141,7 @@
         "contentType": "application/json",
         "json": {
           "jsonrpc": "2.0",
-          "id": 1,
+          "id": 0,
           "result": {
             "status": "ok",
             "server": "mock-mcp-server",
@@ -127,6 +167,7 @@
         "type": "JSON",
         "matchType": "ONLY_MATCHING_FIELDS",
         "json": {
+          "id": 2,
           "method": "tools/list"
         }
       }
@@ -172,6 +213,7 @@
         "type": "JSON",
         "matchType": "ONLY_MATCHING_FIELDS",
         "json": {
+          "id": 3,
           "method": "tools/call"
         }
       }
@@ -183,6 +225,124 @@
         "json": {
           "jsonrpc": "2.0",
           "id": 3,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "searchTest executed successfully for name='Hallo'."
+              },
+              {
+                "type": "json",
+                "json": {
+                  "query": "Hallo",
+                  "matches": [
+                    {
+                      "id": "t-1001",
+                      "label": "Hallo Welt",
+                      "score": 0.91
+                    },
+                    {
+                      "id": "t-1002",
+                      "label": "Hallo (greeting)",
+                      "score": 0.77
+                    }
+                  ],
+                  "count": 2
+                }
+              }
+            ],
+            "isError": false
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "mcp-server-1-tools-call-2",
+    "priority": 10,
+    "httpRequest": {
+      "method": "POST",
+      "headers": {
+        "Authorization": [
+          "api_key_1"
+        ]
+      },
+      "path": "/mcp1",
+      "body": {
+        "type": "JSON",
+        "matchType": "ONLY_MATCHING_FIELDS",
+        "json": {
+          "id": 4,
+          "method": "tools/call"
+        }
+      }
+    },
+    "httpResponse": {
+      "body": {
+        "type": "JSON",
+        "contentType": "application/json",
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 4,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "searchTest executed successfully for name='Hallo'."
+              },
+              {
+                "type": "json",
+                "json": {
+                  "query": "Hallo",
+                  "matches": [
+                    {
+                      "id": "t-1001",
+                      "label": "Hallo Welt",
+                      "score": 0.91
+                    },
+                    {
+                      "id": "t-1002",
+                      "label": "Hallo (greeting)",
+                      "score": 0.77
+                    }
+                  ],
+                  "count": 2
+                }
+              }
+            ],
+            "isError": false
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "mcp-server-1-tools-call-2",
+    "priority": 10,
+    "httpRequest": {
+      "method": "POST",
+      "headers": {
+        "Authorization": [
+          "api_key_1"
+        ]
+      },
+      "path": "/mcp1",
+      "body": {
+        "type": "JSON",
+        "matchType": "ONLY_MATCHING_FIELDS",
+        "json": {
+          "id": 5,
+          "method": "tools/call"
+        }
+      }
+    },
+    "httpResponse": {
+      "body": {
+        "type": "JSON",
+        "contentType": "application/json",
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 5,
           "result": {
             "content": [
               {
