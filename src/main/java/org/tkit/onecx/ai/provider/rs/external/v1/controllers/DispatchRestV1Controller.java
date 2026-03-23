@@ -1,5 +1,6 @@
 package org.tkit.onecx.ai.provider.rs.external.v1.controllers;
 
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ProblemDetailResponseDTOV1;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.ConstraintViolationException;
@@ -15,7 +16,6 @@ import org.tkit.onecx.ai.provider.rs.external.v1.mappers.ExceptionMapper;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.DispatchV1Api;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
-import gen.org.tkit.onecx.ai.provider.rs.internal.model.ProblemDetailResponseDTO;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -38,7 +38,7 @@ public class DispatchRestV1Controller implements DispatchV1Api {
     }
 
     @ServerExceptionMapper
-    public RestResponse<ProblemDetailResponseDTO> constraint(ConstraintViolationException ex) {
+    public RestResponse<ProblemDetailResponseDTOV1> constraint(ConstraintViolationException ex) {
         return exceptionMapper.constraint(ex);
     }
 
@@ -48,7 +48,7 @@ public class DispatchRestV1Controller implements DispatchV1Api {
     }
 
     @ServerExceptionMapper
-    public RestResponse<ProblemDetailResponseDTO> chatBadRequestException(ChatExceptionBadRequest ex) {
+    public RestResponse<ProblemDetailResponseDTOV1> chatBadRequestException(ChatExceptionBadRequest ex) {
         return exceptionMapper.chatConstraint(ex);
     }
 
