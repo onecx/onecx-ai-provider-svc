@@ -7,12 +7,16 @@
     <parent>
         <groupId>org.tkit.onecx</groupId>
         <artifactId>onecx-quarkus3-parent</artifactId>
-        <version>2.5.0</version>
+        <version>3.1.0</version>
     </parent>
 
     <artifactId>onecx-ai-provider-svc</artifactId>
     <name>OneCX AI Provider Backend Service</name>
     <version>999-SNAPSHOT</version>
+    <packaging>quarkus</packaging>
+    <properties>
+        <quarkus-langchain4j.version>1.9.1</quarkus-langchain4j.version>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.tkit.onecx.quarkus</groupId>
@@ -130,22 +134,22 @@
         <dependency>
             <groupId>io.quarkiverse.langchain4j</groupId>
             <artifactId>quarkus-langchain4j-ollama</artifactId>
-            <version>1.5.0</version>
+            <version>${quarkus-langchain4j.version}</version>
         </dependency>
         <dependency>
             <groupId>io.quarkiverse.langchain4j</groupId>
             <artifactId>quarkus-langchain4j-mcp</artifactId>
-            <version>1.5.0</version>
+            <version>${quarkus-langchain4j.version}</version>
         </dependency>
         <!-- TEST -->
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit5</artifactId>
+            <artifactId>quarkus-junit</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit5-mockito</artifactId>
+            <artifactId>quarkus-junit-mockito</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -166,12 +170,6 @@
         <dependency>
             <groupId>io.quarkiverse.mockserver</groupId>
             <artifactId>quarkus-mockserver-test</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>io.swagger.parser.v3</groupId>
-                    <artifactId>swagger-parser</artifactId>
-                </exclusion>
-            </exclusions>
             <scope>test</scope>
         </dependency>
         <dependency>
