@@ -28,8 +28,7 @@ class McpToolRegistryTest extends AbstractTest {
 
         var result = registry.findByName("tool-a");
 
-        assertThat(result).isPresent();
-        assertThat(result.get()).isEqualTo(tool);
+        assertThat(result).contains(tool);
     }
 
     @Test

@@ -83,7 +83,7 @@ class ConfigurationServiceTest extends AbstractTest {
         MCPServer createdMcp = mcp("mcp-2");
         when(mcpServerDAO.findById("mcp-1")).thenReturn(existingMcp);
         when(mcpServerDAO.findById("mcp-2")).thenReturn(null);
-        when(mcpServerDAO.create(eq(mcpNewInput))).thenReturn(createdMcp);
+        when(mcpServerDAO.create(mcpNewInput)).thenReturn(createdMcp);
         when(mcpServerDAO.create(org.mockito.ArgumentMatchers.<MCPServer> anyList()).toList())
                 .thenReturn(List.of(existingMcp, createdMcp));
         when(configurationDAO.create(configuration)).thenReturn(configuration);

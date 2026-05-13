@@ -22,7 +22,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @TestHTTPEndpoint(ProviderRestController.class)
 @WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, deleteAfterTest = true, rinseAndRepeat = true)
 @GenerateKeycloakClient(clientName = "testClient", scopes = { "ocx-ai:all", "ocx-ai:read", "ocx-ai:write", "ocx-ai:delete" })
-public class ProviderHealthCheckTest extends AbstractTest {
+class ProviderHealthCheckTest extends AbstractTest {
     @InjectMock
     LlmServiceFactory llmServiceFactory;
 

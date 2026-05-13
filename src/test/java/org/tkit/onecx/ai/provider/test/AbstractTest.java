@@ -22,6 +22,7 @@ import io.restassured.config.RestAssuredConfig;
 import io.smallrye.jwt.build.Jwt;
 import io.smallrye.jwt.util.KeyUtils;
 
+@SuppressWarnings("java:S2187")
 @QuarkusTestResource(MockServerTestResource.class)
 public class AbstractTest {
 
