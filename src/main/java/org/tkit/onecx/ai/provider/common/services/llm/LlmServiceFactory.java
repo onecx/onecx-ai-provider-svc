@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 
 import org.tkit.onecx.ai.provider.common.services.configuration.ConfigurationService;
+import org.tkit.onecx.ai.provider.domain.models.Provider;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
@@ -37,6 +38,11 @@ public class LlmServiceFactory {
         AbstractLlmService service = getServiceForProvider(configuration.getProvider().getType());
         log.info("Routing chat request to {} service", configuration.getProvider().getType());
         return service.chat(configuration, chatRequestDTO);
+    }
+
+    public String getProviderHealthStatus(Provider provider) {
+        AbstractLlmService service = getServiceForProvider(provider.getType());
+        return service.getHealthStatus(provider);
     }
 
     /**

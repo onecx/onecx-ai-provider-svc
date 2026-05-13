@@ -268,6 +268,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetailResponse'
+  /internal/providers/{id}/health:
+    get:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags:
+        - providerInternal
+      description: Return Provider by ID
+      operationId: getProviderHealthStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderHealthStatus'
+        "404":
+          description: Not found
   /internal/mcpServer:
     post:
       security:
@@ -772,6 +795,16 @@ components:
       type: string
       enum:
         - OLLAMA
+    ProviderHealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - HEALTHY
+            - UNHEALTHY
+        checkedAt:
+          $ref: '#/components/schemas/OffsetDateTime'
     OffsetDateTime:
       format: date-time
       type: string

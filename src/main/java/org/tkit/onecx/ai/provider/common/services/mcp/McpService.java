@@ -81,13 +81,13 @@ public class McpService {
         return client.listTools();
     }
 
-    private List<ToolSpecification> receiveToolSpecificationsFallback(McpClient client) {
+    protected List<ToolSpecification> receiveToolSpecificationsFallback(McpClient client) {
         log.error("Failed to receive tool specifications after retries: {}",
                 dispatchConfig.mcpConfig().maxToolExecutionRetries());
         return List.of();
     }
 
-    private McpClient createMcpClient(MCPServer mcpServer) {
+    protected McpClient createMcpClient(MCPServer mcpServer) {
         var transportBuilder = StreamableHttpMcpTransport.builder()
                 .url(mcpServer.getUrl())
                 .timeout(Duration.ofSeconds(dispatchConfig.mcpConfig().maxTimeout()))

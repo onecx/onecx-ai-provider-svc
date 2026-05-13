@@ -24,6 +24,10 @@ import lombok.extern.slf4j.Slf4j;
 @ApplicationScoped
 public class OllamaLlmService extends AbstractLlmService {
 
+    private static final String HEALTHY = "HEALTHY";
+    private static final String UNHEALTHY = "UNHEALTHY";
+    private static final String HEALTH_CHECK_PROMPT = "ping";
+
     @Override
     public Response chat(Configuration configuration, ChatRequestDTOV1 chatRequestDTO) {
         // Resolve configuration by queryContext
@@ -39,22 +43,7 @@ public class OllamaLlmService extends AbstractLlmService {
 
         messages.add(new UserMessage(chatRequestDTO.getChatMessage().getMessage()));
 
-        // Build custom headers for authentication
-        Map<String, String> customHeaders = new HashMap<>();
-        if (provider.getApiKey() != null) {
-            customHeaders.put("Authorization", provider.getApiKey());
-        }
-
-        // Build the Ollama model
-        OllamaChatModel model = OllamaChatModel.builder()
-                .baseUrl(provider.getLlmUrl())
-                .modelName(provider.getModelName())
-                .customHeaders(customHeaders)
-                .timeout(Duration.ofSeconds(dispatchConfig.providerConfig().timeout()))
-                .logRequests(dispatchConfig.providerConfig().logRequests())
-                .logResponses(dispatchConfig.providerConfig().logResponse())
-                .httpClientBuilder(new JaxRsHttpClientBuilderFactory().create())
-                .build();
+        OllamaChatModel model = buildModel(provider);
 
         // Create tool registry from MCP servers (if configured)
         McpToolRegistry toolRegistry = createToolRegistry(configuration);
@@ -128,4 +117,52 @@ public class OllamaLlmService extends AbstractLlmService {
             toolRegistry.close();
         }
     }
+
+    @Override
+    public String getHealthStatus(Provider provider) {
+        if (provider == null || provider.getLlmUrl() == null || provider.getLlmUrl().isBlank()
+                || provider.getModelName() == null || provider.getModelName().isBlank()) {
+            log.warn("Provider configuration incomplete for health check");
+            return UNHEALTHY;
+        }
+        try {
+            OllamaChatModel model = buildModel(provider);
+
+            ChatRequest healthCheckRequest = ChatRequest.builder()
+                    .messages(List.of(new UserMessage(HEALTH_CHECK_PROMPT)))
+                    .build();
+            ChatResponse response = modelChatRequestWithRetries(model, healthCheckRequest);
+            if (response == null || response.aiMessage() == null) {
+                log.warn("Ollama model health check failed for model '{}' at '{}'", provider.getModelName(),
+                        provider.getLlmUrl());
+                return UNHEALTHY;
+            }
+            return HEALTHY;
+        } catch (Exception e) {
+            log.warn("Ollama model health check failed for model '{}' at '{}': {}",
+                    provider.getModelName(), provider.getLlmUrl(), e.getMessage());
+            return UNHEALTHY;
+        }
+    }
+
+    private OllamaChatModel buildModel(Provider provider) {
+        return OllamaChatModel.builder()
+                .baseUrl(provider.getLlmUrl())
+                .modelName(provider.getModelName())
+                .customHeaders(createCustomHeaders(provider))
+                .timeout(Duration.ofSeconds(dispatchConfig.providerConfig().timeout()))
+                .logRequests(dispatchConfig.providerConfig().logRequests())
+                .logResponses(dispatchConfig.providerConfig().logResponse())
+                .httpClientBuilder(new JaxRsHttpClientBuilderFactory().create())
+                .build();
+    }
+
+    private Map<String, String> createCustomHeaders(Provider provider) {
+        Map<String, String> customHeaders = new HashMap<>();
+        if (provider.getApiKey() != null && !provider.getApiKey().isBlank()) {
+            customHeaders.put("Authorization", provider.getApiKey());
+        }
+        return customHeaders;
+    }
+
 }

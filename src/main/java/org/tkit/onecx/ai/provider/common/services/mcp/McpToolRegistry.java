@@ -47,7 +47,7 @@ public record McpToolRegistry(
                 .forEach(client -> {
                     try {
                         client.close();
-                    } catch (Exception e) {
+                    } catch (Exception _) {
                         // Ignore close exceptions
                     }
                 });
