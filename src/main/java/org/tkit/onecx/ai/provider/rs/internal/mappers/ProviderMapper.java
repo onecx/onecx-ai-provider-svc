@@ -45,4 +45,11 @@ public interface ProviderMapper {
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     void update(UpdateProviderRequestDTO aiProviderDTO, @MappingTarget Provider provider);
+
+    default ProviderHealthStatusDTO mapHealthStatus(String healthKey) {
+        ProviderHealthStatusDTO status = new ProviderHealthStatusDTO();
+        status.setStatus(ProviderHealthStatusDTO.StatusEnum.valueOf(healthKey));
+        status.setCheckedAt(java.time.OffsetDateTime.now());
+        return status;
+    }
 }

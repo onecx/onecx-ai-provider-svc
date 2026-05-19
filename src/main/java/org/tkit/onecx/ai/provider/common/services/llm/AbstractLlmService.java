@@ -15,6 +15,7 @@ import org.tkit.onecx.ai.provider.common.services.mcp.McpService;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpTool;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpToolRegistry;
 import org.tkit.onecx.ai.provider.domain.models.Configuration;
+import org.tkit.onecx.ai.provider.domain.models.Provider;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -38,6 +39,10 @@ public abstract class AbstractLlmService {
 
     @Inject
     DispatchConfig dispatchConfig;
+
+    protected static final String HEALTHY = "HEALTHY";
+    protected static final String UNHEALTHY = "UNHEALTHY";
+    protected static final String HEALTH_CHECK_PROMPT = "ping";
 
     public abstract Response chat(Configuration configuration, ChatRequestDTOV1 chatRequestDTO);
 
@@ -136,4 +141,6 @@ public abstract class AbstractLlmService {
         log.error("Chat request failed after retries. Unable to get response from LLM model");
         return null;
     }
+
+    public abstract String getHealthStatus(Provider provider);
 }
