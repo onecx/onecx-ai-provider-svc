@@ -23,7 +23,7 @@ class McpToolRegistryTest extends AbstractTest {
     @Test
     void findByName_returnsTool_whenPresent() {
         McpClient client = mock(McpClient.class);
-        McpTool tool = new McpTool("http://mcp", toolSpec("tool-a"), client);
+        McpTool tool = new McpTool("tool-id", "http://mcp", toolSpec("tool-a"), client);
         McpToolRegistry registry = new McpToolRegistry(List.of(tool));
 
         var result = registry.findByName("tool-a");
@@ -34,7 +34,7 @@ class McpToolRegistryTest extends AbstractTest {
     @Test
     void findByName_returnsEmpty_whenMissing() {
         McpClient client = mock(McpClient.class);
-        McpTool tool = new McpTool("http://mcp", toolSpec("tool-a"), client);
+        McpTool tool = new McpTool("tool-id", "http://mcp", toolSpec("tool-a"), client);
         McpToolRegistry registry = new McpToolRegistry(List.of(tool));
 
         var result = registry.findByName("tool-missing");
@@ -48,9 +48,9 @@ class McpToolRegistryTest extends AbstractTest {
         McpClient healthyClient = mock(McpClient.class);
         doThrow(new Exception("close failed")).when(failingClient).close();
 
-        McpTool tool1 = new McpTool("http://mcp-1", toolSpec("tool-a"), failingClient);
-        McpTool tool2 = new McpTool("http://mcp-2", toolSpec("tool-b"), failingClient);
-        McpTool tool3 = new McpTool("http://mcp-3", toolSpec("tool-c"), healthyClient);
+        McpTool tool1 = new McpTool("tool-id-1", "http://mcp-1", toolSpec("tool-a"), failingClient);
+        McpTool tool2 = new McpTool("tool-id-2", "http://mcp-2", toolSpec("tool-b"), failingClient);
+        McpTool tool3 = new McpTool("tool-id-3", "http://mcp-3", toolSpec("tool-c"), healthyClient);
 
         McpToolRegistry registry = new McpToolRegistry(List.of(tool1, tool2, tool3));
 

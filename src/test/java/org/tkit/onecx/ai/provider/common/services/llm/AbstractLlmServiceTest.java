@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.tkit.onecx.ai.provider.common.models.DispatchConfig;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpTool;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpToolRegistry;
-import org.tkit.onecx.ai.provider.domain.models.Configuration;
+import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 
@@ -105,7 +105,7 @@ class AbstractLlmServiceTest extends AbstractTest {
         when(registry.findByName("my-tool")).thenReturn(Optional.of(tool));
         when(tool.execute(request)).thenReturn("tool-ok");
 
-        List<ChatMessage> result = service.callExecuteToolRequests(response, registry);
+        List<ChatMessage> result = service.callExecuteToolRequests(new Agent(), null, response, registry);
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0)).isEqualTo(aiMessage);
@@ -127,7 +127,7 @@ class AbstractLlmServiceTest extends AbstractTest {
         when(aiMessage.toolExecutionRequests()).thenReturn(List.of(request));
         when(registry.findByName("missing-tool")).thenReturn(Optional.empty());
 
-        List<ChatMessage> result = service.callExecuteToolRequests(response, registry);
+        List<ChatMessage> result = service.callExecuteToolRequests(new Agent(), null, response, registry);
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0)).isEqualTo(aiMessage);
@@ -231,8 +231,9 @@ class AbstractLlmServiceTest extends AbstractTest {
             return hasToolExecutionRequests(response);
         }
 
-        List<ChatMessage> callExecuteToolRequests(ChatResponse response, McpToolRegistry toolRegistry) {
-            return executeToolRequests(response, toolRegistry);
+        List<ChatMessage> callExecuteToolRequests(Agent agent, String executionId, ChatResponse response,
+                McpToolRegistry toolRegistry) {
+            return executeToolRequests(agent, executionId, response, toolRegistry);
         }
 
         String callExecuteToolRequestWithRetry(McpTool tool, ToolExecutionRequest toolRequest) {
@@ -248,7 +249,7 @@ class AbstractLlmServiceTest extends AbstractTest {
         }
 
         @Override
-        public Response chat(Configuration configuration, ChatRequestDTOV1 chatRequestDTO) {
+        public Response chat(Agent agent, ChatRequestDTOV1 chatRequestDTO, String executionId) {
             return Response.ok().build();
         }
 

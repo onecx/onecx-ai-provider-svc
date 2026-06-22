@@ -57,15 +57,15 @@ components:
     conversation:
      $ref: '#/components/schemas/Conversation'
   RequestContext:
-    type: object
-    properties:
-     filter:
-      $ref: '#/components/schemas/ConfigurationFilter'
-     aiContext:
-      type: object
-      additionalProperties:
-        type: string
-  ConfigurationFilter:
+   type: object
+   properties:
+    filter:
+     $ref: '#/components/schemas/AgentFilter'
+    aiContext:
+     type: object
+     additionalProperties:
+      type: string
+  AgentFilter:
    type: object
    properties:
     key:
@@ -100,104 +100,6 @@ components:
     conversationType:
      type: string
      enum: [ Q_AND_A ]
-  Provider:
-   required:
-    - name
-    - modelName
-   type: object
-   properties:
-    modificationCount:
-     format: int32
-     type: integer
-    creationDate:
-     $ref: '#/components/schemas/OffsetDateTime'
-    creationUser:
-     type: string
-    modificationDate:
-     $ref: '#/components/schemas/OffsetDateTime'
-    modificationUser:
-     type: string
-    id:
-     type: string
-    name:
-     type: string
-    type:
-     $ref: '#/components/schemas/ProviderType'
-    description:
-     type: string
-    llmUrl:
-     type: string
-    modelName:
-     type: string
-    apiKey:
-     type: string
-  MCPServer:
-   type: object
-   properties:
-    modificationCount:
-     format: int32
-     type: integer
-    creationDate:
-     $ref: '#/components/schemas/OffsetDateTime'
-    creationUser:
-     type: string
-    modificationDate:
-     $ref: '#/components/schemas/OffsetDateTime'
-    modificationUser:
-     type: string
-    id:
-     type: string
-    name:
-     type: string
-    url:
-     type: string
-    apiKey:
-     type: string
-    executionPolicy:
-     $ref: '#/components/schemas/ExecutionPolicy'
-  ExecutionPolicy:
-   type: string
-   enum:
-    - ALWAYS_ASK
-    - NEVER_ASK
-  ProviderType:
-   type: string
-   enum:
-    - OLLAMA
-  Context:
-   required:
-    - name
-   type: object
-   properties:
-    modificationCount:
-     format: int32
-     type: integer
-    creationDate:
-     $ref: '#/components/schemas/OffsetDateTime'
-    creationUser:
-     type: string
-    modificationDate:
-     $ref: '#/components/schemas/OffsetDateTime'
-    modificationUser:
-     type: string
-    id:
-     type: string
-    name:
-     type: string
-    description:
-     type: string
-    llmSystemMessage:
-     type: string
-    llmProvider:
-     $ref: '#/components/schemas/Provider'
-    mcpServers:
-     type: array
-     items:
-      $ref: '#/components/schemas/MCPServer'
-  OffsetDateTime:
-   format: date-time
-   type: string
-   example: 2022-03-10T12:15:50-04:00
   ProblemDetailResponse:
    type: object
    properties:

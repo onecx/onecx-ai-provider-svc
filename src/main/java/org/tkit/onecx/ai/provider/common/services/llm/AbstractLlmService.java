@@ -11,11 +11,14 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.faulttolerance.Fallback;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import org.tkit.onecx.ai.provider.common.models.DispatchConfig;
+import org.tkit.onecx.ai.provider.common.services.agentic.tool.ToolPolicyService;
+import org.tkit.onecx.ai.provider.common.services.execution.ExecutionService;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpService;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpTool;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpToolRegistry;
-import org.tkit.onecx.ai.provider.domain.models.Configuration;
+import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
+import org.tkit.onecx.ai.provider.domain.models.enums.ExecutionState;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -40,17 +43,23 @@ public abstract class AbstractLlmService {
     @Inject
     DispatchConfig dispatchConfig;
 
+    @Inject
+    ToolPolicyService toolPolicyService;
+
+    @Inject
+    ExecutionService executionService;
+
     protected static final String HEALTHY = "HEALTHY";
     protected static final String UNHEALTHY = "UNHEALTHY";
     protected static final String HEALTH_CHECK_PROMPT = "ping";
 
-    public abstract Response chat(Configuration configuration, ChatRequestDTOV1 chatRequestDTO);
+    public abstract Response chat(Agent agent, ChatRequestDTOV1 chatRequestDTO, String executionId);
 
     /**
-     * Creates a tool registry from the MCP servers defined in the context.
+     * Creates a tool registry from the tools defined in the agent.
      */
-    protected McpToolRegistry createToolRegistry(Configuration aiConfiguration) {
-        return mcpService.createToolRegistry(aiConfiguration);
+    protected McpToolRegistry createToolRegistry(Agent agent, String executionId) {
+        return mcpService.createToolRegistry(agent, executionId);
     }
 
     /**
@@ -71,7 +80,8 @@ public abstract class AbstractLlmService {
      * @param toolRegistry The registry containing available tools
      * @return List of messages including the AI message and tool execution results
      */
-    protected List<ChatMessage> executeToolRequests(ChatResponse response, McpToolRegistry toolRegistry) {
+    protected List<ChatMessage> executeToolRequests(Agent agent, String executionId, ChatResponse response,
+            McpToolRegistry toolRegistry) {
         List<ChatMessage> resultMessages = new ArrayList<>();
 
         AiMessage aiMessage = response.aiMessage();
@@ -90,7 +100,21 @@ public abstract class AbstractLlmService {
                         "Error: Tool '" + toolName + "' not found"));
                 continue;
             }
+            McpTool tool = toolOpt.get();
+
+            if (toolPolicyService != null && tool.toolId() != null
+                    && !toolPolicyService.isToolAllowed(agent, tool.toolId())) {
+                log.warn("Tool '{}' denied by policy for agent '{}'", toolName, agent != null ? agent.getName() : null);
+                resultMessages.add(ToolExecutionResultMessage.from(
+                        toolRequest,
+                        "Error: Tool '" + toolName + "' is not allowed for this agent"));
+                continue;
+            }
+
+            transitionToWaitingTool(executionId);
             String result = executeToolRequestWithRetry(toolOpt.get(), toolRequest);
+            transitionToRunning(executionId);
+            incrementToolCallCount(executionId);
             log.info("Tool '{}' executed successfully", toolName);
 
             resultMessages.add(ToolExecutionResultMessage.from(toolRequest, result));
@@ -109,6 +133,39 @@ public abstract class AbstractLlmService {
         log.error("Tool execution failed after {} retries for tool: {}", dispatchConfig.mcpConfig().maxToolExecutionRetries(),
                 toolRequest.name());
         return "Error: Tool execution failed for '" + toolRequest.name() + "'";
+    }
+
+    protected void transitionToWaitingTool(String executionId) {
+        if (executionService == null || executionId == null || executionId.isBlank()) {
+            return;
+        }
+        try {
+            executionService.waitForResource(executionId, ExecutionState.WAITING_TOOL);
+        } catch (Exception e) {
+            log.warn("Unable to set execution {} to WAITING_TOOL: {}", executionId, e.getMessage());
+        }
+    }
+
+    protected void transitionToRunning(String executionId) {
+        if (executionService == null || executionId == null || executionId.isBlank()) {
+            return;
+        }
+        try {
+            executionService.resumeExecution(executionId);
+        } catch (Exception e) {
+            log.warn("Unable to set execution {} to RUNNING: {}", executionId, e.getMessage());
+        }
+    }
+
+    protected void incrementToolCallCount(String executionId) {
+        if (executionService == null || executionId == null || executionId.isBlank()) {
+            return;
+        }
+        try {
+            executionService.incrementToolCallCount(executionId);
+        } catch (Exception e) {
+            log.warn("Unable to increment tool call count for execution {}: {}", executionId, e.getMessage());
+        }
     }
 
     protected List<ChatMessage> mapToLangChainMessages(List<ChatMessageDTOV1> history) {

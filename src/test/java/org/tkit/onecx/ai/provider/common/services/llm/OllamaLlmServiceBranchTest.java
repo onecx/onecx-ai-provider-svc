@@ -14,9 +14,11 @@ import jakarta.ws.rs.core.Response;
 
 import org.junit.jupiter.api.Test;
 import org.tkit.onecx.ai.provider.common.models.DispatchConfig;
+import org.tkit.onecx.ai.provider.common.services.agentic.ScaffoldPromptComposer;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpTool;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpToolRegistry;
-import org.tkit.onecx.ai.provider.domain.models.Configuration;
+import org.tkit.onecx.ai.provider.domain.models.Agent;
+import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
@@ -47,7 +49,7 @@ class OllamaLlmServiceBranchTest extends AbstractTest {
         service.executeToolResults.add(new RuntimeException("tool failed"));
         service.executeToolResults.add(List.of(new AiMessage("tool-result")));
 
-        try (Response response = service.chat(configuration(), chatRequest("hello"))) {
+        try (Response response = service.chat(agent(), chatRequest("hello"), null)) {
             assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
             assertThat(((ChatMessageDTOV1) response.getEntity()).getMessage()).isEqualTo("final");
             assertThat(service.capturedRequests).hasSize(2);
@@ -62,7 +64,7 @@ class OllamaLlmServiceBranchTest extends AbstractTest {
         service.toolExecutionFlags.add(true);
         service.executeToolResults.add(List.of(new AiMessage("tool-result")));
 
-        try (Response response = service.chat(configuration(), chatRequest("hello"))) {
+        try (Response response = service.chat(agent(), chatRequest("hello"), null)) {
             assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
             assertThat(response.getEntity()).isEqualTo("Failed to get follow-up response from model during tool execution");
         }
@@ -77,7 +79,7 @@ class OllamaLlmServiceBranchTest extends AbstractTest {
         service.toolExecutionFlags.add(true);
         service.executeToolResults.add(List.of(new AiMessage("tool-result")));
 
-        try (Response response = service.chat(configuration(), chatRequest("hello"))) {
+        try (Response response = service.chat(agent(), chatRequest("hello"), null)) {
             assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
             assertThat(((ChatMessageDTOV1) response.getEntity()).getMessage()).isEqualTo("after-tool");
         }
@@ -88,7 +90,7 @@ class OllamaLlmServiceBranchTest extends AbstractTest {
         var service = new TestableOllamaLlmService(dispatchConfig(3), McpToolRegistry.empty());
         service.modelResponses.add(new RuntimeException("boom"));
 
-        try (Response response = service.chat(configuration(), chatRequest("hello"))) {
+        try (Response response = service.chat(agent(), chatRequest("hello"), null)) {
             assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
             assertThat(response.getEntity()).isEqualTo("Unexpected error: boom");
         }
@@ -126,17 +128,19 @@ class OllamaLlmServiceBranchTest extends AbstractTest {
         return response;
     }
 
-    private static Configuration configuration() {
-        Configuration configuration = new Configuration();
-        configuration.setProvider(provider());
-        return configuration;
+    private static Agent agent() {
+        Model model = new Model();
+        model.setProvider(provider());
+        model.setModelIdentifier("mistral");
+        Agent agent = new Agent();
+        agent.setModel(model);
+        return agent;
     }
 
     private static Provider provider() {
         Provider provider = new Provider();
         provider.setType(ProviderType.OLLAMA);
         provider.setLlmUrl("http://localhost:11434");
-        provider.setModelName("mistral");
         return provider;
     }
 
@@ -174,6 +178,7 @@ class OllamaLlmServiceBranchTest extends AbstractTest {
     private static McpToolRegistry registryWithTools(int count) {
         List<McpTool> tools = IntStream.range(0, count)
                 .mapToObj(i -> new McpTool(
+                        "tool-id-" + i,
                         "http://mcp-" + i,
                         ToolSpecification.builder()
                                 .name("tool-" + i)
@@ -195,10 +200,12 @@ class OllamaLlmServiceBranchTest extends AbstractTest {
         TestableOllamaLlmService(DispatchConfig dispatchConfig, McpToolRegistry toolRegistry) {
             this.dispatchConfig = dispatchConfig;
             this.toolRegistry = toolRegistry;
+            // Initialize the scaffoldPromptComposer for unit tests (normally injected by CDI)
+            this.scaffoldPromptComposer = new ScaffoldPromptComposer();
         }
 
         @Override
-        protected McpToolRegistry createToolRegistry(Configuration aiConfiguration) {
+        protected McpToolRegistry createToolRegistry(Agent agent, String executionId) {
             return toolRegistry;
         }
 
@@ -208,7 +215,8 @@ class OllamaLlmServiceBranchTest extends AbstractTest {
         }
 
         @Override
-        protected List<ChatMessage> executeToolRequests(ChatResponse response, McpToolRegistry toolRegistry) {
+        protected List<ChatMessage> executeToolRequests(Agent agent, String executionId, ChatResponse response,
+                McpToolRegistry toolRegistry) {
             Object next = executeToolResults.remove();
             if (next instanceof RuntimeException runtimeException) {
                 throw runtimeException;

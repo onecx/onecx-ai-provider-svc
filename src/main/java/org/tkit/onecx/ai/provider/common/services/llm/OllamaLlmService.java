@@ -4,14 +4,17 @@ import java.time.Duration;
 import java.util.*;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 
+import org.tkit.onecx.ai.provider.common.services.agentic.ScaffoldPromptComposer;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpToolRegistry;
-import org.tkit.onecx.ai.provider.domain.models.Configuration;
+import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -28,12 +31,28 @@ public class OllamaLlmService extends AbstractLlmService {
     private static final String UNHEALTHY = "UNHEALTHY";
     private static final String HEALTH_CHECK_PROMPT = "ping";
 
+    @Inject
+    ScaffoldPromptComposer scaffoldPromptComposer;
+
     @Override
-    public Response chat(Configuration configuration, ChatRequestDTOV1 chatRequestDTO) {
-        // Resolve configuration by queryContext
-        Provider provider = configuration.getProvider();
+    public Response chat(Agent agent, ChatRequestDTOV1 chatRequestDTO, String executionId) {
+        // Resolve agent's model and provider
+        var model = agent.getModel();
+        if (model == null || model.getProvider() == null) {
+            log.error("Agent {} has no associated model or provider", agent.getId());
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Agent has no associated model or provider")
+                    .build();
+        }
+        Provider provider = model.getProvider();
+
         // Build message list: history (if present) + current message
         List<ChatMessage> messages = new ArrayList<>();
+
+        String systemPrompt = scaffoldPromptComposer.compose(agent, chatRequestDTO);
+        if (systemPrompt != null && !systemPrompt.isBlank()) {
+            messages.add(new SystemMessage(systemPrompt));
+        }
 
         if (chatRequestDTO.getConversation() != null
                 && chatRequestDTO.getConversation().getHistory() != null
@@ -43,10 +62,10 @@ public class OllamaLlmService extends AbstractLlmService {
 
         messages.add(new UserMessage(chatRequestDTO.getChatMessage().getMessage()));
 
-        OllamaChatModel model = buildModel(provider);
+        OllamaChatModel ollamaModel = buildModel(provider, model.getModelIdentifier());
 
-        // Create tool registry from MCP servers (if configured)
-        McpToolRegistry toolRegistry = createToolRegistry(configuration);
+        // Create tool registry from agent tools (if configured)
+        McpToolRegistry toolRegistry = createToolRegistry(agent, executionId);
         try {
             List<ToolSpecification> toolSpecifications = toolRegistry.getToolSpecifications();
 
@@ -60,7 +79,7 @@ public class OllamaLlmService extends AbstractLlmService {
             }
 
             ChatRequest chatRequest = chatRequestBuilder.build();
-            ChatResponse chatResponse = modelChatRequestWithRetries(model, chatRequest);
+            ChatResponse chatResponse = modelChatRequestWithRetries(ollamaModel, chatRequest);
 
             if (chatResponse == null) {
                 log.error("Failed to get response from model after retries");
@@ -76,10 +95,13 @@ public class OllamaLlmService extends AbstractLlmService {
                 log.info("Tool execution iteration {}", iterations);
 
                 try {
+                    transitionToWaitingTool(executionId);
                     // Execute tools and get result messages
-                    List<ChatMessage> toolResultMessages = executeToolRequests(chatResponse, toolRegistry);
+                    List<ChatMessage> toolResultMessages = executeToolRequests(agent, executionId, chatResponse, toolRegistry);
                     messages.addAll(toolResultMessages);
+                    transitionToRunning(executionId);
                 } catch (Exception e) {
+                    transitionToRunning(executionId);
                     continue;
                 }
 
@@ -89,7 +111,7 @@ public class OllamaLlmService extends AbstractLlmService {
                         .toolSpecifications(toolSpecifications)
                         .build();
 
-                chatResponse = modelChatRequestWithRetries(model, followUpRequest);
+                chatResponse = modelChatRequestWithRetries(ollamaModel, followUpRequest);
 
                 // Check if follow-up request failed
                 if (chatResponse == null) {
@@ -120,35 +142,34 @@ public class OllamaLlmService extends AbstractLlmService {
 
     @Override
     public String getHealthStatus(Provider provider) {
-        if (provider == null || provider.getLlmUrl() == null || provider.getLlmUrl().isBlank()
-                || provider.getModelName() == null || provider.getModelName().isBlank()) {
+        if (provider == null || provider.getLlmUrl() == null || provider.getLlmUrl().isBlank()) {
             log.warn("Provider configuration incomplete for health check");
             return UNHEALTHY;
         }
         try {
-            OllamaChatModel model = buildModel(provider);
+            // Note: for health check, we need a model. We'll use a default model name for the health check
+            OllamaChatModel ollamaModel = buildModel(provider, "llama2");
 
             ChatRequest healthCheckRequest = ChatRequest.builder()
                     .messages(List.of(new UserMessage(HEALTH_CHECK_PROMPT)))
                     .build();
-            ChatResponse response = modelChatRequestWithRetries(model, healthCheckRequest);
+            ChatResponse response = modelChatRequestWithRetries(ollamaModel, healthCheckRequest);
             if (response == null || response.aiMessage() == null) {
-                log.warn("Ollama model health check failed for model '{}' at '{}'", provider.getModelName(),
-                        provider.getLlmUrl());
+                log.warn("Ollama health check failed for provider '{}' at '{}'", provider.getName(), provider.getLlmUrl());
                 return UNHEALTHY;
             }
             return HEALTHY;
         } catch (Exception e) {
-            log.warn("Ollama model health check failed for model '{}' at '{}': {}",
-                    provider.getModelName(), provider.getLlmUrl(), e.getMessage());
+            log.warn("Ollama health check failed for provider '{}' at '{}': {}", provider.getName(), provider.getLlmUrl(),
+                    e.getMessage());
             return UNHEALTHY;
         }
     }
 
-    private OllamaChatModel buildModel(Provider provider) {
+    private OllamaChatModel buildModel(Provider provider, String modelIdentifier) {
         return OllamaChatModel.builder()
                 .baseUrl(provider.getLlmUrl())
-                .modelName(provider.getModelName())
+                .modelName(modelIdentifier)
                 .customHeaders(createCustomHeaders(provider))
                 .timeout(Duration.ofSeconds(dispatchConfig.providerConfig().timeout()))
                 .logRequests(dispatchConfig.providerConfig().logRequests())

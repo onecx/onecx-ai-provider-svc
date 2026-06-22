@@ -27,7 +27,7 @@ class McpToolTest extends AbstractTest {
         when(client.executeTool(request)).thenReturn(result);
         when(result.resultText()).thenReturn("tool-result");
 
-        McpTool tool = new McpTool("http://mcp", toolSpec("tool-a"), client);
+        McpTool tool = new McpTool("tool-id", "http://mcp", toolSpec("tool-a"), client);
 
         String output = tool.execute(request);
 

@@ -1,0 +1,150 @@
+@startuml agent-store-final
+
+' =========================
+' CORE ENTITIES
+' =========================
+
+class AGENT {
+  uuid id
+  string tenantId
+  string name
+  uuid model_id
+  uuid scaffold_id
+  uuid runtime_config_id
+  text additional_prompt
+  boolean a2a_enabled
+  integer version
+  string status (draft, live, deprecated)
+}
+
+class FILTER {
+  string filter_key
+  string filter_value
+}
+
+class SCAFFOLD {
+  uuid id
+  string name
+  text system_prompt
+  string source_product
+  integer version
+}
+
+class PROVIDER {
+  uuid id
+  string tenantId
+  string name
+  string type (OpenAI, OLLAMA)
+  string url
+  string apiKey
+  string authMode (API_KEY, OAUTH)
+}
+
+class MODEL {
+  uuid id
+  string tenantId
+  uuid provider_id
+  string name
+  string modelIdentifier
+  json modelConfig
+  string communicationMode (sync | async | stream)
+}
+
+class RUNTIME_CONFIG {
+  uuid id
+  string tenantId
+  string type (OneCX, AWS_BEDROCK)
+  uuid provider_id
+  string endpoint
+  json auth_config
+  integer version
+}
+
+class TOOL {
+  uuid id
+  string name
+  string description
+  string type (MCP | HTTP | CUSTOM)
+  string url
+  string apiKey
+  string executionPolicy
+  string authMode (API_KEY, OAUTH)
+}
+
+class SKILL {
+  uuid id
+  string name
+  json input_schema
+  json output_schema
+  integer version
+}
+
+class AGENT_GROUP {
+  uuid id
+  string tenantId
+  string name
+}
+
+' class WORKFLOW {
+'   uuid id
+'   string name
+'   string type
+' }
+
+' class WORKFLOW_STEP {
+'   uuid id
+'   uuid workflow_id
+'   uuid agent_id
+'   int step_order
+'   json input_mapping
+'   json output_mapping
+' }
+
+' =========================
+' RELATION TABLES (_RL)
+' =========================
+
+class SCAFFOLD_SKILL_RL {
+  uuid scaffold_id
+  uuid skill_id
+}
+
+
+class AGENT_TOOL_RL {
+  uuid agent_id
+  uuid tool_id
+}
+
+
+class AGENT_GROUP_RL {
+  uuid agent_id
+  uuid group_id
+}
+
+' =========================
+' RELATIONSHIPS
+' =========================
+
+SCAFFOLD "1" --> "0..*" AGENT : base_for
+
+AGENT "1" --> "1" RUNTIME_CONFIG : runs_with
+
+PROVIDER "1" --> "0..*" MODEL : defines
+RUNTIME_CONFIG "1" --> "1" PROVIDER : uses
+MODEL "1" --> "0..*" AGENT : configured_as
+
+SCAFFOLD "1" --> "0..*" SCAFFOLD_SKILL_RL : defines
+SKILL "1" --> "0..*" SCAFFOLD_SKILL_RL : included_in
+
+AGENT "1" --> "0..*" AGENT_TOOL_RL : uses
+TOOL "1" --> "0..*" AGENT_TOOL_RL : assigned
+
+AGENT "1" --> "0..*" AGENT_GROUP_RL : belongs_to
+AGENT_GROUP "1" --> "0..*" AGENT_GROUP_RL : contains
+
+AGENT "1" --> "0..1" FILTER : has
+
+' WORKFLOW "1" --> "0..*" WORKFLOW_STEP : consists_of
+' AGENT "1" --> "0..*" WORKFLOW_STEP : executes
+
+@enduml

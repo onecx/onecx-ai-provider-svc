@@ -11,8 +11,10 @@ import jakarta.inject.Inject;
 import org.eclipse.microprofile.faulttolerance.Fallback;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import org.tkit.onecx.ai.provider.common.models.DispatchConfig;
-import org.tkit.onecx.ai.provider.domain.models.Configuration;
-import org.tkit.onecx.ai.provider.domain.models.MCPServer;
+import org.tkit.onecx.ai.provider.common.services.agentic.tool.ToolPolicyService;
+import org.tkit.onecx.ai.provider.domain.models.Agent;
+import org.tkit.onecx.ai.provider.domain.models.Tool;
+import org.tkit.onecx.ai.provider.domain.models.enums.ToolType;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
@@ -30,47 +32,61 @@ public class McpService {
     @Inject
     DispatchConfig dispatchConfig;
 
+    @Inject
+    ToolPolicyService toolPolicyService;
+
     /**
-     * Creates a tool registry from all MCP servers defined in the context.
+     * Creates a tool registry from all MCP-type tools defined in the agent.
      */
-    public McpToolRegistry createToolRegistry(Configuration configuration) {
-        if (configuration == null || configuration.getMcpServers() == null || configuration.getMcpServers().isEmpty()) {
-            log.debug("No MCP servers configured in context");
+    public McpToolRegistry createToolRegistry(Agent agent) {
+        return createToolRegistry(agent, null);
+    }
+
+    /**
+     * Creates a tool registry from all MCP-type tools defined in the agent.
+     */
+    public McpToolRegistry createToolRegistry(Agent agent, String executionId) {
+        if (agent == null || agent.getTools() == null || agent.getTools().isEmpty()) {
+            log.debug("No tools configured in agent");
             return McpToolRegistry.empty();
         }
 
         List<McpTool> allTools = new ArrayList<>();
 
-        for (MCPServer mcpServer : configuration.getMcpServers()) {
-            allTools.addAll(discoverToolsFromServer(mcpServer));
+        // Filter only MCP-type tools
+        for (Tool tool : agent.getTools()) {
+            if (tool.getType() == ToolType.MCP && isAllowedByPolicy(agent, tool)) {
+                allTools.addAll(discoverToolsFromServer(tool));
+            }
         }
 
-        log.info("Created tool registry with {} tools from {} servers",
-                allTools.size(), configuration.getMcpServers().size());
+        log.info("Created tool registry with {} MCP tools from agent",
+                allTools.size());
 
         return new McpToolRegistry(allTools);
     }
 
-    private List<McpTool> discoverToolsFromServer(MCPServer mcpServer) {
-        log.info("Discovering tools from MCP server: {}", mcpServer.getUrl());
+    private List<McpTool> discoverToolsFromServer(Tool tool) {
+        log.info("Discovering tools from MCP server: {}", tool.getUrl());
 
         try {
             // client must stay open for later tool execution
-            McpClient client = createMcpClient(mcpServer);
+            McpClient client = createMcpClient(tool);
             try {
                 client.checkHealth();
                 List<ToolSpecification> specs = receiveToolSpecifications(client);
-                log.info("Discovered {} tool(s) from {}", specs.size(), mcpServer.getUrl());
+                log.info("Discovered {} tool(s) from {}", specs.size(), tool.getUrl());
                 return specs.stream()
-                        .map(spec -> new McpTool(mcpServer.getUrl(), spec, client))
+                        .map(spec -> new McpTool(tool.getId() != null ? tool.getId().toString() : null, tool.getUrl(), spec,
+                                client))
                         .toList();
             } catch (Exception ex) {
-                log.error("MCP server not available {}: {}", mcpServer.getUrl(), ex.getMessage(), ex);
+                log.error("MCP server not available {}: {}", tool.getUrl(), ex.getMessage(), ex);
                 return List.of();
             }
 
         } catch (Exception e) {
-            log.error("Error discovering tools from {}: {}", mcpServer.getUrl(), e.getMessage(), e);
+            log.error("Error discovering tools from {}: {}", tool.getUrl(), e.getMessage(), e);
             return List.of();
         }
     }
@@ -87,19 +103,34 @@ public class McpService {
         return List.of();
     }
 
-    protected McpClient createMcpClient(MCPServer mcpServer) {
+    protected McpClient createMcpClient(Tool tool) {
         var transportBuilder = StreamableHttpMcpTransport.builder()
-                .url(mcpServer.getUrl())
+                .url(tool.getUrl())
                 .timeout(Duration.ofSeconds(dispatchConfig.mcpConfig().maxTimeout()))
                 .logRequests(dispatchConfig.mcpConfig().logRequests())
                 .logResponses(dispatchConfig.mcpConfig().logResponse());
 
-        if (mcpServer.getApiKey() != null && !mcpServer.getApiKey().isBlank()) {
-            transportBuilder.customHeaders(Map.of("Authorization", mcpServer.getApiKey()));
+        if (tool.getApiKey() != null && !tool.getApiKey().isBlank()) {
+            transportBuilder.customHeaders(Map.of("Authorization", tool.getApiKey()));
         }
 
         return DefaultMcpClient.builder()
                 .transport(transportBuilder.build())
                 .build();
+    }
+
+    private boolean isAllowedByPolicy(Agent agent, Tool tool) {
+        if (toolPolicyService == null) {
+            return true;
+        }
+        if (tool.getId() == null) {
+            log.debug("Tool '{}' has no ID; skipping allow-list enforcement", tool.getName());
+            return true;
+        }
+        boolean allowed = toolPolicyService.isToolAllowed(agent, tool.getId().toString());
+        if (!allowed) {
+            log.warn("Tool '{}' denied by policy for agent '{}'", tool.getName(), agent.getName());
+        }
+        return allowed;
     }
 }

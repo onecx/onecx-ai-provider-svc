@@ -11,6 +11,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
  */
 @RegisterForReflection
 public record McpTool(
+        String toolId,
         String serverUrl,
         ToolSpecification toolSpecification,
         McpClient mcpClient) {

@@ -14,8 +14,9 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.tkit.onecx.ai.provider.common.models.DispatchConfig;
-import org.tkit.onecx.ai.provider.domain.models.Configuration;
-import org.tkit.onecx.ai.provider.domain.models.MCPServer;
+import org.tkit.onecx.ai.provider.domain.models.Agent;
+import org.tkit.onecx.ai.provider.domain.models.Tool;
+import org.tkit.onecx.ai.provider.domain.models.enums.ToolType;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -29,7 +30,7 @@ import io.quarkus.test.junit.QuarkusTest;
 class McpServiceTest extends AbstractTest {
 
     @Test
-    void createToolRegistry_returnsEmpty_whenConfigurationNull() {
+    void createToolRegistry_returnsEmpty_whenAgentNull() {
         var service = serviceWithConfig();
 
         var registry = service.createToolRegistry(null);
@@ -38,16 +39,16 @@ class McpServiceTest extends AbstractTest {
     }
 
     @Test
-    void createToolRegistry_returnsEmpty_whenServerListNullOrEmpty() {
+    void createToolRegistry_returnsEmpty_whenToolListNullOrEmpty() {
         var service = serviceWithConfig();
 
-        var configWithNullServers = new Configuration();
-        configWithNullServers.setMcpServers(null);
-        var nullRegistry = service.createToolRegistry(configWithNullServers);
+        var agentWithNullTools = new Agent();
+        agentWithNullTools.setTools(null);
+        var nullRegistry = service.createToolRegistry(agentWithNullTools);
 
-        var configWithEmptyServers = new Configuration();
-        configWithEmptyServers.setMcpServers(Set.of());
-        var emptyRegistry = service.createToolRegistry(configWithEmptyServers);
+        var agentWithEmptyTools = new Agent();
+        agentWithEmptyTools.setTools(Set.of());
+        var emptyRegistry = service.createToolRegistry(agentWithEmptyTools);
 
         assertThat(nullRegistry.tools()).isEmpty();
         assertThat(emptyRegistry.tools()).isEmpty();
@@ -66,10 +67,10 @@ class McpServiceTest extends AbstractTest {
         doThrow(new RuntimeException("down")).when(failingClient).checkHealth();
         service.registerClient("http://down", failingClient);
 
-        var config = new Configuration();
-        config.setMcpServers(Set.of(server("http://ok", null), server("http://down", null)));
+        var agent = new Agent();
+        agent.setTools(Set.of(tool("http://ok", null), tool("http://down", null)));
 
-        var registry = service.createToolRegistry(config);
+        var registry = service.createToolRegistry(agent);
 
         assertThat(registry.tools()).hasSize(2);
         assertThat(registry.getToolSpecifications()).extracting(ToolSpecification::name)
@@ -82,10 +83,10 @@ class McpServiceTest extends AbstractTest {
         service.dispatchConfig = dispatchConfig();
         service.registerClientCreationError("http://boom", new RuntimeException("cannot create client"));
 
-        var config = new Configuration();
-        config.setMcpServers(Set.of(server("http://boom", null)));
+        var agent = new Agent();
+        agent.setTools(Set.of(tool("http://boom", null)));
 
-        var registry = service.createToolRegistry(config);
+        var registry = service.createToolRegistry(agent);
 
         assertThat(registry.tools()).isEmpty();
     }
@@ -116,15 +117,15 @@ class McpServiceTest extends AbstractTest {
         var service = serviceWithConfig();
 
         // We only need to execute all apiKey branches; build may throw runtime errors depending on endpoint reachability.
-        executeCreateClientBranch(service, server("http://127.0.0.1:9", null));
-        executeCreateClientBranch(service, server("http://127.0.0.1:9", "   "));
-        executeCreateClientBranch(service, server("http://127.0.0.1:9", "Bearer token"));
+        executeCreateClientBranch(service, tool("http://127.0.0.1:9", null));
+        executeCreateClientBranch(service, tool("http://127.0.0.1:9", "   "));
+        executeCreateClientBranch(service, tool("http://127.0.0.1:9", "Bearer token"));
     }
 
     @Test
     void createMcpClient_buildLine_isCoveredWithMockedBuilders() {
         var service = serviceWithConfig();
-        var mcpServer = server("http://example.org", "Bearer token");
+        var mcpServer = tool("http://example.org", "Bearer token");
 
         StreamableHttpMcpTransport.Builder transportBuilder = mock(StreamableHttpMcpTransport.Builder.class);
         StreamableHttpMcpTransport transport = mock(StreamableHttpMcpTransport.class);
@@ -152,7 +153,7 @@ class McpServiceTest extends AbstractTest {
         }
     }
 
-    private static void executeCreateClientBranch(McpService service, MCPServer server) {
+    private static void executeCreateClientBranch(McpService service, Tool server) {
         try {
             McpClient client = service.createMcpClient(server);
             assertThat(client).isNotNull();
@@ -180,11 +181,12 @@ class McpServiceTest extends AbstractTest {
         return dispatchConfig;
     }
 
-    private static MCPServer server(String url, String apiKey) {
-        MCPServer server = new MCPServer();
-        server.setUrl(url);
-        server.setApiKey(apiKey);
-        return server;
+    private static Tool tool(String url, String apiKey) {
+        Tool tool = new Tool();
+        tool.setType(ToolType.MCP);
+        tool.setUrl(url);
+        tool.setApiKey(apiKey);
+        return tool;
     }
 
     private static ToolSpecification toolSpec(String name) {
@@ -208,7 +210,7 @@ class McpServiceTest extends AbstractTest {
         }
 
         @Override
-        protected McpClient createMcpClient(MCPServer mcpServer) {
+        protected McpClient createMcpClient(Tool mcpServer) {
             RuntimeException ex = creationErrors.get(mcpServer.getUrl());
             if (ex != null) {
                 throw ex;

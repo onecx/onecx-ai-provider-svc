@@ -6,45 +6,51 @@ info:
 servers:
   - url: "http://onecx-ai-provider-svc:8080"
 tags:
-  - name: configurationInternal
   - name: providerInternal
-  - name: mcpServerInternal
+  - name: agentInternal
+  - name: toolInternal
+  - name: modelInternal
+  - name: scaffoldInternal
+  - name: runtimeConfigInternal
+  - name: skillInternal
+  - name: agentGroupInternal
 paths:
-  /internal/configurations:
+  /internal/agents:
     post:
       security:
         - oauth2: [ ocx-ai:all, ocx-ai:write ]
       tags:
-        - configurationInternal
-      description: Create an Configuration
-      operationId: createConfiguration
+        - agentInternal
+      description: Create an Agent
+      operationId: createAgent
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateConfigurationRequest'
+              $ref: '#/components/schemas/CreateAgentRequest'
       responses:
         "201":
-          description: Configuration created successfully
+          description: Agent created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Configuration'
+                $ref: '#/components/schemas/Agent'
         "400":
           description: Bad request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetailResponse'
-  /internal/configurations/{id}:
+
+  /internal/agents/{id}:
     get:
       security:
         - oauth2: [ ocx-ai:all, ocx-ai:read ]
       tags:
-        - configurationInternal
-      description: Get Configuration
-      operationId: getConfiguration
+        - agentInternal
+      description: Get Agent
+      operationId: getAgent
       parameters:
         - name: id
           in: path
@@ -57,16 +63,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Configuration'
+                $ref: '#/components/schemas/Agent'
         "404":
           description: Not found
     delete:
       security:
         - oauth2: [ ocx-ai:all, ocx-ai:delete ]
       tags:
-        - configurationInternal
-      description: Delete Configuration
-      operationId: deleteConfiguration
+        - agentInternal
+      description: Delete Agent
+      operationId: deleteAgent
       parameters:
         - name: id
           in: path
@@ -75,14 +81,14 @@ paths:
             type: string
       responses:
         "204":
-          description: Configuration deleted
+          description: Agent deleted
     put:
       security:
         - oauth2: [ ocx-ai:all, ocx-ai:write ]
       tags:
-        - configurationInternal
-      description: Update an Configuration
-      operationId: updateConfiguration
+        - agentInternal
+      description: Update an Agent
+      operationId: updateAgent
       parameters:
         - name: id
           in: path
@@ -94,14 +100,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateConfigurationRequest'
+              $ref: '#/components/schemas/UpdateAgentRequest'
       responses:
         "200":
-          description: Configuration updated successfully
+          description: Agent updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Configuration'
+                $ref: '#/components/schemas/Agent'
         "400":
           description: Bad request
           content:
@@ -109,35 +115,597 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetailResponse'
         "404":
-          description: Configuration not found
+          description: Agent not found
 
-  /internal/configurations/search:
+  /internal/agents/search:
     post:
       security:
         - oauth2: [ ocx-ai:all, ocx-ai:read ]
       tags:
-        - configurationInternal
-      description: Find Configuration by Search Criteria
-      operationId: findConfigurationBySearchCriteria
+        - agentInternal
+      description: Find Agent by Search Criteria
+      operationId: findAgentBySearchCriteria
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ConfigurationSearchCriteria'
+              $ref: '#/components/schemas/AgentSearchCriteria'
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ConfigurationPageResult'
+                $ref: '#/components/schemas/AgentPageResult'
         "400":
           description: Bad request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetailResponse'
+
+  /internal/tools:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags:
+        - toolInternal
+      description: Create a Tool
+      operationId: createTool
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateToolRequest'
+      responses:
+        "201":
+          description: Tool created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tool'
+
+  /internal/tools/{id}:
+    get:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags:
+        - toolInternal
+      description: Get Tool by id
+      operationId: getToolById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tool'
+        "404":
+          description: Not found
+    delete:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:delete ]
+      tags:
+        - toolInternal
+      description: Delete Tool by id
+      operationId: deleteToolById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Tool deleted successfully
+    put:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags:
+        - toolInternal
+      description: Update a Tool
+      operationId: updateToolById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateToolRequest'
+      responses:
+        "200":
+          description: Tool updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tool'
+
+  /internal/tools/search:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags:
+        - toolInternal
+      description: Find Tools by Search Criteria
+      operationId: findToolByCriteria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToolSearchCriteria'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolPageResult'
+
+  /internal/models:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags: [ modelInternal ]
+      description: Create a Model
+      operationId: createModel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateModelRequest'
+      responses:
+        "201":
+          description: Model created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Model'
+  /internal/models/{id}:
+    get:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags: [ modelInternal ]
+      description: Get Model by id
+      operationId: getModelById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Model' }
+    put:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags: [ modelInternal ]
+      description: Update a Model
+      operationId: updateModelById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateModelRequest' }
+      responses:
+        "200":
+          description: Model updated successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Model' }
+    delete:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:delete ]
+      tags: [ modelInternal ]
+      description: Delete a Model
+      operationId: deleteModelById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: Model deleted }
+  /internal/models/search:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags: [ modelInternal ]
+      description: Find Models by Search Criteria
+      operationId: findModelByCriteria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ModelSearchCriteria' }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ModelPageResult' }
+
+  /internal/scaffolds:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags: [ scaffoldInternal ]
+      description: Create a Scaffold
+      operationId: createScaffold
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateScaffoldRequest' }
+      responses:
+        "201":
+          description: Scaffold created successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Scaffold' }
+  /internal/scaffolds/{id}:
+    get:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags: [ scaffoldInternal ]
+      description: Get Scaffold by id
+      operationId: getScaffoldById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Scaffold' }
+    put:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags: [ scaffoldInternal ]
+      description: Update a Scaffold
+      operationId: updateScaffoldById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateScaffoldRequest' }
+      responses:
+        "200":
+          description: Scaffold updated successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Scaffold' }
+    delete:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:delete ]
+      tags: [ scaffoldInternal ]
+      description: Delete a Scaffold
+      operationId: deleteScaffoldById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: Scaffold deleted }
+  /internal/scaffolds/search:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags: [ scaffoldInternal ]
+      description: Find Scaffolds by Search Criteria
+      operationId: findScaffoldByCriteria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScaffoldSearchCriteria' }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScaffoldPageResult' }
+
+  /internal/runtimeConfigs:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags: [ runtimeConfigInternal ]
+      description: Create a RuntimeConfig
+      operationId: createRuntimeConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRuntimeConfigRequest' }
+      responses:
+        "201":
+          description: RuntimeConfig created successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RuntimeConfig' }
+  /internal/runtimeConfigs/{id}:
+    get:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags: [ runtimeConfigInternal ]
+      description: Get RuntimeConfig by id
+      operationId: getRuntimeConfigById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RuntimeConfig' }
+    put:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags: [ runtimeConfigInternal ]
+      description: Update a RuntimeConfig
+      operationId: updateRuntimeConfigById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateRuntimeConfigRequest' }
+      responses:
+        "200":
+          description: RuntimeConfig updated successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RuntimeConfig' }
+    delete:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:delete ]
+      tags: [ runtimeConfigInternal ]
+      description: Delete a RuntimeConfig
+      operationId: deleteRuntimeConfigById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: RuntimeConfig deleted }
+  /internal/runtimeConfigs/search:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags: [ runtimeConfigInternal ]
+      description: Find RuntimeConfigs by Search Criteria
+      operationId: findRuntimeConfigByCriteria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RuntimeConfigSearchCriteria' }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RuntimeConfigPageResult' }
+
+  /internal/skills:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags: [ skillInternal ]
+      description: Create a Skill
+      operationId: createSkill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSkillRequest' }
+      responses:
+        "201":
+          description: Skill created successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Skill' }
+  /internal/skills/{id}:
+    get:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags: [ skillInternal ]
+      description: Get Skill by id
+      operationId: getSkillById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Skill' }
+    put:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags: [ skillInternal ]
+      description: Update a Skill
+      operationId: updateSkillById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateSkillRequest' }
+      responses:
+        "200":
+          description: Skill updated successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Skill' }
+    delete:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:delete ]
+      tags: [ skillInternal ]
+      description: Delete a Skill
+      operationId: deleteSkillById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: Skill deleted }
+  /internal/skills/search:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags: [ skillInternal ]
+      description: Find Skills by Search Criteria
+      operationId: findSkillByCriteria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SkillSearchCriteria' }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SkillPageResult' }
+
+  /internal/agentGroups:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags: [ agentGroupInternal ]
+      description: Create an AgentGroup
+      operationId: createAgentGroup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAgentGroupRequest' }
+      responses:
+        "201":
+          description: AgentGroup created successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentGroup' }
+  /internal/agentGroups/{id}:
+    get:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags: [ agentGroupInternal ]
+      description: Get AgentGroup by id
+      operationId: getAgentGroupById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentGroup' }
+    put:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags: [ agentGroupInternal ]
+      description: Update an AgentGroup
+      operationId: updateAgentGroupById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateAgentGroupRequest' }
+      responses:
+        "200":
+          description: AgentGroup updated successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentGroup' }
+    delete:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:delete ]
+      tags: [ agentGroupInternal ]
+      description: Delete an AgentGroup
+      operationId: deleteAgentGroupById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: AgentGroup deleted }
+  /internal/agentGroups/search:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags: [ agentGroupInternal ]
+      description: Find AgentGroups by Search Criteria
+      operationId: findAgentGroupByCriteria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgentGroupSearchCriteria' }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentGroupPageResult' }
 
   /internal/providers:
     post:
@@ -291,134 +859,6 @@ paths:
                 $ref: '#/components/schemas/ProviderHealthStatus'
         "404":
           description: Not found
-  /internal/mcpServer:
-    post:
-      security:
-        - oauth2: [ ocx-ai:all, ocx-ai:write ]
-      tags:
-        - mcpServerInternal
-      description: Create an MCP Server
-      operationId: createMCPServer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateMCPServerRequest'
-      responses:
-        "201":
-          description: MCP Server created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MCPServer'
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetailResponse'
-  /internal/mcpServer/{id}:
-    get:
-      security:
-        - oauth2: [ ocx-ai:all, ocx-ai:read ]
-      tags:
-        - mcpServerInternal
-      description: Get MCP Server by id
-      operationId: getMCPServerById
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MCPServer'
-        "404":
-          description: Not found
-    delete:
-      security:
-        - oauth2: [ ocx-ai:all, ocx-ai:delete ]
-      tags:
-        - mcpServerInternal
-      description: Delete MCP Server by id
-      operationId: deleteMCPServerById
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "204":
-          description: MCP Server deleted successfully
-    put:
-      security:
-        - oauth2: [ ocx-ai:all, ocx-ai:write ]
-      tags:
-        - mcpServerInternal
-      description: Update an MCP Server
-      operationId: updateMCPServerById
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateMCPServerRequest'
-      responses:
-        "200":
-          description: MCP Server updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MCPServer'
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetailResponse'
-        "404":
-          description: MCP Server not found
-
-  /internal/mcpServer/search:
-    post:
-      security:
-        - oauth2: [ ocx-ai:all, ocx-ai:read ]
-      tags:
-        - mcpServerInternal
-      description: Find MCPServer by Search Criteria
-      operationId: findMCPServerByCriteria
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MCPServerSearchCriteria'
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MCPServerPageResult'
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetailResponse'
 components:
   securitySchemes:
     oauth2:
@@ -432,106 +872,418 @@ components:
             ocx-ai:write: Grants write access
             ocx-ai:delete: Grants access to delete operations
   schemas:
-    MCPServer:
+    AgentFilter:
       type: object
       properties:
-        modificationCount:
-          format: int32
-          type: integer
-        creationDate:
-          $ref: '#/components/schemas/OffsetDateTime'
-        creationUser:
+        key:
           type: string
-        modificationDate:
-          $ref: '#/components/schemas/OffsetDateTime'
-        modificationUser:
+          enum: [ APP_ID ]
+        value:
           type: string
-        id:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        url:
-          type: string
-        apiKey:
-          type: string
-        executionPolicy:
-          $ref: '#/components/schemas/ExecutionPolicy'
-    MCPServerPageResult:
+    AgentAbstract:
       type: object
       properties:
-        totalElements:
-          format: int64
-          type: integer
-        number:
-          format: int32
-          type: integer
-        size:
-          format: int32
-          type: integer
-        totalPages:
-          format: int64
-          type: integer
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        additionalPrompt: { type: string }
+        a2aEnabled: { type: boolean }
+        status: { $ref: '#/components/schemas/AgentStatus' }
+        filter:
+          $ref: '#/components/schemas/AgentFilter'
+    Agent:
+      type: object
+      properties:
+        modificationCount: { format: int32, type: integer }
+        creationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        creationUser: { type: string }
+        modificationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        modificationUser: { type: string }
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        additionalPrompt: { type: string }
+        a2aEnabled: { type: boolean }
+        status: { $ref: '#/components/schemas/AgentStatus' }
+        filter:
+          $ref: '#/components/schemas/AgentFilter'
+        model:
+          $ref: '#/components/schemas/Model'
+        scaffold:
+          $ref: '#/components/schemas/Scaffold'
+        runtimeConfig:
+          $ref: '#/components/schemas/RuntimeConfig'
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tool'
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentGroup'
+    CreateAgentRequest:
+      type: object
+      required: [ name ]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        additionalPrompt: { type: string }
+        a2aEnabled: { type: boolean }
+        status: { $ref: '#/components/schemas/AgentStatus' }
+        filter: { $ref: '#/components/schemas/AgentFilter' }
+        model: { $ref: '#/components/schemas/Model' }
+        scaffold: { $ref: '#/components/schemas/Scaffold' }
+        runtimeConfig: { $ref: '#/components/schemas/RuntimeConfig' }
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tool'
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentGroup'
+    UpdateAgentRequest:
+      type: object
+      required: [ modificationCount ]
+      properties:
+        modificationCount: { format: int32, type: integer }
+        name: { type: string }
+        description: { type: string }
+        additionalPrompt: { type: string }
+        a2aEnabled: { type: boolean }
+        status: { $ref: '#/components/schemas/AgentStatus' }
+        filter: { $ref: '#/components/schemas/AgentFilter' }
+        model: { $ref: '#/components/schemas/Model' }
+        scaffold: { $ref: '#/components/schemas/Scaffold' }
+        runtimeConfig: { $ref: '#/components/schemas/RuntimeConfig' }
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tool'
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentGroup'
+    AgentSearchCriteria:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        status: { $ref: '#/components/schemas/AgentStatus' }
+        pageNumber: { format: int32, default: 0, type: integer }
+        pageSize: { format: int32, default: 10, maximum: 100, type: integer }
+    AgentPageResult:
+      type: object
+      properties:
+        totalElements: { format: int64, type: integer }
+        number: { format: int32, type: integer }
+        size: { format: int32, type: integer }
+        totalPages: { format: int64, type: integer }
         stream:
           type: array
           items:
-            $ref: '#/components/schemas/MCPServer'
-    MCPServerSearchCriteria:
+            $ref: '#/components/schemas/AgentAbstract'
+
+    Tool:
       type: object
       properties:
-        id:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        url:
-          type: string
-        apiKey:
-          type: string
-        pageNumber:
-          format: int32
-          description: The number of page.
-          default: 0
-          type: integer
-        pageSize:
-          format: int32
-          description: The size of page
-          default: 10
-          maximum: 100
-          type: integer
-    CreateMCPServerRequest:
+        modificationCount: { format: int32, type: integer }
+        creationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        creationUser: { type: string }
+        modificationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        modificationUser: { type: string }
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        type: { $ref: '#/components/schemas/ToolType' }
+        url: { type: string }
+        apiKey: { type: string }
+        executionPolicy: { $ref: '#/components/schemas/ExecutionPolicy' }
+        authMode: { $ref: '#/components/schemas/AuthMode' }
+    CreateToolRequest:
       type: object
       properties:
-        name:
-          type: string
-        description:
-          type: string
-        url:
-          type: string
-        apiKey:
-          type: string
-        executionPolicy:
-          $ref: '#/components/schemas/ExecutionPolicy'
-    UpdateMCPServerRequest:
+        name: { type: string }
+        description: { type: string }
+        type: { $ref: '#/components/schemas/ToolType' }
+        url: { type: string }
+        apiKey: { type: string }
+        executionPolicy: { $ref: '#/components/schemas/ExecutionPolicy' }
+        authMode: { $ref: '#/components/schemas/AuthMode' }
+    UpdateToolRequest:
       type: object
-      required:
-        - modificationCount
+      required: [ modificationCount ]
       properties:
-        modificationCount:
-          format: int32
-          type: integer
-        name:
-          type: string
-        description:
-          type: string
-        url:
-          type: string
-        apiKey:
-          type: string
-        executionPolicy:
-          $ref: '#/components/schemas/ExecutionPolicy'
+        modificationCount: { format: int32, type: integer }
+        name: { type: string }
+        description: { type: string }
+        type: { $ref: '#/components/schemas/ToolType' }
+        url: { type: string }
+        apiKey: { type: string }
+        executionPolicy: { $ref: '#/components/schemas/ExecutionPolicy' }
+        authMode: { $ref: '#/components/schemas/AuthMode' }
+    ToolSearchCriteria:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        url: { type: string }
+        type: { $ref: '#/components/schemas/ToolType' }
+        pageNumber: { format: int32, default: 0, type: integer }
+        pageSize: { format: int32, default: 10, maximum: 100, type: integer }
+    ToolPageResult:
+      type: object
+      properties:
+        totalElements: { format: int64, type: integer }
+        number: { format: int32, type: integer }
+        size: { format: int32, type: integer }
+        totalPages: { format: int64, type: integer }
+        stream:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tool'
+
+    Model:
+      type: object
+      properties:
+        modificationCount: { format: int32, type: integer }
+        creationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        creationUser: { type: string }
+        modificationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        modificationUser: { type: string }
+        id: { type: string }
+        name: { type: string }
+        modelIdentifier: { type: string }
+        modelConfig: { type: string }
+        communicationMode: { $ref: '#/components/schemas/CommunicationMode' }
+        provider: { $ref: '#/components/schemas/Provider' }
+    CreateModelRequest:
+      type: object
+      properties:
+        name: { type: string }
+        modelIdentifier: { type: string }
+        modelConfig: { type: string }
+        communicationMode: { $ref: '#/components/schemas/CommunicationMode' }
+        provider: { $ref: '#/components/schemas/Provider' }
+    UpdateModelRequest:
+      type: object
+      required: [ modificationCount ]
+      properties:
+        modificationCount: { format: int32, type: integer }
+        name: { type: string }
+        modelIdentifier: { type: string }
+        modelConfig: { type: string }
+        communicationMode: { $ref: '#/components/schemas/CommunicationMode' }
+        provider: { $ref: '#/components/schemas/Provider' }
+    ModelSearchCriteria:
+      type: object
+      properties:
+        providerId: { type: string }
+        name: { type: string }
+        communicationMode: { $ref: '#/components/schemas/CommunicationMode' }
+        pageNumber: { format: int32, default: 0, type: integer }
+        pageSize: { format: int32, default: 10, maximum: 100, type: integer }
+    ModelPageResult:
+      type: object
+      properties:
+        totalElements: { format: int64, type: integer }
+        number: { format: int32, type: integer }
+        size: { format: int32, type: integer }
+        totalPages: { format: int64, type: integer }
+        stream:
+          type: array
+          items:
+            $ref: '#/components/schemas/Model'
+
+    Scaffold:
+      type: object
+      properties:
+        modificationCount: { format: int32, type: integer }
+        creationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        creationUser: { type: string }
+        modificationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        modificationUser: { type: string }
+        id: { type: string }
+        name: { type: string }
+        systemPrompt: { type: string }
+        sourceProduct: { type: string }
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/Skill'
+    CreateScaffoldRequest:
+      type: object
+      properties:
+        name: { type: string }
+        systemPrompt: { type: string }
+        sourceProduct: { type: string }
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/Skill'
+    UpdateScaffoldRequest:
+      type: object
+      required: [ modificationCount ]
+      properties:
+        modificationCount: { format: int32, type: integer }
+        name: { type: string }
+        systemPrompt: { type: string }
+        sourceProduct: { type: string }
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/Skill'
+    ScaffoldSearchCriteria:
+      type: object
+      properties:
+        name: { type: string }
+        sourceProduct: { type: string }
+        pageNumber: { format: int32, default: 0, type: integer }
+        pageSize: { format: int32, default: 10, maximum: 100, type: integer }
+    ScaffoldPageResult:
+      type: object
+      properties:
+        totalElements: { format: int64, type: integer }
+        number: { format: int32, type: integer }
+        size: { format: int32, type: integer }
+        totalPages: { format: int64, type: integer }
+        stream:
+          type: array
+          items:
+            $ref: '#/components/schemas/Scaffold'
+
+    RuntimeConfig:
+      type: object
+      properties:
+        modificationCount: { format: int32, type: integer }
+        creationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        creationUser: { type: string }
+        modificationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        modificationUser: { type: string }
+        id: { type: string }
+        endpoint: { type: string }
+        type: { $ref: '#/components/schemas/RuntimeConfigType' }
+        authConfig: { type: string }
+        provider: { $ref: '#/components/schemas/Provider' }
+    CreateRuntimeConfigRequest:
+      type: object
+      properties:
+        endpoint: { type: string }
+        type: { $ref: '#/components/schemas/RuntimeConfigType' }
+        authConfig: { type: string }
+        provider: { $ref: '#/components/schemas/Provider' }
+    UpdateRuntimeConfigRequest:
+      type: object
+      required: [ modificationCount ]
+      properties:
+        modificationCount: { format: int32, type: integer }
+        endpoint: { type: string }
+        type: { $ref: '#/components/schemas/RuntimeConfigType' }
+        authConfig: { type: string }
+        provider: { $ref: '#/components/schemas/Provider' }
+    RuntimeConfigSearchCriteria:
+      type: object
+      properties:
+        endpoint: { type: string }
+        providerId: { type: string }
+        type: { $ref: '#/components/schemas/RuntimeConfigType' }
+        pageNumber: { format: int32, default: 0, type: integer }
+        pageSize: { format: int32, default: 10, maximum: 100, type: integer }
+    RuntimeConfigPageResult:
+      type: object
+      properties:
+        totalElements: { format: int64, type: integer }
+        number: { format: int32, type: integer }
+        size: { format: int32, type: integer }
+        totalPages: { format: int64, type: integer }
+        stream:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuntimeConfig'
+
+    Skill:
+      type: object
+      properties:
+        modificationCount: { format: int32, type: integer }
+        creationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        creationUser: { type: string }
+        modificationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        modificationUser: { type: string }
+        id: { type: string }
+        name: { type: string }
+        inputSchema: { type: string }
+        outputSchema: { type: string }
+    CreateSkillRequest:
+      type: object
+      properties:
+        name: { type: string }
+        inputSchema: { type: string }
+        outputSchema: { type: string }
+    UpdateSkillRequest:
+      type: object
+      required: [ modificationCount ]
+      properties:
+        modificationCount: { format: int32, type: integer }
+        name: { type: string }
+        inputSchema: { type: string }
+        outputSchema: { type: string }
+    SkillSearchCriteria:
+      type: object
+      properties:
+        name: { type: string }
+        pageNumber: { format: int32, default: 0, type: integer }
+        pageSize: { format: int32, default: 10, maximum: 100, type: integer }
+    SkillPageResult:
+      type: object
+      properties:
+        totalElements: { format: int64, type: integer }
+        number: { format: int32, type: integer }
+        size: { format: int32, type: integer }
+        totalPages: { format: int64, type: integer }
+        stream:
+          type: array
+          items:
+            $ref: '#/components/schemas/Skill'
+
+    AgentGroup:
+      type: object
+      properties:
+        modificationCount: { format: int32, type: integer }
+        creationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        creationUser: { type: string }
+        modificationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        modificationUser: { type: string }
+        id: { type: string }
+        name: { type: string }
+    CreateAgentGroupRequest:
+      type: object
+      properties:
+        name: { type: string }
+    UpdateAgentGroupRequest:
+      type: object
+      required: [ modificationCount ]
+      properties:
+        modificationCount: { format: int32, type: integer }
+        name: { type: string }
+    AgentGroupSearchCriteria:
+      type: object
+      properties:
+        name: { type: string }
+        pageNumber: { format: int32, default: 0, type: integer }
+        pageSize: { format: int32, default: 10, maximum: 100, type: integer }
+    AgentGroupPageResult:
+      type: object
+      properties:
+        totalElements: { format: int64, type: integer }
+        number: { format: int32, type: integer }
+        size: { format: int32, type: integer }
+        totalPages: { format: int64, type: integer }
+        stream:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentGroup'
     ProviderSearchCriteria:
       type: object
       properties:
@@ -549,26 +1301,8 @@ components:
           type: string
         apiKey:
           type: string
-        pageNumber:
-          format: int32
-          description: The number of page.
-          default: 0
-          type: integer
-        pageSize:
-          format: int32
-          description: The size of page
-          default: 10
-          maximum: 100
-          type: integer
-    ConfigurationSearchCriteria:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
+        authMode:
+          $ref: '#/components/schemas/AuthMode'
         pageNumber:
           format: int32
           description: The number of page.
@@ -598,6 +1332,8 @@ components:
           type: string
         apiKey:
           type: string
+        authMode:
+          $ref: '#/components/schemas/AuthMode'
     UpdateProviderRequest:
       required:
         - name
@@ -620,6 +1356,8 @@ components:
           type: string
         apiKey:
           type: string
+        authMode:
+          $ref: '#/components/schemas/AuthMode'
     Provider:
       required:
         - name
@@ -651,6 +1389,8 @@ components:
           type: string
         apiKey:
           type: string
+        authMode:
+          $ref: '#/components/schemas/AuthMode'
     ProviderPageResult:
       type: object
       properties:
@@ -671,121 +1411,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Provider'
-    CreateConfigurationRequest:
-      required:
-        - name
-      type: object
-      properties:
-        name:
-          type: string
-        description:
-          type: string
-        llmSystemMessage:
-          type: string
-        filter:
-          $ref: '#/components/schemas/ConfigurationFilter'
-        llmProvider:
-          $ref: '#/components/schemas/Provider'
-        mcpServers:
-          type: array
-          items:
-            $ref: '#/components/schemas/MCPServer'
-    UpdateConfigurationRequest:
-      required:
-        - modificationCount
-      type: object
-      properties:
-        modificationCount:
-          format: int32
-          type: integer
-        name:
-          type: string
-        description:
-          type: string
-        filter:
-          $ref: '#/components/schemas/ConfigurationFilter'
-        llmSystemMessage:
-          type: string
-        llmProvider:
-          $ref: '#/components/schemas/Provider'
-        mcpServers:
-          type: array
-          items:
-            $ref: '#/components/schemas/MCPServer'
-    ConfigurationAbstract:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        filter:
-          $ref: '#/components/schemas/ConfigurationFilter'
-        llmSystemMessage:
-          type: string
-    Configuration:
-      required:
-        - name
-      type: object
-      properties:
-        modificationCount:
-          format: int32
-          type: integer
-        creationDate:
-          $ref: '#/components/schemas/OffsetDateTime'
-        creationUser:
-          type: string
-        modificationDate:
-          $ref: '#/components/schemas/OffsetDateTime'
-        modificationUser:
-          type: string
-        id:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        filter:
-          $ref: '#/components/schemas/ConfigurationFilter'
-        llmSystemMessage:
-          type: string
-        llmProvider:
-          $ref: '#/components/schemas/Provider'
-        mcpServers:
-          type: array
-          items:
-            $ref: '#/components/schemas/MCPServer'
-    ConfigurationFilter:
-      type: object
-      properties:
-        key:
-          type: string
-          enum:
-            - APP_ID
-        value:
-          type: string
-    ConfigurationPageResult:
-      type: object
-      properties:
-        totalElements:
-          format: int64
-          description: The total elements in the resource.
-          type: integer
-        number:
-          format: int32
-          type: integer
-        size:
-          format: int32
-          type: integer
-        totalPages:
-          format: int64
-          type: integer
-        stream:
-          type: array
-          items:
-            $ref: '#/components/schemas/ConfigurationAbstract'
     ExecutionPolicy:
       type: string
       enum:
@@ -795,6 +1420,35 @@ components:
       type: string
       enum:
         - OLLAMA
+        - OPENAI
+    ToolType:
+      type: string
+      enum:
+        - MCP
+        - HTTP
+        - CUSTOM
+    AuthMode:
+      type: string
+      enum:
+        - API_KEY
+        - OAUTH
+    CommunicationMode:
+      type: string
+      enum:
+        - SYNC
+        - ASYNC
+        - STREAM
+    AgentStatus:
+      type: string
+      enum:
+        - DRAFT
+        - LIVE
+        - DEPRECATED
+    RuntimeConfigType:
+      type: string
+      enum:
+        - ONECX
+        - AWS_BEDROCK
     ProviderHealthStatus:
       type: object
       properties:

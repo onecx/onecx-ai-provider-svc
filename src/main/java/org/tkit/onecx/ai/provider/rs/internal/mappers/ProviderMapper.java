@@ -5,6 +5,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.tkit.onecx.ai.provider.domain.criteria.ProviderSearchCriteria;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
+import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 import org.tkit.quarkus.jpa.daos.PageResult;
 import org.tkit.quarkus.rs.mappers.OffsetDateTimeMapper;
 
@@ -45,6 +46,10 @@ public interface ProviderMapper {
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     void update(UpdateProviderRequestDTO aiProviderDTO, @MappingTarget Provider provider);
+
+    ProviderTypeDTO mapProviderType(ProviderType type);
+
+    ProviderType mapProviderType(ProviderTypeDTO type);
 
     default ProviderHealthStatusDTO mapHealthStatus(String healthKey) {
         ProviderHealthStatusDTO status = new ProviderHealthStatusDTO();

@@ -14,7 +14,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockserver.client.MockServerClient;
 import org.mockserver.model.MediaType;
-import org.tkit.onecx.ai.provider.domain.models.Configuration;
+import org.tkit.onecx.ai.provider.domain.models.Agent;
+import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
@@ -82,17 +83,20 @@ class OllamaLlmServiceTest extends AbstractTest {
 
     @Test
     void health_providerModelNameNull_returnsUnhealthy() {
+        stubOllamaChat(200, OLLAMA_OK_BODY);
+
         var provider = new Provider();
         provider.setType(ProviderType.OLLAMA);
         provider.setLlmUrl(mockServerEndpoint);
-        assertThat(ollamaLlmService.getHealthStatus(provider)).isEqualTo("UNHEALTHY");
+        assertThat(ollamaLlmService.getHealthStatus(provider)).isEqualTo("HEALTHY");
     }
 
     @Test
     void health_providerModelNameBlank_returnsUnhealthy() {
+        stubOllamaChat(200, OLLAMA_OK_BODY);
+
         var provider = buildProvider(mockServerEndpoint);
-        provider.setModelName("   ");
-        assertThat(ollamaLlmService.getHealthStatus(provider)).isEqualTo("UNHEALTHY");
+        assertThat(ollamaLlmService.getHealthStatus(provider)).isEqualTo("HEALTHY");
     }
 
     @Test
@@ -127,7 +131,7 @@ class OllamaLlmServiceTest extends AbstractTest {
     void chat_simpleMessage_returnsOk() {
         stubOllamaChat(200, OLLAMA_OK_BODY);
 
-        var response = ollamaLlmService.chat(buildConfiguration(mockServerEndpoint), buildChatRequest("hello", null));
+        var response = ollamaLlmService.chat(buildAgent(mockServerEndpoint), buildChatRequest("hello", null), null);
 
         assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
         var dto = (ChatMessageDTOV1) response.getEntity();
@@ -155,8 +159,8 @@ class OllamaLlmServiceTest extends AbstractTest {
         var conversation = new ConversationDTOV1();
         conversation.setHistory(List.of(systemMsg, userMsg, assistantMsg));
 
-        var response = ollamaLlmService.chat(buildConfiguration(mockServerEndpoint),
-                buildChatRequest("follow-up", conversation));
+        var response = ollamaLlmService.chat(buildAgent(mockServerEndpoint),
+                buildChatRequest("follow-up", conversation), null);
 
         assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
@@ -170,8 +174,8 @@ class OllamaLlmServiceTest extends AbstractTest {
         conversation.setHistory(null);
 
         var response = ollamaLlmService.chat(
-                buildConfiguration(mockServerEndpoint),
-                buildChatRequest("hello", conversation));
+                buildAgent(mockServerEndpoint),
+                buildChatRequest("hello", conversation), null);
 
         assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
@@ -185,8 +189,8 @@ class OllamaLlmServiceTest extends AbstractTest {
         conversation.setHistory(List.of());
 
         var response = ollamaLlmService.chat(
-                buildConfiguration(mockServerEndpoint),
-                buildChatRequest("hello", conversation));
+                buildAgent(mockServerEndpoint),
+                buildChatRequest("hello", conversation), null);
 
         assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
@@ -196,7 +200,7 @@ class OllamaLlmServiceTest extends AbstractTest {
     void chat_modelReturnsError_returnsBadRequest() {
         stubOllamaChat(500, "");
 
-        var response = ollamaLlmService.chat(buildConfiguration(mockServerEndpoint), buildChatRequest("hello", null));
+        var response = ollamaLlmService.chat(buildAgent(mockServerEndpoint), buildChatRequest("hello", null), null);
 
         assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
     }
@@ -204,7 +208,7 @@ class OllamaLlmServiceTest extends AbstractTest {
     @Test
     @SuppressWarnings("resource")
     void chat_modelUnreachable_returnsBadRequest() {
-        var response = ollamaLlmService.chat(buildConfiguration("http://127.0.0.1:19999"), buildChatRequest("hello", null));
+        var response = ollamaLlmService.chat(buildAgent("http://127.0.0.1:19999"), buildChatRequest("hello", null), null);
 
         assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
     }
@@ -223,14 +227,17 @@ class OllamaLlmServiceTest extends AbstractTest {
         var provider = new Provider();
         provider.setType(ProviderType.OLLAMA);
         provider.setLlmUrl(baseUrl);
-        provider.setModelName("mistral");
         return provider;
     }
 
-    private Configuration buildConfiguration(String baseUrl) {
-        var config = new Configuration();
-        config.setProvider(buildProvider(baseUrl));
-        return config;
+    private Agent buildAgent(String baseUrl) {
+        var provider = buildProvider(baseUrl);
+        var model = new Model();
+        model.setProvider(provider);
+        model.setModelIdentifier("mistral");
+        var agent = new Agent();
+        agent.setModel(model);
+        return agent;
     }
 
     private ChatRequestDTOV1 buildChatRequest(String message, ConversationDTOV1 conversation) {

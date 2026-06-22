@@ -9,8 +9,12 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 
 import org.junit.jupiter.api.Test;
-import org.tkit.onecx.ai.provider.common.services.configuration.ConfigurationService;
-import org.tkit.onecx.ai.provider.domain.models.Configuration;
+import org.tkit.onecx.ai.provider.common.services.agent.AgentService;
+import org.tkit.onecx.ai.provider.common.services.agentic.a2a.DefaultA2AGroupPlanner;
+import org.tkit.onecx.ai.provider.common.services.execution.ExecutionService;
+import org.tkit.onecx.ai.provider.domain.models.Agent;
+import org.tkit.onecx.ai.provider.domain.models.Execution;
+import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
@@ -29,7 +33,13 @@ class LlmServiceFactoryTest extends AbstractTest {
     OllamaLlmService ollamaLlmService;
 
     @InjectMock
-    ConfigurationService configurationService;
+    AgentService agentService;
+
+    @InjectMock
+    ExecutionService executionService;
+
+    @InjectMock
+    DefaultA2AGroupPlanner a2aGroupPlanner;
 
     // ── getProviderHealthStatus ───────────────────────────────────────────────
 
@@ -56,8 +66,8 @@ class LlmServiceFactoryTest extends AbstractTest {
     // ── chat ─────────────────────────────────────────────────────────────────
 
     @Test
-    void chat_noConfigurationFound_returnsNotFound() {
-        when(configurationService.findConfigurationsByRequestContext(any())).thenReturn(null);
+    void chat_noAgentFound_returnsNotFound() {
+        when(agentService.findAgentByRequestContext(any())).thenReturn(null);
 
         var request = new ChatRequestDTOV1();
         request.setRequestContext(null);
@@ -68,20 +78,28 @@ class LlmServiceFactoryTest extends AbstractTest {
     }
 
     @Test
-    void chat_configurationFound_routesToOllamaService() {
+    void chat_agentFound_routesToOllamaService() {
         var provider = buildProvider();
-        var configuration = new Configuration();
-        configuration.setProvider(provider);
+        var model = new Model();
+        model.setProvider(provider);
+        model.setModelIdentifier("mistral");
+        var agent = new Agent();
+        agent.setModel(model);
 
-        when(configurationService.findConfigurationsByRequestContext(any())).thenReturn(configuration);
-        when(ollamaLlmService.chat(any(), any()))
+        when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
+        var execution = new Execution();
+        execution.setExecutionId("exec-123");
+        when(executionService.createExecution(any(), any(), any())).thenReturn(execution);
+        when(executionService.startExecution("exec-123")).thenReturn(execution);
+        when(executionService.succeedExecution(any(), any())).thenReturn(execution);
+        when(ollamaLlmService.chat(any(), any(), any()))
                 .thenReturn(Response.ok("reply").build());
 
         var request = new ChatRequestDTOV1();
         var response = llmServiceFactory.chat(request);
 
         assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
-        verify(ollamaLlmService).chat(configuration, request);
+        verify(ollamaLlmService).chat(agent, request, "exec-123");
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
@@ -90,7 +108,6 @@ class LlmServiceFactoryTest extends AbstractTest {
         var provider = new Provider();
         provider.setType(ProviderType.OLLAMA);
         provider.setLlmUrl("http://ollama.local");
-        provider.setModelName("mistral");
         return provider;
     }
 }
