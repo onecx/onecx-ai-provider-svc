@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="1782216000000-1" author="dev">
+        <createTable tableName="external_agent">
+            <column name="optlock" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="guid" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="external_agent_pkey"/>
+            </column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="discovery_url" type="VARCHAR(1000)"/>
+            <column name="api_key" type="VARCHAR(255)"/>
+            <column name="auth_mode" type="VARCHAR(255)"/>
+            <column name="enabled" type="BOOLEAN"/>
+            <column name="tenant_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="1782216000000-2" author="dev">
+        <createTable tableName="external_agent_group_rl">
+            <column name="external_agent_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="external_agent_group_rl_pkey"/>
+            </column>
+            <column name="group_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="external_agent_group_rl_pkey"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="1782216000000-3" author="dev">
+        <addForeignKeyConstraint baseTableName="external_agent_group_rl"
+                                 baseColumnNames="group_id"
+                                 constraintName="FK_EXTERNAL_AGENT_GROUP"
+                                 referencedTableName="agent_group"
+                                 referencedColumnNames="guid"/>
+    </changeSet>
+
+    <changeSet id="1782216000000-4" author="dev">
+        <addForeignKeyConstraint baseTableName="external_agent_group_rl"
+                                 baseColumnNames="external_agent_id"
+                                 constraintName="FK_EXTERNAL_AGENT"
+                                 referencedTableName="external_agent"
+                                 referencedColumnNames="guid"/>
+    </changeSet>
+
+</databaseChangeLog>
+
+

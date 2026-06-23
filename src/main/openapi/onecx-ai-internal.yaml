@@ -14,6 +14,7 @@ tags:
   - name: runtimeConfigInternal
   - name: skillInternal
   - name: agentGroupInternal
+  - name: externalAgentInternal
 paths:
   /internal/agents:
     post:
@@ -707,6 +708,115 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AgentGroupPageResult' }
 
+
+  /internal/externalAgents:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags: [ externalAgentInternal ]
+      description: Create an ExternalAgent
+      operationId: createExternalAgent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateExternalAgentRequest' }
+      responses:
+        "201":
+          description: ExternalAgent created successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExternalAgent' }
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProblemDetailResponse' }
+  /internal/externalAgents/{id}:
+    get:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags: [ externalAgentInternal ]
+      description: Get ExternalAgent by id
+      operationId: getExternalAgentById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExternalAgent' }
+        "404":
+          description: Not found
+    put:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags: [ externalAgentInternal ]
+      description: Update an ExternalAgent
+      operationId: updateExternalAgentById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateExternalAgentRequest' }
+      responses:
+        "200":
+          description: ExternalAgent updated successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExternalAgent' }
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProblemDetailResponse' }
+        "404":
+          description: ExternalAgent not found
+    delete:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:delete ]
+      tags: [ externalAgentInternal ]
+      description: Delete an ExternalAgent
+      operationId: deleteExternalAgentById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: ExternalAgent deleted }
+  /internal/externalAgents/search:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags: [ externalAgentInternal ]
+      description: Find ExternalAgents by Search Criteria
+      operationId: findExternalAgentByCriteria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExternalAgentSearchCriteria' }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExternalAgentPageResult' }
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProblemDetailResponse' }
   /internal/providers:
     post:
       security:
@@ -1247,6 +1357,72 @@ components:
           items:
             $ref: '#/components/schemas/Skill'
 
+    ExternalAgent:
+      type: object
+      properties:
+        modificationCount: { format: int32, type: integer }
+        creationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        creationUser: { type: string }
+        modificationDate: { $ref: '#/components/schemas/OffsetDateTime' }
+        modificationUser: { type: string }
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        discoveryUrl: { type: string }
+        apiKey: { type: string }
+        authMode: { $ref: '#/components/schemas/AuthMode' }
+        enabled: { type: boolean }
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentGroup'
+    CreateExternalAgentRequest:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+        discoveryUrl: { type: string }
+        apiKey: { type: string }
+        authMode: { $ref: '#/components/schemas/AuthMode' }
+        enabled: { type: boolean }
+        groupIds:
+          type: array
+          items:
+            type: string
+    UpdateExternalAgentRequest:
+      type: object
+      required: [ modificationCount ]
+      properties:
+        modificationCount: { format: int32, type: integer }
+        name: { type: string }
+        description: { type: string }
+        discoveryUrl: { type: string }
+        apiKey: { type: string }
+        authMode: { $ref: '#/components/schemas/AuthMode' }
+        enabled: { type: boolean }
+        groupIds:
+          type: array
+          items:
+            type: string
+    ExternalAgentSearchCriteria:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+        enabled: { type: boolean }
+        pageNumber: { format: int32, default: 0, type: integer }
+        pageSize: { format: int32, default: 10, maximum: 100, type: integer }
+    ExternalAgentPageResult:
+      type: object
+      properties:
+        totalElements: { format: int64, type: integer }
+        number: { format: int32, type: integer }
+        size: { format: int32, type: integer }
+        totalPages: { format: int64, type: integer }
+        stream:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExternalAgent'
     AgentGroup:
       type: object
       properties:

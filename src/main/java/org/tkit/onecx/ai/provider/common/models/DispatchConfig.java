@@ -24,6 +24,12 @@ public interface DispatchConfig {
     @WithName("provider")
     ProviderConfig providerConfig();
 
+    /**
+     * A2A orchestration related configuration.
+     */
+    @WithName("a2a")
+    A2AConfig a2aConfig();
+
     interface MCPConfig {
 
         /**
@@ -91,5 +97,15 @@ public interface DispatchConfig {
         @WithName("log-requests")
         @WithDefault("false")
         boolean logRequests();
+    }
+
+    interface A2AConfig {
+
+        /**
+         * Maximum recursive depth for agent-to-agent orchestration.
+         */
+        @WithName("max-depth")
+        @WithDefault("10")
+        int maxDepth();
     }
 }

@@ -10,10 +10,8 @@ import jakarta.ws.rs.core.Response;
 
 import org.junit.jupiter.api.Test;
 import org.tkit.onecx.ai.provider.common.services.agent.AgentService;
-import org.tkit.onecx.ai.provider.common.services.agentic.a2a.DefaultA2AGroupPlanner;
-import org.tkit.onecx.ai.provider.common.services.execution.ExecutionService;
+import org.tkit.onecx.ai.provider.common.services.agentic.a2a.A2AOrchestrationService;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
-import org.tkit.onecx.ai.provider.domain.models.Execution;
 import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
@@ -36,10 +34,7 @@ class LlmServiceFactoryTest extends AbstractTest {
     AgentService agentService;
 
     @InjectMock
-    ExecutionService executionService;
-
-    @InjectMock
-    DefaultA2AGroupPlanner a2aGroupPlanner;
+    A2AOrchestrationService a2aOrchestrationService;
 
     // ── getProviderHealthStatus ───────────────────────────────────────────────
 
@@ -72,9 +67,9 @@ class LlmServiceFactoryTest extends AbstractTest {
         var request = new ChatRequestDTOV1();
         request.setRequestContext(null);
 
-        var response = llmServiceFactory.chat(request);
-
-        assertThat(response.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+        try (var response = llmServiceFactory.chat(request)) {
+            assertThat(response.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+        }
     }
 
     @Test
@@ -87,19 +82,15 @@ class LlmServiceFactoryTest extends AbstractTest {
         agent.setModel(model);
 
         when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
-        var execution = new Execution();
-        execution.setExecutionId("exec-123");
-        when(executionService.createExecution(any(), any(), any())).thenReturn(execution);
-        when(executionService.startExecution("exec-123")).thenReturn(execution);
-        when(executionService.succeedExecution(any(), any())).thenReturn(execution);
-        when(ollamaLlmService.chat(any(), any(), any()))
-                .thenReturn(Response.ok("reply").build());
-
         var request = new ChatRequestDTOV1();
-        var response = llmServiceFactory.chat(request);
 
-        assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
-        verify(ollamaLlmService).chat(agent, request, "exec-123");
+        try (var mockedResponse = Response.ok("reply").build()) {
+            when(a2aOrchestrationService.invokeRoot(any(), any())).thenReturn(mockedResponse);
+
+            try (var response = llmServiceFactory.chat(request)) {
+                assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+            }
+        }
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
