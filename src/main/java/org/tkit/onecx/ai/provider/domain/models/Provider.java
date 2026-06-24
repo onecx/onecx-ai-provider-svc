@@ -36,9 +36,6 @@ public class Provider extends TraceableEntity {
     @Column(name = "LLM_URL")
     private String llmUrl;
 
-    @Column(name = "MODEL_NAME")
-    private String modelName;
-
     @Column(name = "API_KEY")
     private String apiKey;
 

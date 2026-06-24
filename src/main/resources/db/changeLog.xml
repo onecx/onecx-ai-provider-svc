@@ -7,4 +7,6 @@
     <include relativeToChangelogFile="true" file="v2/2026-06-10-migrate-tables.xml"/>
     <include relativeToChangelogFile="true" file="v3/2026-06-22-create-execution.xml"/>
     <include relativeToChangelogFile="true" file="v4/2026-06-23-create-external-agent.xml"/>
+    <include relativeToChangelogFile="true" file="v4/2026-06-23-add-tenant-to-tool-scaffold-skill.xml"/>
+    <include relativeToChangelogFile="true" file="v5/2026-06-23-provider-skill-model-adjustments.xml"/>
 </databaseChangeLog>

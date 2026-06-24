@@ -48,7 +48,7 @@ public class SkillRestController implements SkillInternalApi {
     @Override
     public Response findSkillByCriteria(SkillSearchCriteriaDTO skillSearchCriteriaDTO) {
         var criteria = mapper.mapCriteria(skillSearchCriteriaDTO);
-        var result = dao.findSkillsByCriteria(criteria);
+        var result = dao.findSkillsByCriteriaIncludingGlobal(criteria);
         return Response.status(Response.Status.OK).entity(mapper.mapPageResult(result)).build();
     }
 

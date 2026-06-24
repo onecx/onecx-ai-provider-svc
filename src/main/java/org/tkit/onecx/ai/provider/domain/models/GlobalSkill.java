@@ -1,10 +1,9 @@
 package org.tkit.onecx.ai.provider.domain.models;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
-import org.hibernate.annotations.TenantId;
+import org.hibernate.annotations.SQLRestriction;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -13,9 +12,6 @@ import lombok.Setter;
 @Setter
 @Entity
 @Table(name = "SKILL")
-public class Skill extends AbstractSkill {
-
-    @TenantId
-    @Column(name = "TENANT_ID")
-    private String tenantId;
+@SQLRestriction("TENANT_ID is null")
+public class GlobalSkill extends AbstractSkill {
 }

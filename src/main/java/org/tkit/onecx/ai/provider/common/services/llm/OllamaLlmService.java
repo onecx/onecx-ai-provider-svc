@@ -79,7 +79,7 @@ public class OllamaLlmService extends AbstractLlmService {
             }
 
             ChatRequest chatRequest = chatRequestBuilder.build();
-            ChatResponse chatResponse = modelChatRequestWithRetries(ollamaModel, chatRequest);
+            ChatResponse chatResponse = modelChatRequest(ollamaModel, chatRequest);
 
             if (chatResponse == null) {
                 log.error("Failed to get response from model after retries");
@@ -111,7 +111,7 @@ public class OllamaLlmService extends AbstractLlmService {
                         .toolSpecifications(toolSpecifications)
                         .build();
 
-                chatResponse = modelChatRequestWithRetries(ollamaModel, followUpRequest);
+                chatResponse = modelChatRequest(ollamaModel, followUpRequest);
 
                 // Check if follow-up request failed
                 if (chatResponse == null) {
@@ -153,7 +153,7 @@ public class OllamaLlmService extends AbstractLlmService {
             ChatRequest healthCheckRequest = ChatRequest.builder()
                     .messages(List.of(new UserMessage(HEALTH_CHECK_PROMPT)))
                     .build();
-            ChatResponse response = modelChatRequestWithRetries(ollamaModel, healthCheckRequest);
+            ChatResponse response = modelChatRequest(ollamaModel, healthCheckRequest);
             if (response == null || response.aiMessage() == null) {
                 log.warn("Ollama health check failed for provider '{}' at '{}'", provider.getName(), provider.getLlmUrl());
                 return UNHEALTHY;
@@ -167,6 +167,7 @@ public class OllamaLlmService extends AbstractLlmService {
     }
 
     private OllamaChatModel buildModel(Provider provider, String modelIdentifier) {
+        log.info("used model: {}", modelIdentifier);
         return OllamaChatModel.builder()
                 .baseUrl(provider.getLlmUrl())
                 .modelName(modelIdentifier)

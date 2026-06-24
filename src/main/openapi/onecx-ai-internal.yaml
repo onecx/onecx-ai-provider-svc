@@ -1323,22 +1323,22 @@ components:
         modificationUser: { type: string }
         id: { type: string }
         name: { type: string }
-        inputSchema: { type: string }
-        outputSchema: { type: string }
+        description: { type: string }
+        instruction: { type: string }
     CreateSkillRequest:
       type: object
       properties:
         name: { type: string }
-        inputSchema: { type: string }
-        outputSchema: { type: string }
+        description: { type: string }
+        instruction: { type: string }
     UpdateSkillRequest:
       type: object
       required: [ modificationCount ]
       properties:
         modificationCount: { format: int32, type: integer }
         name: { type: string }
-        inputSchema: { type: string }
-        outputSchema: { type: string }
+        description: { type: string }
+        instruction: { type: string }
     SkillSearchCriteria:
       type: object
       properties:
@@ -1473,8 +1473,6 @@ components:
           $ref: '#/components/schemas/ProviderType'
         llmUrl:
           type: string
-        modelName:
-          type: string
         apiKey:
           type: string
         authMode:
@@ -1493,7 +1491,6 @@ components:
     CreateProviderRequest:
       required:
         - name
-        - modelName
       type: object
       properties:
         name:
@@ -1504,8 +1501,6 @@ components:
           type: string
         llmUrl:
           type: string
-        modelName:
-          type: string
         apiKey:
           type: string
         authMode:
@@ -1513,7 +1508,6 @@ components:
     UpdateProviderRequest:
       required:
         - name
-        - modelName
         - modificationCount
       type: object
       properties:
@@ -1528,8 +1522,6 @@ components:
           type: string
         llmUrl:
           type: string
-        modelName:
-          type: string
         apiKey:
           type: string
         authMode:
@@ -1537,7 +1529,6 @@ components:
     Provider:
       required:
         - name
-        - modelName
       type: object
       properties:
         modificationCount:
@@ -1560,8 +1551,6 @@ components:
         description:
           type: string
         llmUrl:
-          type: string
-        modelName:
           type: string
         apiKey:
           type: string

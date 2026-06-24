@@ -48,7 +48,7 @@ public class ToolRestController implements ToolInternalApi {
     @Override
     public Response findToolByCriteria(ToolSearchCriteriaDTO criteriaDTO) {
         var criteria = mapper.mapCriteria(criteriaDTO);
-        var result = toolDAO.findToolsByCriteria(criteria);
+        var result = toolDAO.findToolsByCriteriaIncludingGlobal(criteria);
         return Response.status(Response.Status.OK).entity(mapper.mapPageResult(result)).build();
     }
 

@@ -1,0 +1,162 @@
+@startuml agent-runtime-processes
+
+title AI Provider Runtime Process Overview
+
+autonumber
+hide footbox
+
+actor Client
+boundary "Dispatch REST API\nDispatchRestV1Controller" as Dispatch
+control "LLM Service Factory\nLlmServiceFactory" as Factory
+control "A2A Orchestration\nA2AOrchestrationService" as A2A
+control "Execution Service\nExecutionService" as Execution
+control "Agent Dispatch\nAgentDispatchService" as AgentDispatch
+control "LLM Runtime\nOllamaLlmService" as Llm
+control "MCP Service\nMcpService" as Mcp
+collections "MCP Tool Registry\nMcpToolRegistry" as Registry
+database "Execution Store\nExecutionDAO / EXECUTION" as ExecStore
+participant "Ollama / LLM Provider" as Provider
+participant "MCP Server" as McpServer
+control "A2A Group Planner\nDefaultA2AGroupPlanner" as Planner
+control "Sequential Executor\nSequentialA2AExecutor" as SeqExec
+control "External Agent Discovery\nExternalAgentDiscoveryService" as Discovery
+participant "External Agent Endpoint" as ExternalAgent
+
+note over Client,ExternalAgent
+This sequence combines the implemented runtime paths:
+- root agent dispatch
+- MCP tool discovery and tool-call loop
+- internal A2A child-agent orchestration
+- external A2A discovery + invocation
+- execution state tracking in EXECUTION
+end note
+
+Client -> Dispatch : POST /chat(ChatRequestDTOV1)
+Dispatch -> Factory : chat(request)
+Factory -> Factory : resolve agent from request context
+
+alt agent not found
+  Factory --> Dispatch : 404 No agent found
+  Dispatch --> Client : error response
+else agent found
+  Factory -> A2A : invokeRoot(agent, request)
+  A2A -> Execution : createExecution(agent, null, requestExcerpt)
+  Execution -> ExecStore : insert EXECUTION(state=PENDING)
+  ExecStore --> Execution : executionId
+  Execution --> A2A : execution
+  A2A -> Execution : startExecution(executionId)
+  Execution -> ExecStore : update state=RUNNING,startTime
+
+  A2A -> AgentDispatch : dispatch(agent, request, executionId)
+  AgentDispatch -> Llm : chat(agent, request, executionId)
+
+  Llm -> Mcp : createToolRegistry(agent, executionId)
+  loop for each MCP tool configured on agent
+    Mcp -> McpServer : checkHealth() / listTools()
+    McpServer --> Mcp : ToolSpecification[]
+  end
+  Mcp --> Llm : McpToolRegistry
+  Llm -> Registry : getToolSpecifications()
+  Registry --> Llm : tool specs
+
+  Llm -> Provider : chat(messages + optional tool specs)
+  Provider --> Llm : ChatResponse
+
+  loop while AI response contains tool requests and maxIterations not reached
+    Llm -> Execution : waitForResource(executionId, WAITING_TOOL)
+    Execution -> ExecStore : update state=WAITING_TOOL
+
+    loop for each requested tool
+      Llm -> Registry : findByName(toolName)
+      alt tool missing or denied by policy
+        Registry --> Llm : not available / denied
+        Llm -> Llm : add tool error result message
+      else tool allowed
+        Registry --> Llm : McpTool
+        Llm -> McpServer : execute tool via MCP
+        McpServer --> Llm : tool result
+        Llm -> Execution : incrementToolCallCount(executionId)
+        Execution -> ExecStore : update toolCallCount
+      end
+    end
+
+    Llm -> Execution : resumeExecution(executionId)
+    Execution -> ExecStore : update state=RUNNING
+    Llm -> Provider : follow-up chat(messages + tool results)
+    Provider --> Llm : ChatResponse
+  end
+
+  Llm --> AgentDispatch : assistant response
+  AgentDispatch --> A2A : Response
+
+  alt root dispatch failed
+    A2A -> Execution : failExecution(executionId, errorType, errorMessage)
+    Execution -> ExecStore : update state=FAILED,endTime,error*
+    A2A --> Factory : error response + X-Execution-Id
+  else root dispatch succeeded
+    alt agent.a2aEnabled && depth within limit
+      A2A -> Planner : plan(agent groups)
+      Planner --> A2A : A2AExecutionPlan(SEQUENTIAL)
+      A2A -> SeqExec : execute(plan, unitExecutor)
+
+      loop for each group execution unit
+        SeqExec -> A2A : executeGroupUnit(...)
+        A2A -> A2A : resolve internal agents + external agents
+
+        loop for each invocation target
+          alt internal child agent
+            A2A -> Execution : waitForResource(parentExecutionId, WAITING_AGENT)
+            Execution -> ExecStore : update state=WAITING_AGENT
+            A2A -> A2A : invokeAgent(childAgent, request, groupId, null, depth+1)
+            note right of A2A
+            Recursive child invocation repeats:
+            - createExecution / startExecution
+            - dispatch to LLM runtime
+            - optional MCP tool loop
+            - optional nested A2A orchestration
+            - succeed / fail child execution
+            end note
+            A2A -> Execution : incrementAgentCallCount(parentExecutionId)
+            Execution -> ExecStore : update agentCallCount
+            A2A -> Execution : resumeExecution(parentExecutionId)
+            Execution -> ExecStore : update state=RUNNING
+          else external agent
+            A2A -> Execution : waitForResource(parentExecutionId, WAITING_AGENT)
+            Execution -> ExecStore : update state=WAITING_AGENT
+            A2A -> Discovery : fetchAgentCard(discoveryUrl)
+            Discovery -> ExternalAgent : GET discovery URL
+            ExternalAgent --> Discovery : AgentCard(url)
+            Discovery --> A2A : AgentCard
+            A2A -> ExternalAgent : POST discovered endpoint with ChatRequestDTOV1
+            ExternalAgent --> A2A : ChatMessageDTOV1 / raw response
+            A2A -> Execution : incrementAgentCallCount(parentExecutionId)
+            Execution -> ExecStore : update agentCallCount
+            A2A -> Execution : resumeExecution(parentExecutionId)
+            Execution -> ExecStore : update state=RUNNING
+          end
+        end
+      end
+    else no A2A orchestration
+      A2A -> A2A : return root LLM result only
+    end
+
+    A2A -> Execution : succeedExecution(executionId, mergedResult)
+    Execution -> ExecStore : update state=SUCCEEDED,endTime,result,durationMs
+    A2A --> Factory : assistant response + X-Execution-Id
+  end
+
+  Factory --> Dispatch : HTTP response
+  Dispatch --> Client : ChatMessageDTOV1 + X-Execution-Id
+end
+
+note over Execution,ExecStore
+Observed execution state transitions:
+PENDING -> RUNNING
+RUNNING -> WAITING_TOOL -> RUNNING
+RUNNING -> WAITING_AGENT -> RUNNING
+RUNNING -> SUCCEEDED | FAILED | CANCELLED
+end note
+
+@enduml
+
+

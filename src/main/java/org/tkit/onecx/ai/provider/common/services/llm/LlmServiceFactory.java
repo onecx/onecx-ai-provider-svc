@@ -32,6 +32,7 @@ public class LlmServiceFactory {
      * Routes the chat request to the appropriate LLM service based on provider type.
      */
     public Response chat(ChatRequestDTOV1 chatRequestDTO) {
+        log.info("Received chat request: {}", chatRequestDTO);
         var agent = agentService.findAgentByRequestContext(chatRequestDTO.getRequestContext());
         if (agent == null) {
             log.error("No agent found for request context: {}", chatRequestDTO.getRequestContext());

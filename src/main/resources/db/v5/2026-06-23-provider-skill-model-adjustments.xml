@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="1782230400000-1" author="dev">
+        <dropColumn tableName="provider" columnName="model_name"/>
+    </changeSet>
+
+    <changeSet id="1782230400000-2" author="dev">
+        <dropColumn tableName="skill" columnName="input_schema"/>
+    </changeSet>
+
+    <changeSet id="1782230400000-3" author="dev">
+        <dropColumn tableName="skill" columnName="output_schema"/>
+    </changeSet>
+
+    <changeSet id="1782230400000-4" author="dev">
+        <addColumn tableName="skill">
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="instruction" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>
+

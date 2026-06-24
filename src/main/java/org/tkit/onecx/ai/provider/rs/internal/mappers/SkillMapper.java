@@ -25,12 +25,14 @@ public interface SkillMapper {
     @Mapping(target = "creationUser", ignore = true)
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
+    @Mapping(target = "tenantId", ignore = true)
     Skill create(CreateSkillRequestDTO dto);
 
     SkillDTO map(Skill skill);
 
     @Mapping(target = "persisted", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
+    @Mapping(target = "tenantId", ignore = true)
     Skill map(SkillDTO dto);
 
     @Mapping(target = "persisted", ignore = true)
@@ -40,6 +42,7 @@ public interface SkillMapper {
     @Mapping(target = "creationUser", ignore = true)
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
+    @Mapping(target = "tenantId", ignore = true)
     void update(@MappingTarget Skill skill, UpdateSkillRequestDTO dto);
 
     SkillSearchCriteria mapCriteria(SkillSearchCriteriaDTO dto);

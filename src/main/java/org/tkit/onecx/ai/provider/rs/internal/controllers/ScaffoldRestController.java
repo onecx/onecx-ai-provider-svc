@@ -48,7 +48,7 @@ public class ScaffoldRestController implements ScaffoldInternalApi {
     @Override
     public Response findScaffoldByCriteria(ScaffoldSearchCriteriaDTO scaffoldSearchCriteriaDTO) {
         var criteria = mapper.mapCriteria(scaffoldSearchCriteriaDTO);
-        var result = dao.findScaffoldsByCriteria(criteria);
+        var result = dao.findScaffoldsByCriteriaIncludingGlobal(criteria);
         return Response.status(Response.Status.OK).entity(mapper.mapPageResult(result)).build();
     }
 

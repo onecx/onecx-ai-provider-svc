@@ -8,34 +8,35 @@ class AGENT {
   uuid id
   string tenantId
   string name
+  string description
   uuid model_id
   uuid scaffold_id
   uuid runtime_config_id
   text additional_prompt
   boolean a2a_enabled
-  integer version
-  string status (draft, live, deprecated)
+  string status (DRAFT, LIVE, DEPRECATED)
 }
 
-class FILTER {
-  string filter_key
-  string filter_value
+class FILTER <<embedded>> {
+  string key (APP_ID)
+  string value
 }
 
 class SCAFFOLD {
   uuid id
+  string tenantId
   string name
   text system_prompt
   string source_product
-  integer version
 }
 
 class PROVIDER {
   uuid id
   string tenantId
   string name
-  string type (OpenAI, OLLAMA)
-  string url
+  string description
+  string type (OPENAI, OLLAMA)
+  string llmUrl
   string apiKey
   string authMode (API_KEY, OAUTH)
 }
@@ -45,38 +46,39 @@ class MODEL {
   string tenantId
   uuid provider_id
   string name
+  string description
   string modelIdentifier
-  json modelConfig
-  string communicationMode (sync | async | stream)
+  string modelConfig
+  string communicationMode (SYNC, ASYNC, STREAM)
 }
 
 class RUNTIME_CONFIG {
   uuid id
   string tenantId
-  string type (OneCX, AWS_BEDROCK)
+  string type (ONECX, AWS_BEDROCK)
   uuid provider_id
   string endpoint
-  json auth_config
-  integer version
+  string authConfig
 }
 
 class TOOL {
   uuid id
+  string tenantId
   string name
   string description
-  string type (MCP | HTTP | CUSTOM)
+  string type (MCP, HTTP, CUSTOM)
   string url
   string apiKey
-  string executionPolicy
+  string executionPolicy (ALWAYS_ASK, NEVER_ASK)
   string authMode (API_KEY, OAUTH)
 }
 
 class SKILL {
   uuid id
+  string tenantId
   string name
-  json input_schema
-  json output_schema
-  integer version
+  string description
+  string instruction
 }
 
 class AGENT_GROUP {
@@ -85,20 +87,38 @@ class AGENT_GROUP {
   string name
 }
 
-' class WORKFLOW {
-'   uuid id
-'   string name
-'   string type
-' }
+class EXECUTION {
+  uuid id
+  string tenantId
+  string executionId
+  string state (PENDING, RUNNING, WAITING_TOOL, WAITING_AGENT, SUCCEEDED, FAILED, CANCELLED)
+  uuid agent_id
+  uuid agentIdSnapshot
+  integer agentVersionSnapshot
+  uuid groupId
+  string groupNameSnapshot
+  timestamp startTime
+  timestamp endTime
+  long durationMs
+  integer toolCallCount
+  integer agentCallCount
+  string errorType
+  string errorMessage
+  text result
+  text requestExcerpt
+  boolean cancelled
+}
 
-' class WORKFLOW_STEP {
-'   uuid id
-'   uuid workflow_id
-'   uuid agent_id
-'   int step_order
-'   json input_mapping
-'   json output_mapping
-' }
+class EXTERNAL_AGENT {
+  uuid id
+  string tenantId
+  string name
+  string description
+  string discoveryUrl
+  string apiKey
+  string authMode (API_KEY, OAUTH)
+  boolean enabled
+}
 
 ' =========================
 ' RELATION TABLES (_RL)
@@ -109,15 +129,18 @@ class SCAFFOLD_SKILL_RL {
   uuid skill_id
 }
 
-
 class AGENT_TOOL_RL {
   uuid agent_id
   uuid tool_id
 }
 
-
 class AGENT_GROUP_RL {
   uuid agent_id
+  uuid group_id
+}
+
+class EXTERNAL_AGENT_GROUP_RL {
+  uuid external_agent_id
   uuid group_id
 }
 
@@ -125,26 +148,27 @@ class AGENT_GROUP_RL {
 ' RELATIONSHIPS
 ' =========================
 
+PROVIDER "1" --> "0..*" MODEL : defines
+PROVIDER "1" --> "0..*" RUNTIME_CONFIG : configures
+
+MODEL "1" --> "0..*" AGENT : configured_as
+RUNTIME_CONFIG "1" --> "0..*" AGENT : runs_with
 SCAFFOLD "1" --> "0..*" AGENT : base_for
 
-AGENT "1" --> "1" RUNTIME_CONFIG : runs_with
-
-PROVIDER "1" --> "0..*" MODEL : defines
-RUNTIME_CONFIG "1" --> "1" PROVIDER : uses
-MODEL "1" --> "0..*" AGENT : configured_as
+AGENT "1" *-- "0..1" FILTER : has
 
 SCAFFOLD "1" --> "0..*" SCAFFOLD_SKILL_RL : defines
 SKILL "1" --> "0..*" SCAFFOLD_SKILL_RL : included_in
 
 AGENT "1" --> "0..*" AGENT_TOOL_RL : uses
-TOOL "1" --> "0..*" AGENT_TOOL_RL : assigned
+TOOL "1" --> "0..*" AGENT_TOOL_RL : assigned_to
 
 AGENT "1" --> "0..*" AGENT_GROUP_RL : belongs_to
 AGENT_GROUP "1" --> "0..*" AGENT_GROUP_RL : contains
 
-AGENT "1" --> "0..1" FILTER : has
+EXTERNAL_AGENT "1" --> "0..*" EXTERNAL_AGENT_GROUP_RL : belongs_to
+AGENT_GROUP "1" --> "0..*" EXTERNAL_AGENT_GROUP_RL : includes
 
-' WORKFLOW "1" --> "0..*" WORKFLOW_STEP : consists_of
-' AGENT "1" --> "0..*" WORKFLOW_STEP : executes
+AGENT "1" --> "0..*" EXECUTION : executes
 
 @enduml

@@ -188,15 +188,14 @@ public abstract class AbstractLlmService {
         return chatMessageDTOV1;
     }
 
-    @Retry
-    @Fallback(fallbackMethod = "modelChatFallback")
-    protected ChatResponse modelChatRequestWithRetries(ChatModel chatModel, ChatRequest chatRequest) {
-        return chatModel.chat(chatRequest);
-    }
-
-    protected ChatResponse modelChatFallback(ChatModel chatModel, ChatRequest chatRequest) {
-        log.error("Chat request failed after retries. Unable to get response from LLM model");
-        return null;
+    protected ChatResponse modelChatRequest(ChatModel chatModel, ChatRequest chatRequest) {
+        log.info("CHATREQUEST: {}", chatRequest.toString());
+        try {
+            return chatModel.chat(chatRequest);
+        } catch (Exception e) {
+            log.error("Error during chat request: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     public abstract String getHealthStatus(Provider provider);

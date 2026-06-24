@@ -7,10 +7,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -24,14 +27,22 @@ import org.tkit.onecx.ai.provider.domain.daos.ExternalAgentDAO;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.Execution;
 import org.tkit.onecx.ai.provider.domain.models.ExternalAgent;
+import org.tkit.onecx.ai.provider.domain.models.Provider;
 import org.tkit.onecx.ai.provider.domain.models.enums.AgentStatus;
 import org.tkit.onecx.ai.provider.domain.models.enums.ExecutionState;
+import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.supervisor.SupervisorAgent;
+import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.ollama.OllamaChatModel;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
+import io.quarkiverse.langchain4j.jaxrsclient.JaxRsHttpClientBuilderFactory;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -81,7 +92,7 @@ public class A2AOrchestrationService {
                     .entity("Agent cannot be null")
                     .build();
         }
-
+        log.info("Invoking root agent");
         Execution execution = executionService.createExecution(agent, null, extractRequestExcerpt(chatRequestDTO));
         String executionId = execution.getExecutionId();
         try {
@@ -92,7 +103,6 @@ public class A2AOrchestrationService {
             if (!result.successful()) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(responseText.isBlank() ? "Agent invocation failed" : responseText)
-                        .header("X-Execution-Id", executionId)
                         .build();
             }
             return Response.ok(mapToChatMessageResponseDTO(responseText))
@@ -185,36 +195,98 @@ public class A2AOrchestrationService {
 
     private String executeGroupUnit(Agent agent, ChatRequestDTOV1 chatRequestDTO, String parentExecutionId,
             A2AExecutionUnit unit, int depth, Set<String> activePath) {
-        List<String> results = new ArrayList<>();
         List<InvocationTarget> targets = resolveTargets(agent, unit);
+        if (targets.isEmpty()) {
+            return "";
+        }
 
+        if (targets.size() > 1) {
+            String supervised = executeGroupUnitWithSupervisor(agent, chatRequestDTO, parentExecutionId, unit, depth,
+                    activePath, targets);
+            if (supervised != null) {
+                return supervised;
+            }
+        }
+
+        List<String> results = new ArrayList<>();
         for (InvocationTarget target : targets) {
-            try {
-                if (target.externalAgent() != null) {
-                    results.addAll(invokeExternalTarget(parentExecutionId, chatRequestDTO, unit, target.externalAgent()));
-                    continue;
-                }
-
-                if (target.agent() == null) {
-                    continue;
-                }
-
-                transitionParentToWaiting(parentExecutionId);
-
-                AgentInvocationResult childResult = invokeAgent(target.agent(), chatRequestDTO, unit.groupId(),
-                        null, depth, activePath, false);
-                if (childResult.responseText() != null && !childResult.responseText().isBlank()) {
-                    results.add(formatTargetResult(target.agent().getName(), unit.groupName(), childResult.responseText()));
-                }
-                if (childResult.successful()) {
-                    incrementParentAgentCount(parentExecutionId);
-                }
-            } finally {
-                resumeParentIfNeeded(parentExecutionId);
+            String result = invokeTarget(parentExecutionId, chatRequestDTO, unit, depth, activePath, target);
+            if (result != null && !result.isBlank()) {
+                results.add(result);
             }
         }
 
         return String.join(System.lineSeparator(), results);
+    }
+
+    private String executeGroupUnitWithSupervisor(Agent parentAgent, ChatRequestDTOV1 chatRequestDTO,
+            String parentExecutionId, A2AExecutionUnit unit, int depth, Set<String> activePath,
+            List<InvocationTarget> targets) {
+        try {
+            ChatModel supervisorModel = createSupervisorModel(parentAgent);
+            if (supervisorModel == null) {
+                return null;
+            }
+
+            List<String> selectedResults = new ArrayList<>();
+            List<Object> supervisorSubAgents = new ArrayList<>();
+            for (InvocationTarget target : targets) {
+                supervisorSubAgents.add(new SupervisorDelegate(
+                        () -> invokeTarget(parentExecutionId, chatRequestDTO, unit, depth, activePath, target),
+                        selectedResults));
+            }
+
+            SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
+                    .chatModel(supervisorModel)
+                    .name("a2a-supervisor")
+                    .description("Selects and calls only relevant sub-agents for the user's request")
+                    .supervisorContext(buildSupervisorContext(unit, targets))
+                    .maxAgentsInvocations(targets.size())
+                    .responseStrategy(SupervisorResponseStrategy.LAST)
+                    .subAgents(supervisorSubAgents)
+                    .build();
+
+            supervisor.invoke(extractUserMessage(chatRequestDTO));
+            return String.join(System.lineSeparator(), selectedResults);
+        } catch (Exception ex) {
+            log.warn("Supervisor selection failed for group '{}' - falling back to sequential invocation",
+                    unit != null ? unit.groupName() : null, ex);
+            return null;
+        }
+    }
+
+    private String invokeTarget(String parentExecutionId, ChatRequestDTOV1 chatRequestDTO,
+            A2AExecutionUnit unit, int depth, Set<String> activePath, InvocationTarget target) {
+        if (target == null) {
+            return null;
+        }
+
+        try {
+            if (target.externalAgent() != null) {
+                List<String> externalResults = invokeExternalTarget(parentExecutionId, chatRequestDTO, unit,
+                        target.externalAgent());
+                return externalResults.isEmpty() ? null : String.join(System.lineSeparator(), externalResults);
+            }
+
+            if (target.agent() == null) {
+                return null;
+            }
+
+            transitionParentToWaiting(parentExecutionId);
+            AgentInvocationResult childResult = invokeAgent(target.agent(), chatRequestDTO, unit.groupId(),
+                    null, depth, activePath, false);
+            if (childResult.successful()) {
+                incrementParentAgentCount(parentExecutionId);
+            }
+
+            if (childResult.responseText() == null || childResult.responseText().isBlank()) {
+                return null;
+            }
+
+            return formatTargetResult(target.agent().getName(), unit.groupName(), childResult.responseText());
+        } finally {
+            resumeParentIfNeeded(parentExecutionId);
+        }
     }
 
     private List<InvocationTarget> resolveTargets(Agent agent, A2AExecutionUnit unit) {
@@ -433,6 +505,88 @@ public class A2AOrchestrationService {
                 + responseText.trim();
     }
 
+    private ChatModel createSupervisorModel(Agent parentAgent) {
+        if (parentAgent == null || parentAgent.getModel() == null || parentAgent.getModel().getProvider() == null) {
+            return null;
+        }
+
+        Provider provider = parentAgent.getModel().getProvider();
+        if (!ProviderType.OLLAMA.equals(provider.getType()) || isBlank(provider.getLlmUrl())) {
+            return null;
+        }
+
+        String modelName = parentAgent.getModel().getModelIdentifier();
+        if (isBlank(modelName)) {
+            return null;
+        }
+
+        long timeout = 60L;
+        boolean logRequests = false;
+        boolean logResponses = false;
+        try {
+            if (dispatchConfig != null && dispatchConfig.providerConfig() != null) {
+                timeout = dispatchConfig.providerConfig().timeout();
+                logRequests = dispatchConfig.providerConfig().logRequests();
+                logResponses = dispatchConfig.providerConfig().logResponse();
+            }
+        } catch (Exception ex) {
+            log.debug("Unable to read provider dispatch configuration for supervisor model", ex);
+        }
+
+        return OllamaChatModel.builder()
+                .baseUrl(provider.getLlmUrl())
+                .modelName(modelName)
+                .customHeaders(createProviderHeaders(provider))
+                .timeout(Duration.ofSeconds(timeout))
+                .logRequests(logRequests)
+                .logResponses(logResponses)
+                .httpClientBuilder(new JaxRsHttpClientBuilderFactory().create())
+                .build();
+    }
+
+    private Map<String, String> createProviderHeaders(Provider provider) {
+        Map<String, String> headers = new HashMap<>();
+        if (provider != null && !isBlank(provider.getApiKey())) {
+            headers.put("Authorization", provider.getApiKey());
+        }
+        return headers;
+    }
+
+    private String buildSupervisorContext(A2AExecutionUnit unit, List<InvocationTarget> targets) {
+        String groupName = unit != null ? unit.groupName() : null;
+        StringBuilder sb = new StringBuilder(
+                "You are a routing supervisor. Call only the sub-agents that are relevant to the user's request.")
+                .append(System.lineSeparator())
+                .append("Do not call unrelated domain agents.")
+                .append(System.lineSeparator())
+                .append("Current group: ")
+                .append(isBlank(groupName) ? "A2A group" : groupName)
+                .append(System.lineSeparator())
+                .append("Available sub-agents:");
+
+        for (InvocationTarget target : targets) {
+            String name = target.agent() != null ? target.agent().getName() : target.externalAgent().getName();
+            String description = target.agent() != null ? target.agent().getDescription()
+                    : target.externalAgent().getDescription();
+            sb.append(System.lineSeparator())
+                    .append("- ")
+                    .append(safeString(name));
+            if (!isBlank(description)) {
+                sb.append(": ").append(description.trim());
+            }
+        }
+
+        return sb.toString();
+    }
+
+    private String extractUserMessage(ChatRequestDTOV1 chatRequestDTO) {
+        if (chatRequestDTO == null || chatRequestDTO.getChatMessage() == null
+                || isBlank(chatRequestDTO.getChatMessage().getMessage())) {
+            return "";
+        }
+        return chatRequestDTO.getChatMessage().getMessage();
+    }
+
     private String agentKey(Agent agent) {
         if (agent == null) {
             return "";
@@ -449,6 +603,27 @@ public class A2AOrchestrationService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private static final class SupervisorDelegate {
+
+        private final Supplier<String> invocation;
+        private final List<String> sink;
+
+        private SupervisorDelegate(Supplier<String> invocation, List<String> sink) {
+            this.invocation = invocation;
+            this.sink = sink;
+        }
+
+        @SuppressWarnings("unused")
+        @dev.langchain4j.agentic.Agent(description = "Invokes this specialized sub-agent when relevant")
+        public String call() {
+            String result = invocation.get();
+            if (result != null && !result.isBlank()) {
+                sink.add(result);
+            }
+            return result == null ? "" : result;
+        }
     }
 
     private record InvocationTarget(Agent agent, ExternalAgent externalAgent) {

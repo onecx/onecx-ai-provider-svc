@@ -26,6 +26,7 @@ public interface ScaffoldMapper {
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     @Mapping(target = "skills", ignore = true)
+    @Mapping(target = "tenantId", ignore = true)
     Scaffold create(CreateScaffoldRequestDTO dto);
 
     @Mapping(target = "removeSkillsItem", ignore = true)
@@ -34,6 +35,7 @@ public interface ScaffoldMapper {
     @Mapping(target = "persisted", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     @Mapping(target = "skills", ignore = true)
+    @Mapping(target = "tenantId", ignore = true)
     Scaffold map(ScaffoldDTO dto);
 
     @Mapping(target = "persisted", ignore = true)
@@ -44,6 +46,7 @@ public interface ScaffoldMapper {
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     @Mapping(target = "skills", ignore = true)
+    @Mapping(target = "tenantId", ignore = true)
     void update(@MappingTarget Scaffold scaffold, UpdateScaffoldRequestDTO dto);
 
     ScaffoldSearchCriteria mapCriteria(ScaffoldSearchCriteriaDTO dto);

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
     <!-- Provider -->
-    <PROVIDER guid="provider-11-111" optlock="0" name="provider1" description="provider_description_1" llm_url="http://some.url.org" model_name="model1" tenant_id="default" creationuser="user1"/>
-    <PROVIDER guid="provider-22-222" optlock="0" name="provider2" description="provider_description_2" llm_url="http://some.url.org" model_name="model2" tenant_id="default" creationuser="user1" />
+    <PROVIDER guid="provider-11-111" optlock="0" name="provider1" description="provider_description_1" llm_url="http://some.url.org" tenant_id="default" creationuser="user1"/>
+    <PROVIDER guid="provider-22-222" optlock="0" name="provider2" description="provider_description_2" llm_url="http://some.url.org" tenant_id="default" creationuser="user1" />
 
     <!-- Configuration -->
     <CONFIGURATION guid="config-simple" optlock="0" name="configuration1" description="configuration_description_1" llm_system_message="configuration_llm_system_message_1" tenant_id="default" provider_id="provider-11-111" creationuser="user1"/>

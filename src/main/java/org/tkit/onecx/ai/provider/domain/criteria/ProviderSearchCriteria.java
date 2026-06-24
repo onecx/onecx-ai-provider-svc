@@ -15,8 +15,6 @@ public class ProviderSearchCriteria {
 
     private String llmUrl;
 
-    private String modelName;
-
     private Integer pageNumber;
 
     private Integer pageSize;

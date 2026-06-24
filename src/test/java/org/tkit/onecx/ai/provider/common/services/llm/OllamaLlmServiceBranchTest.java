@@ -225,7 +225,7 @@ class OllamaLlmServiceBranchTest extends AbstractTest {
         }
 
         @Override
-        protected ChatResponse modelChatRequestWithRetries(ChatModel chatModel, ChatRequest chatRequest) {
+        protected ChatResponse modelChatRequest(ChatModel chatModel, ChatRequest chatRequest) {
             capturedRequests.add(chatRequest);
             Object next = modelResponses.remove();
             if (next instanceof RuntimeException runtimeException) {
