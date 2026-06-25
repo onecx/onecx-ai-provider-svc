@@ -1,7 +1,14 @@
 package org.tkit.onecx.ai.provider.common.services.agentic.runtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.Map;
 
 import jakarta.inject.Inject;
 
@@ -13,6 +20,7 @@ import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 
+import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -53,6 +61,31 @@ class RuntimeAgentFactoryTest {
         }
     }
 
+    @Test
+    void leadAgent_exposesPeersAsOptionalDelegateTools() {
+        Agent agent = agent();
+        ChatRequestDTOV1 request = chatRequest("How big is a tiger?");
+        CapturingChatModel chatModel = new CapturingChatModel("Tigers are large cats.");
+        when(chatModelFactory.createChatModel(agent)).thenReturn(chatModel);
+        when(mcpService.createToolRegistry(agent, "exec-root")).thenReturn(McpToolRegistry.empty());
+
+        UntypedAgent delegateInvoker = mock(UntypedAgent.class);
+        RuntimeAgent delegate = new RuntimeAgent("onecx-agent", "Expert for OneCX documentation", delegateInvoker, null);
+
+        try (RuntimeAgent runtimeAgent = factory.leadAgent(agent, request, "exec-root", List.of(delegate))) {
+            Object result = runtimeAgent.invoker()
+                    .invokeWithAgenticScope(Map.of(RuntimeAgentFactory.INPUT_REQUEST, request))
+                    .result();
+
+            assertThat(result).isEqualTo("Tigers are large cats.");
+            assertThat(chatModel.lastRequest.toolSpecifications())
+                    .extracting(spec -> spec.name())
+                    .contains("delegate_onecx_agent");
+            assertThat(chatModel.lastRequest.toString()).contains("Optional peer agents are available as tools");
+            verify(delegateInvoker, never()).invokeWithAgenticScope(any());
+        }
+    }
+
     private Agent agent() {
         Provider provider = new Provider();
         provider.setType(ProviderType.OLLAMA);
@@ -89,6 +122,24 @@ class RuntimeAgentFactoryTest {
 
         @Override
         public ChatResponse doChat(ChatRequest chatRequest) {
+            return ChatResponse.builder()
+                    .aiMessage(AiMessage.from(response))
+                    .build();
+        }
+    }
+
+    private static final class CapturingChatModel implements ChatModel {
+
+        private final String response;
+        private ChatRequest lastRequest;
+
+        private CapturingChatModel(String response) {
+            this.response = response;
+        }
+
+        @Override
+        public ChatResponse doChat(ChatRequest chatRequest) {
+            lastRequest = chatRequest;
             return ChatResponse.builder()
                     .aiMessage(AiMessage.from(response))
                     .build();

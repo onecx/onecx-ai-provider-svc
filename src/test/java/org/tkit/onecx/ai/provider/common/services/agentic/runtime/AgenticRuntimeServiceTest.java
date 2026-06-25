@@ -7,7 +7,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -21,26 +20,17 @@ import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
 import org.tkit.onecx.ai.provider.domain.models.Execution;
 import org.tkit.onecx.ai.provider.domain.models.enums.AgentGroupOrchestrationMode;
 
-import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
 
 @ExtendWith(MockitoExtension.class)
-class AgenticRuntimeServiceTest {
+public class AgenticRuntimeServiceTest {
 
     @Mock
     ExecutionService executionService;
 
     @Mock
     RuntimeAgentFactory runtimeAgentFactory;
-
-    @Mock
-    ChatModelFactory chatModelFactory;
-
-    @Mock
-    UntypedAgent rootUntypedAgent;
 
     AgenticRuntimeService service;
 
@@ -49,7 +39,6 @@ class AgenticRuntimeServiceTest {
         service = new AgenticRuntimeService();
         service.executionService = executionService;
         service.runtimeAgentFactory = runtimeAgentFactory;
-        service.chatModelFactory = chatModelFactory;
     }
 
     @Test
@@ -64,16 +53,13 @@ class AgenticRuntimeServiceTest {
         ChatRequestDTOV1 request = chatRequest("Hello");
         when(executionService.createExecution(eq(root), eq(null), any())).thenReturn(rootExecution);
         when(runtimeAgentFactory.rootAgent(root, request, "exec-root"))
-                .thenReturn(new RuntimeAgent("root", "Root agent", rootUntypedAgent, null));
-        when(rootUntypedAgent.invokeWithAgenticScope(any()))
-                .thenReturn(new ResultWithAgenticScope<>(null, "root answer"));
+                .thenReturn(staticRuntimeAgent("root answer"));
 
         AgenticRuntimeResult result = service.invokeRoot(root, request);
 
         assertThat(result.successful()).isTrue();
         assertThat(result.executionId()).isEqualTo("exec-root");
         assertThat(result.responseText()).isEqualTo("root answer");
-        verify(rootUntypedAgent).invokeWithAgenticScope(any(Map.class));
         verify(executionService).succeedExecution("exec-root", "root answer");
         verify(runtimeAgentFactory, never()).agentsForGroup(any(), any(), any(), any());
     }
@@ -97,9 +83,7 @@ class AgenticRuntimeServiceTest {
         ChatRequestDTOV1 request = chatRequest("Hello");
         when(executionService.createExecution(eq(root), eq(null), any())).thenReturn(rootExecution);
         when(runtimeAgentFactory.rootAgent(root, request, "exec-root"))
-                .thenReturn(new RuntimeAgent("root", "Root agent", rootUntypedAgent, null));
-        when(rootUntypedAgent.invokeWithAgenticScope(any()))
-                .thenReturn(new ResultWithAgenticScope<>(null, "root answer"));
+                .thenReturn(staticRuntimeAgent("root answer"));
         when(runtimeAgentFactory.agentsForGroup(root, group, request, "exec-root")).thenReturn(java.util.List.of());
 
         AgenticRuntimeResult result = service.invokeRoot(root, request);
@@ -108,6 +92,10 @@ class AgenticRuntimeServiceTest {
         assertThat(result.responseText()).isEqualTo("root answer");
         verify(runtimeAgentFactory).agentsForGroup(root, group, request, "exec-root");
         verify(executionService).succeedExecution("exec-root", "root answer");
+    }
+
+    private RuntimeAgent staticRuntimeAgent(String output) {
+        return new RuntimeAgent("root", "Root agent", new StaticTextAgent(output), null, null);
     }
 
     private ChatRequestDTOV1 chatRequest(String text) {
@@ -119,33 +107,18 @@ class AgenticRuntimeServiceTest {
         return request;
     }
 
-    @SuppressWarnings("unused")
-    private static final class StaticUntypedAgent implements UntypedAgent {
+    public static final class StaticTextAgent implements TextAgent {
 
         private final String output;
 
-        private StaticUntypedAgent(String output) {
+        public StaticTextAgent(String output) {
             this.output = output;
         }
 
         @Override
-        public Object invoke(Map<String, Object> input) {
+        @dev.langchain4j.agentic.Agent
+        public String invoke() {
             return output;
-        }
-
-        @Override
-        public ResultWithAgenticScope<String> invokeWithAgenticScope(Map<String, Object> input) {
-            return new ResultWithAgenticScope<>(null, output);
-        }
-
-        @Override
-        public AgenticScope getAgenticScope(Object memoryId) {
-            return null;
-        }
-
-        @Override
-        public boolean evictAgenticScope(Object memoryId) {
-            return false;
         }
     }
 }
