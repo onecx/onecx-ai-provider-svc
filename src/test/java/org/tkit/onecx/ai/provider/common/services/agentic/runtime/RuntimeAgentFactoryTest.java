@@ -42,7 +42,10 @@ class RuntimeAgentFactoryTest {
         when(mcpService.createToolRegistry(agent, "exec-root")).thenReturn(McpToolRegistry.empty());
 
         try (RuntimeAgent runtimeAgent = factory.rootAgent(agent, request, "exec-root")) {
-            Object result = runtimeAgent.agent()
+            assertThat(runtimeAgent.agent()).isInstanceOf(TextAgent.class);
+            assertThat(runtimeAgent.invoker()).isNotSameAs(runtimeAgent.agent());
+
+            Object result = runtimeAgent.invoker()
                     .invokeWithAgenticScope(java.util.Map.of(RuntimeAgentFactory.INPUT_REQUEST, request))
                     .result();
 

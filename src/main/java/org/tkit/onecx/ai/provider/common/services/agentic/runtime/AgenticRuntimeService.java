@@ -51,7 +51,7 @@ public class AgenticRuntimeService {
         try (RuntimeAgent rootAgent = runtimeAgentFactory.rootAgent(agent, request, executionId)) {
             executionService.startExecution(executionId);
 
-            String rootResponse = invokeAgent(rootAgent.agent(), request);
+            String rootResponse = invokeAgent(rootAgent.invoker(), request);
             String finalResponse = rootResponse;
             if (Boolean.TRUE.equals(agent.getA2aEnabled()) && agent.getGroups() != null && !agent.getGroups().isEmpty()) {
                 String collaboration = executeGroups(agent, request, executionId);

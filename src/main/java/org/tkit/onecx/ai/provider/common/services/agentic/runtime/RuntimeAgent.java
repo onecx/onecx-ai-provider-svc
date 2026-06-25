@@ -5,8 +5,13 @@ import dev.langchain4j.agentic.UntypedAgent;
 public record RuntimeAgent(
         String name,
         String description,
-        UntypedAgent agent,
+        Object agent,
+        UntypedAgent invoker,
         AutoCloseable resources) implements AutoCloseable {
+
+    public RuntimeAgent(String name, String description, UntypedAgent agent, AutoCloseable resources) {
+        this(name, description, agent, agent, resources);
+    }
 
     @Override
     public void close() {

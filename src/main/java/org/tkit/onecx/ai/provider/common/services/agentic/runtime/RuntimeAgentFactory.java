@@ -31,6 +31,10 @@ import org.tkit.onecx.ai.provider.domain.models.enums.ExecutionState;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.observability.AgentInvocationError;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentRequest;
+import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
@@ -120,15 +124,18 @@ public class RuntimeAgentFactory {
                 .userMessageProvider(input -> userMessage(requestFromInput(input, request)))
                 .maxSequentialToolsInvocations((int) dispatchConfig.mcpConfig().maxIterations());
 
+        if (childExecution) {
+            builder.listener(new ExecutionTrackingAgentListener(agent, groupId, request, executionIdOrParent,
+                    activeExecutionId));
+        }
+
         if (!toolExecutors.isEmpty()) {
             builder.tools(toolExecutors);
         }
 
-        UntypedAgent agenticAgent = new TextAgentAdapter(builder.build());
-        UntypedAgent trackedAgent = childExecution
-                ? new LocalExecutionTrackingAgent(agenticAgent, agent, groupId, request, executionIdOrParent, activeExecutionId)
-                : agenticAgent;
-        return new RuntimeAgent(runtimeName(agent), runtimeDescription(agent), trackedAgent, toolRegistry::close);
+        TextAgent agenticAgent = builder.build();
+        UntypedAgent invoker = new TextAgentAdapter(agenticAgent);
+        return new RuntimeAgent(runtimeName(agent), runtimeDescription(agent), agenticAgent, invoker, toolRegistry::close);
     }
 
     private RuntimeAgent buildRemoteAgent(ExternalAgent externalAgent, String parentExecutionId) {
@@ -150,9 +157,9 @@ public class RuntimeAgentFactory {
         UntypedAgent a2aAgent = AgenticServices.a2aBuilder(card.url())
                 .inputKeys(INPUT_REQUEST)
                 .outputKey("response")
+                .listener(new RemoteExecutionTrackingAgentListener(parentExecutionId, runtimeName(externalAgent)))
                 .build();
-        UntypedAgent trackedAgent = new RemoteExecutionTrackingAgent(a2aAgent, parentExecutionId, runtimeName(externalAgent));
-        return new RuntimeAgent(runtimeName(externalAgent), runtimeDescription(externalAgent), trackedAgent, null);
+        return new RuntimeAgent(runtimeName(externalAgent), runtimeDescription(externalAgent), a2aAgent, null);
     }
 
     private Map<ToolSpecification, ToolExecutor> toToolExecutors(McpToolRegistry toolRegistry,
@@ -310,18 +317,17 @@ public class RuntimeAgentFactory {
         return value == null || value.trim().isEmpty();
     }
 
-    private final class LocalExecutionTrackingAgent implements UntypedAgent {
+    private final class ExecutionTrackingAgentListener implements AgentListener {
 
-        private final UntypedAgent delegate;
         private final Agent agent;
         private final String groupId;
         private final ChatRequestDTOV1 request;
         private final String parentExecutionId;
         private final AtomicReference<String> activeExecutionId;
+        private final AtomicReference<String> childExecutionId = new AtomicReference<>();
 
-        private LocalExecutionTrackingAgent(UntypedAgent delegate, Agent agent, String groupId, ChatRequestDTOV1 request,
+        private ExecutionTrackingAgentListener(Agent agent, String groupId, ChatRequestDTOV1 request,
                 String parentExecutionId, AtomicReference<String> activeExecutionId) {
-            this.delegate = delegate;
             this.agent = agent;
             this.groupId = groupId;
             this.request = request;
@@ -330,87 +336,88 @@ public class RuntimeAgentFactory {
         }
 
         @Override
-        public Object invoke(Map<String, Object> input) {
-            return invokeWithAgenticScope(input).result();
-        }
-
-        @Override
-        public ResultWithAgenticScope<String> invokeWithAgenticScope(Map<String, Object> input) {
+        public void beforeAgentInvocation(AgentRequest agentRequest) {
             transitionExecution(parentExecutionId, ExecutionState.WAITING_AGENT);
             Execution execution = executionService.createExecution(agent, groupId, extractRequestExcerpt(request));
             String executionId = execution.getExecutionId();
+            childExecutionId.set(executionId);
             activeExecutionId.set(executionId);
+            executionService.startExecution(executionId);
+        }
+
+        @Override
+        public void afterAgentInvocation(AgentResponse agentResponse) {
+            String executionId = childExecutionId.get();
             try {
-                executionService.startExecution(executionId);
-                ResultWithAgenticScope<String> result = delegate.invokeWithAgenticScope(input);
-                executionService.succeedExecution(executionId, result.result());
-                incrementParentAgentCount(parentExecutionId);
-                return result;
-            } catch (Exception ex) {
-                log.warn("Local agent '{}' invocation failed", runtimeName(agent), ex);
-                try {
-                    executionService.failExecution(executionId, ex.getClass().getSimpleName(), ex.getMessage());
-                } catch (Exception ignored) {
-                    // Execution state may already be terminal.
+                if (!isBlank(executionId)) {
+                    executionService.succeedExecution(executionId,
+                            agentResponse != null && agentResponse.output() != null ? agentResponse.output().toString() : "");
                 }
-                throw ex;
+                incrementParentAgentCount(parentExecutionId);
             } finally {
+                childExecutionId.set(null);
                 activeExecutionId.set(null);
                 resumeExecution(parentExecutionId);
             }
         }
 
         @Override
-        public AgenticScope getAgenticScope(Object memoryId) {
-            return delegate.getAgenticScope(memoryId);
+        public void onAgentInvocationError(AgentInvocationError error) {
+            String executionId = childExecutionId.get();
+            Throwable cause = error != null ? error.error() : null;
+            log.warn("Local agent '{}' invocation failed", runtimeName(agent), cause);
+            try {
+                if (!isBlank(executionId)) {
+                    executionService.failExecution(executionId,
+                            cause != null ? cause.getClass().getSimpleName() : "AgentInvocationError",
+                            cause != null ? cause.getMessage() : null);
+                }
+            } finally {
+                childExecutionId.set(null);
+                activeExecutionId.set(null);
+                resumeExecution(parentExecutionId);
+            }
         }
 
         @Override
-        public boolean evictAgenticScope(Object memoryId) {
-            return delegate.evictAgenticScope(memoryId);
+        public boolean inheritedBySubagents() {
+            return false;
         }
     }
 
-    private final class RemoteExecutionTrackingAgent implements UntypedAgent {
+    private final class RemoteExecutionTrackingAgentListener implements AgentListener {
 
-        private final UntypedAgent delegate;
         private final String parentExecutionId;
         private final String name;
 
-        private RemoteExecutionTrackingAgent(UntypedAgent delegate, String parentExecutionId, String name) {
-            this.delegate = delegate;
+        private RemoteExecutionTrackingAgentListener(String parentExecutionId, String name) {
             this.parentExecutionId = parentExecutionId;
             this.name = name;
         }
 
         @Override
-        public Object invoke(Map<String, Object> input) {
-            return invokeWithAgenticScope(input).result();
+        public void beforeAgentInvocation(AgentRequest agentRequest) {
+            transitionExecution(parentExecutionId, ExecutionState.WAITING_AGENT);
         }
 
         @Override
-        public ResultWithAgenticScope<String> invokeWithAgenticScope(Map<String, Object> input) {
-            transitionExecution(parentExecutionId, ExecutionState.WAITING_AGENT);
+        public void afterAgentInvocation(AgentResponse agentResponse) {
             try {
-                ResultWithAgenticScope<String> result = delegate.invokeWithAgenticScope(input);
                 incrementParentAgentCount(parentExecutionId);
-                return result;
-            } catch (Exception ex) {
-                log.warn("Remote A2A agent '{}' invocation failed", name, ex);
-                throw ex;
             } finally {
                 resumeExecution(parentExecutionId);
             }
         }
 
         @Override
-        public AgenticScope getAgenticScope(Object memoryId) {
-            return delegate.getAgenticScope(memoryId);
+        public void onAgentInvocationError(AgentInvocationError error) {
+            log.warn("Remote A2A agent '{}' invocation failed", name, error != null ? error.error() : null);
+            resumeExecution(parentExecutionId);
         }
 
         @Override
-        public boolean evictAgenticScope(Object memoryId) {
-            return delegate.evictAgenticScope(memoryId);
+        public boolean inheritedBySubagents() {
+            return false;
         }
     }
 
