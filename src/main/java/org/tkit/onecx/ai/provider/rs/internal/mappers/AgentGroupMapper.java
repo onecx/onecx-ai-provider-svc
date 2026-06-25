@@ -1,10 +1,13 @@
 package org.tkit.onecx.ai.provider.rs.internal.mappers;
 
+import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.tkit.onecx.ai.provider.domain.criteria.AgentGroupSearchCriteria;
 import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
+import org.tkit.onecx.ai.provider.domain.models.enums.AgentGroupOrchestrationMode;
+import org.tkit.onecx.ai.provider.domain.models.enums.AgentGroupResponseStrategy;
 import org.tkit.quarkus.jpa.daos.PageResult;
 import org.tkit.quarkus.rs.mappers.OffsetDateTimeMapper;
 
@@ -49,4 +52,14 @@ public interface AgentGroupMapper {
 
     @Mapping(target = "removeStreamItem", ignore = true)
     AgentGroupPageResultDTO mapPageResult(PageResult<AgentGroup> result);
+
+    @AfterMapping
+    default void applyDefaults(@MappingTarget AgentGroup agentGroup) {
+        if (agentGroup.getOrchestrationMode() == null) {
+            agentGroup.setOrchestrationMode(AgentGroupOrchestrationMode.SUPERVISOR_ROUTED);
+        }
+        if (agentGroup.getResponseStrategy() == null) {
+            agentGroup.setResponseStrategy(AgentGroupResponseStrategy.LAST);
+        }
+    }
 }

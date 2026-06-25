@@ -7,7 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.core.Response;
 
-import org.tkit.onecx.ai.provider.common.services.llm.LlmServiceFactory;
+import org.tkit.onecx.ai.provider.common.services.dispatch.ChatDispatchService;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.DispatchV1Api;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
@@ -17,10 +17,10 @@ import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
 public class DispatchRestV1Controller implements DispatchV1Api {
 
     @Inject
-    LlmServiceFactory llmServiceFactory;
+    ChatDispatchService chatDispatchService;
 
     @Override
     public Response chat(ChatRequestDTOV1 chatRequestDTOV1) {
-        return llmServiceFactory.chat(chatRequestDTOV1);
+        return chatDispatchService.chat(chatRequestDTOV1);
     }
 }

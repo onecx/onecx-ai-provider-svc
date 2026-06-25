@@ -13,7 +13,7 @@ import jakarta.ws.rs.core.UriInfo;
 
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
-import org.tkit.onecx.ai.provider.common.services.llm.LlmServiceFactory;
+import org.tkit.onecx.ai.provider.common.services.provider.ProviderHealthService;
 import org.tkit.onecx.ai.provider.domain.daos.ProviderDAO;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ExceptionMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ProviderMapper;
@@ -43,7 +43,7 @@ public class ProviderRestController implements ProviderInternalApi {
     ProviderMapper mapper;
 
     @Inject
-    LlmServiceFactory llmServiceFactory;
+    ProviderHealthService providerHealthService;
 
     @Override
     public Response createProvider(CreateProviderRequestDTO aiProviderDTO) {
@@ -98,7 +98,7 @@ public class ProviderRestController implements ProviderInternalApi {
         if (provider == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
-        var healthKey = llmServiceFactory.getProviderHealthStatus(provider);
+        var healthKey = providerHealthService.getProviderHealthStatus(provider);
 
         return Response.status(Response.Status.OK).entity(mapper.mapHealthStatus(healthKey)).build();
     }

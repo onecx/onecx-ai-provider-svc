@@ -1433,22 +1433,48 @@ components:
         modificationUser: { type: string }
         id: { type: string }
         name: { type: string }
+        description: { type: string }
+        routingInstructions: { type: string }
+        orchestrationMode:
+          $ref: '#/components/schemas/AgentGroupOrchestrationMode'
+        responseStrategy:
+          $ref: '#/components/schemas/AgentGroupResponseStrategy'
     CreateAgentGroupRequest:
       type: object
       properties:
         name: { type: string }
+        description: { type: string }
+        routingInstructions: { type: string }
+        orchestrationMode:
+          $ref: '#/components/schemas/AgentGroupOrchestrationMode'
+        responseStrategy:
+          $ref: '#/components/schemas/AgentGroupResponseStrategy'
     UpdateAgentGroupRequest:
       type: object
       required: [ modificationCount ]
       properties:
         modificationCount: { format: int32, type: integer }
         name: { type: string }
+        description: { type: string }
+        routingInstructions: { type: string }
+        orchestrationMode:
+          $ref: '#/components/schemas/AgentGroupOrchestrationMode'
+        responseStrategy:
+          $ref: '#/components/schemas/AgentGroupResponseStrategy'
     AgentGroupSearchCriteria:
       type: object
       properties:
         name: { type: string }
+        orchestrationMode:
+          $ref: '#/components/schemas/AgentGroupOrchestrationMode'
         pageNumber: { format: int32, default: 0, type: integer }
         pageSize: { format: int32, default: 10, maximum: 100, type: integer }
+    AgentGroupOrchestrationMode:
+      type: string
+      enum: [ SUPERVISOR_ROUTED, SEQUENTIAL, PARALLEL ]
+    AgentGroupResponseStrategy:
+      type: string
+      enum: [ LAST, SUMMARY, SCORED ]
     AgentGroupPageResult:
       type: object
       properties:

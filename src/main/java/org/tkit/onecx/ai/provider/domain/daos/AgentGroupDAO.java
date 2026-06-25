@@ -27,6 +27,9 @@ public class AgentGroupDAO extends AbstractDAO<AgentGroup> {
             List<Predicate> predicates = new ArrayList<>();
 
             addSearchStringPredicate(predicates, cb, root.get("name"), criteria.getName());
+            if (criteria.getOrchestrationMode() != null) {
+                predicates.add(cb.equal(root.get("orchestrationMode"), criteria.getOrchestrationMode()));
+            }
 
             if (!predicates.isEmpty()) {
                 cq.where(predicates.toArray(new Predicate[] {}));

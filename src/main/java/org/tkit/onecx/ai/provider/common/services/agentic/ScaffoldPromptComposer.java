@@ -1,11 +1,13 @@
 package org.tkit.onecx.ai.provider.common.services.agentic;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
 import org.tkit.onecx.ai.provider.domain.models.Agent;
+import org.tkit.onecx.ai.provider.domain.models.Skill;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
 
@@ -22,6 +24,7 @@ public class ScaffoldPromptComposer {
 
         if (agent != null && agent.getScaffold() != null) {
             addIfNotBlank(blocks, agent.getScaffold().getSystemPrompt());
+            addIfNotBlank(blocks, buildSkillDirective(agent.getScaffold().getSkills()));
         }
 
         if (agent != null) {
@@ -32,6 +35,39 @@ public class ScaffoldPromptComposer {
         addIfNotBlank(blocks, requestContextDirective);
 
         return String.join("\n\n", blocks);
+    }
+
+    private String buildSkillDirective(Iterable<Skill> skills) {
+        if (skills == null) {
+            return null;
+        }
+
+        List<Skill> orderedSkills = new ArrayList<>();
+        skills.forEach(orderedSkills::add);
+        orderedSkills = orderedSkills.stream()
+                .filter(skill -> skill != null
+                        && (!isBlank(skill.getName()) || !isBlank(skill.getDescription()) || !isBlank(skill.getInstruction())))
+                .sorted(Comparator.comparing(skill -> normalize(skill.getName()).toLowerCase()))
+                .toList();
+
+        if (orderedSkills.isEmpty()) {
+            return null;
+        }
+
+        StringBuilder sb = new StringBuilder("Available scaffold skills. Use only when relevant:");
+        for (Skill skill : orderedSkills) {
+            sb.append(System.lineSeparator()).append("- ");
+            sb.append(!isBlank(skill.getName()) ? normalize(skill.getName()) : "Unnamed skill");
+            if (!isBlank(skill.getDescription())) {
+                sb.append(": ").append(normalize(skill.getDescription()));
+            }
+            if (!isBlank(skill.getInstruction())) {
+                sb.append(System.lineSeparator())
+                        .append("  Instruction: ")
+                        .append(normalize(skill.getInstruction()));
+            }
+        }
+        return sb.toString();
     }
 
     private String buildRequestContextDirective(ChatRequestDTOV1 chatRequestDTO) {

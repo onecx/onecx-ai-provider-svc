@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 import org.junit.jupiter.api.Test;
-import org.tkit.onecx.ai.provider.common.services.llm.LlmServiceFactory;
+import org.tkit.onecx.ai.provider.common.services.provider.ProviderHealthService;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 import org.tkit.quarkus.security.test.GenerateKeycloakClient;
 import org.tkit.quarkus.test.WithDBData;
@@ -24,11 +24,11 @@ import io.quarkus.test.junit.QuarkusTest;
 @GenerateKeycloakClient(clientName = "testClient", scopes = { "ocx-ai:all", "ocx-ai:read", "ocx-ai:write", "ocx-ai:delete" })
 class ProviderHealthCheckTest extends AbstractTest {
     @InjectMock
-    LlmServiceFactory llmServiceFactory;
+    ProviderHealthService providerHealthService;
 
     @Test
     void getProviderHealthStatusTest() {
-        when(llmServiceFactory.getProviderHealthStatus(org.mockito.ArgumentMatchers.any())).thenReturn("HEALTHY");
+        when(providerHealthService.getProviderHealthStatus(org.mockito.ArgumentMatchers.any())).thenReturn("HEALTHY");
 
         var dto = given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
@@ -56,6 +56,6 @@ class ProviderHealthCheckTest extends AbstractTest {
                 .get("/{id}/health")
                 .then().statusCode(NOT_FOUND.getStatusCode());
 
-        verify(llmServiceFactory, never()).getProviderHealthStatus(org.mockito.ArgumentMatchers.any());
+        verify(providerHealthService, never()).getProviderHealthStatus(org.mockito.ArgumentMatchers.any());
     }
 }

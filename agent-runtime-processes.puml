@@ -1,162 +1,182 @@
 @startuml agent-runtime-processes
 
-title AI Provider Runtime Process Overview
+title AI Provider Agentic Runtime Process Overview
 
 autonumber
 hide footbox
 
 actor Client
 boundary "Dispatch REST API\nDispatchRestV1Controller" as Dispatch
-control "LLM Service Factory\nLlmServiceFactory" as Factory
-control "A2A Orchestration\nA2AOrchestrationService" as A2A
-control "Execution Service\nExecutionService" as Execution
-control "Agent Dispatch\nAgentDispatchService" as AgentDispatch
-control "LLM Runtime\nOllamaLlmService" as Llm
+control "Chat Dispatch\nChatDispatchService" as ChatDispatch
+control "Agent Service\nAgentService" as AgentService
+control "Agentic Runtime\nAgenticRuntimeService" as Runtime
+control "Runtime Agent Factory\nRuntimeAgentFactory" as RuntimeFactory
+control "LangChain4j AgenticServices" as AgenticServices
+control "Chat Model Registry\nChatModelFactory" as ChatModelFactory
+participant "Provider Adapter\nProviderAdapter" as ProviderAdapter
+control "Ollama Provider Adapter\nOllamaProviderAdapter" as OllamaAdapter
+participant "LLM Provider\nOllama today, other adapters later" as Provider
+control "Scaffold Prompt Composer\nScaffoldPromptComposer" as PromptComposer
 control "MCP Service\nMcpService" as Mcp
 collections "MCP Tool Registry\nMcpToolRegistry" as Registry
-database "Execution Store\nExecutionDAO / EXECUTION" as ExecStore
-participant "Ollama / LLM Provider" as Provider
 participant "MCP Server" as McpServer
-control "A2A Group Planner\nDefaultA2AGroupPlanner" as Planner
-control "Sequential Executor\nSequentialA2AExecutor" as SeqExec
 control "External Agent Discovery\nExternalAgentDiscoveryService" as Discovery
-participant "External Agent Endpoint" as ExternalAgent
+participant "Remote A2A Agent" as RemoteAgent
+control "Execution Service\nExecutionService" as Execution
+database "Execution Store\nExecutionDAO / EXECUTION" as ExecStore
 
-note over Client,ExternalAgent
-This sequence combines the implemented runtime paths:
-- root agent dispatch
-- MCP tool discovery and tool-call loop
-- internal A2A child-agent orchestration
-- external A2A discovery + invocation
-- execution state tracking in EXECUTION
+note over Client,ExecStore
+Current runtime shape:
+- /v1/dispatch/chat remains unchanged
+- ChatDispatchService resolves the root configured agent
+- AgenticRuntimeService owns root execution and one final response
+- RuntimeAgentFactory turns persisted local/remote agents into LangChain4j UntypedAgent instances
+- A2A groups use LangChain4j supervisor, sequence, or parallel workflows by group policy
+- Remote A2A uses AgenticServices.a2aBuilder(card.url()), not OneCX chat DTO POST chaining
+- Provider-specific model creation and health checks are isolated behind ProviderAdapter
 end note
 
-Client -> Dispatch : POST /chat(ChatRequestDTOV1)
-Dispatch -> Factory : chat(request)
-Factory -> Factory : resolve agent from request context
+Client -> Dispatch : POST /v1/dispatch/chat(ChatRequestDTOV1)
+Dispatch -> ChatDispatch : chat(request)
+ChatDispatch -> AgentService : findAgentByRequestContext(request.requestContext)
 
 alt agent not found
-  Factory --> Dispatch : 404 No agent found
+  AgentService --> ChatDispatch : null
+  ChatDispatch --> Dispatch : 404 No agent found
   Dispatch --> Client : error response
 else agent found
-  Factory -> A2A : invokeRoot(agent, request)
-  A2A -> Execution : createExecution(agent, null, requestExcerpt)
+  AgentService --> ChatDispatch : root Agent
+  ChatDispatch -> Runtime : invokeRoot(agent, request)
+
+  Runtime -> Execution : createExecution(agent, null, requestExcerpt)
   Execution -> ExecStore : insert EXECUTION(state=PENDING)
   ExecStore --> Execution : executionId
-  Execution --> A2A : execution
-  A2A -> Execution : startExecution(executionId)
+  Execution --> Runtime : execution
+  Runtime -> Execution : startExecution(executionId)
   Execution -> ExecStore : update state=RUNNING,startTime
 
-  A2A -> AgentDispatch : dispatch(agent, request, executionId)
-  AgentDispatch -> Llm : chat(agent, request, executionId)
+  Runtime -> RuntimeFactory : rootAgent(agent, request, executionId)
+  RuntimeFactory -> ChatModelFactory : createChatModel(agent)
+  ChatModelFactory -> ProviderAdapter : select by agent.model.provider.type
+  ProviderAdapter -> OllamaAdapter : supports(OLLAMA)
+  OllamaAdapter --> ChatModelFactory : ChatModel
+  ChatModelFactory --> RuntimeFactory : ChatModel
 
-  Llm -> Mcp : createToolRegistry(agent, executionId)
-  loop for each MCP tool configured on agent
-    Mcp -> McpServer : checkHealth() / listTools()
+  RuntimeFactory -> Mcp : createToolRegistry(agent, executionId)
+  loop for each MCP tool assigned to the selected agent
+    Mcp -> McpServer : health / tool discovery
     McpServer --> Mcp : ToolSpecification[]
   end
-  Mcp --> Llm : McpToolRegistry
-  Llm -> Registry : getToolSpecifications()
-  Registry --> Llm : tool specs
+  Mcp --> RuntimeFactory : McpToolRegistry
+  RuntimeFactory -> PromptComposer : compose(agent, request)
+  PromptComposer --> RuntimeFactory : scaffold prompt + optional scaffold skills + request context
+  RuntimeFactory -> AgenticServices : agentBuilder(name, description, outputKey, ChatModel, tools)
+  AgenticServices --> RuntimeFactory : root UntypedAgent
+  RuntimeFactory --> Runtime : RuntimeAgent(root)
 
-  Llm -> Provider : chat(messages + optional tool specs)
-  Provider --> Llm : ChatResponse
+  Runtime -> Runtime : invoke root UntypedAgent
+  Runtime -> Provider : chat(system/user messages + optional MCP tool specs)
+  Provider --> Runtime : model response or tool requests
 
-  loop while AI response contains tool requests and maxIterations not reached
-    Llm -> Execution : waitForResource(executionId, WAITING_TOOL)
+  loop while model requests MCP tools and max iterations not reached
+    Runtime -> Execution : waitForResource(executionId, WAITING_TOOL)
     Execution -> ExecStore : update state=WAITING_TOOL
-
-    loop for each requested tool
-      Llm -> Registry : findByName(toolName)
-      alt tool missing or denied by policy
-        Registry --> Llm : not available / denied
-        Llm -> Llm : add tool error result message
-      else tool allowed
-        Registry --> Llm : McpTool
-        Llm -> McpServer : execute tool via MCP
-        McpServer --> Llm : tool result
-        Llm -> Execution : incrementToolCallCount(executionId)
-        Execution -> ExecStore : update toolCallCount
-      end
-    end
-
-    Llm -> Execution : resumeExecution(executionId)
+    Runtime -> Registry : execute requested MCP tool through ToolExecutor
+    Registry -> McpServer : execute tool
+    McpServer --> Registry : tool result
+    Runtime -> Execution : incrementToolCallCount(executionId)
+    Runtime -> Execution : resumeExecution(executionId)
     Execution -> ExecStore : update state=RUNNING
-    Llm -> Provider : follow-up chat(messages + tool results)
-    Provider --> Llm : ChatResponse
+    Runtime -> Provider : follow-up chat(tool results)
+    Provider --> Runtime : model response
   end
 
-  Llm --> AgentDispatch : assistant response
-  AgentDispatch --> A2A : Response
+  alt root agent has no enabled A2A groups
+    Runtime -> Runtime : finalResponse = root response
+  else root agent has enabled A2A groups
+    loop for each group sorted deterministically
+      Runtime -> RuntimeFactory : agentsForGroup(rootAgent, group, request, executionId)
 
-  alt root dispatch failed
-    A2A -> Execution : failExecution(executionId, errorType, errorMessage)
-    Execution -> ExecStore : update state=FAILED,endTime,error*
-    A2A --> Factory : error response + X-Execution-Id
-  else root dispatch succeeded
-    alt agent.a2aEnabled && depth within limit
-      A2A -> Planner : plan(agent groups)
-      Planner --> A2A : A2AExecutionPlan(SEQUENTIAL)
-      A2A -> SeqExec : execute(plan, unitExecutor)
-
-      loop for each group execution unit
-        SeqExec -> A2A : executeGroupUnit(...)
-        A2A -> A2A : resolve internal agents + external agents
-
-        loop for each invocation target
-          alt internal child agent
-            A2A -> Execution : waitForResource(parentExecutionId, WAITING_AGENT)
-            Execution -> ExecStore : update state=WAITING_AGENT
-            A2A -> A2A : invokeAgent(childAgent, request, groupId, null, depth+1)
-            note right of A2A
-            Recursive child invocation repeats:
-            - createExecution / startExecution
-            - dispatch to LLM runtime
-            - optional MCP tool loop
-            - optional nested A2A orchestration
-            - succeed / fail child execution
-            end note
-            A2A -> Execution : incrementAgentCallCount(parentExecutionId)
-            Execution -> ExecStore : update agentCallCount
-            A2A -> Execution : resumeExecution(parentExecutionId)
-            Execution -> ExecStore : update state=RUNNING
-          else external agent
-            A2A -> Execution : waitForResource(parentExecutionId, WAITING_AGENT)
-            Execution -> ExecStore : update state=WAITING_AGENT
-            A2A -> Discovery : fetchAgentCard(discoveryUrl)
-            Discovery -> ExternalAgent : GET discovery URL
-            ExternalAgent --> Discovery : AgentCard(url)
-            Discovery --> A2A : AgentCard
-            A2A -> ExternalAgent : POST discovered endpoint with ChatRequestDTOV1
-            ExternalAgent --> A2A : ChatMessageDTOV1 / raw response
-            A2A -> Execution : incrementAgentCallCount(parentExecutionId)
-            Execution -> ExecStore : update agentCallCount
-            A2A -> Execution : resumeExecution(parentExecutionId)
-            Execution -> ExecStore : update state=RUNNING
-          end
-        end
+      loop local group members
+        RuntimeFactory -> ChatModelFactory : createChatModel(childAgent)
+        ChatModelFactory -> ProviderAdapter : select by childAgent.model.provider.type
+        ProviderAdapter --> RuntimeFactory : child ChatModel
+        RuntimeFactory -> Mcp : createToolRegistry(childAgent, childExecutionId when invoked)
+        RuntimeFactory -> AgenticServices : agentBuilder(child metadata, prompt, tools)
       end
-    else no A2A orchestration
-      A2A -> A2A : return root LLM result only
+
+      loop external group members
+        RuntimeFactory -> Discovery : fetchAgentCard(discoveryUrl)
+        Discovery -> RemoteAgent : GET agent card URL
+        RemoteAgent --> Discovery : AgentCard(url, name, description)
+        Discovery --> RuntimeFactory : AgentCard
+        RuntimeFactory -> AgenticServices : a2aBuilder(card.url())
+      end
+
+      RuntimeFactory --> Runtime : RuntimeAgent candidates
+
+      alt group.orchestrationMode = SUPERVISOR_ROUTED
+        Runtime -> AgenticServices : supervisorBuilder(root ChatModel, subAgents, routing context)
+        AgenticServices --> Runtime : SupervisorAgent
+        Runtime -> Runtime : supervisor invokes only relevant agents
+      else group.orchestrationMode = SEQUENTIAL
+        Runtime -> AgenticServices : sequenceBuilder(subAgents)
+        AgenticServices --> Runtime : sequence workflow
+        Runtime -> Runtime : workflow invokes every configured step in order
+      else group.orchestrationMode = PARALLEL
+        Runtime -> AgenticServices : parallelBuilder(subAgents)
+        AgenticServices --> Runtime : parallel workflow
+        Runtime -> Runtime : workflow invokes explicitly additive agents concurrently
+      end
+
+      loop for each selected local sub-agent
+        Runtime -> Execution : waitForResource(parentExecutionId, WAITING_AGENT)
+        Runtime -> Execution : createExecution(childAgent, groupId, requestExcerpt)
+        Runtime -> Execution : startExecution(childExecutionId)
+        Runtime -> Provider : child agent chat using its own provider/model/tools/scaffold
+        Provider --> Runtime : child output
+        Runtime -> Execution : succeedExecution(childExecutionId, childOutput)
+        Runtime -> Execution : incrementAgentCallCount(parentExecutionId)
+        Runtime -> Execution : resumeExecution(parentExecutionId)
+      end
+
+      loop for each selected remote sub-agent
+        Runtime -> Execution : waitForResource(parentExecutionId, WAITING_AGENT)
+        Runtime -> RemoteAgent : A2A invocation via LangChain4j client
+        RemoteAgent --> Runtime : remote A2A result
+        Runtime -> Execution : incrementAgentCallCount(parentExecutionId)
+        Runtime -> Execution : resumeExecution(parentExecutionId)
+      end
     end
 
-    A2A -> Execution : succeedExecution(executionId, mergedResult)
-    Execution -> ExecStore : update state=SUCCEEDED,endTime,result,durationMs
-    A2A --> Factory : assistant response + X-Execution-Id
+    Runtime -> AgenticServices : agentBuilder(response-synthesizer)
+    AgenticServices --> Runtime : synthesizer UntypedAgent
+    Runtime -> Runtime : synthesize root + relevant collaboration into one assistant message
   end
 
-  Factory --> Dispatch : HTTP response
-  Dispatch --> Client : ChatMessageDTOV1 + X-Execution-Id
+  Runtime -> Execution : succeedExecution(executionId, finalResponse)
+  Execution -> ExecStore : update state=SUCCEEDED,endTime,result,durationMs
+  Runtime --> ChatDispatch : AgenticRuntimeResult(executionId, finalResponse)
+  ChatDispatch --> Dispatch : ChatMessageDTOV1 + X-Execution-Id
+  Dispatch --> Client : one assistant message
 end
 
+note over ChatModelFactory,OllamaAdapter
+Provider.type is the routing key.
+llmUrl is adapter configuration, not provider detection.
+Adding OpenAI later means adding an OpenAiProviderAdapter and dependency;
+the agentic runtime stays provider-neutral.
+end note
+
 note over Execution,ExecStore
-Observed execution state transitions:
+Execution state transitions:
 PENDING -> RUNNING
 RUNNING -> WAITING_TOOL -> RUNNING
 RUNNING -> WAITING_AGENT -> RUNNING
 RUNNING -> SUCCEEDED | FAILED | CANCELLED
+Root execution owns the final response.
+Selected local sub-agents get child executions.
+Skipped remote candidates are logged/tracked internally, not exposed in chat output.
 end note
 
 @enduml
-
-

@@ -85,6 +85,10 @@ class AGENT_GROUP {
   uuid id
   string tenantId
   string name
+  string description
+  text routingInstructions
+  string orchestrationMode (SUPERVISOR_ROUTED, SEQUENTIAL, PARALLEL)
+  string responseStrategy (LAST, SUMMARY, SCORED)
 }
 
 class EXECUTION {
@@ -159,6 +163,11 @@ AGENT "1" *-- "0..1" FILTER : has
 
 SCAFFOLD "1" --> "0..*" SCAFFOLD_SKILL_RL : defines
 SKILL "1" --> "0..*" SCAFFOLD_SKILL_RL : included_in
+note right of SCAFFOLD_SKILL_RL
+Scaffold skills are prompt-level optional capabilities.
+They are added to the agent system prompt in deterministic name order:
+"Use only when relevant".
+end note
 
 AGENT "1" --> "0..*" AGENT_TOOL_RL : uses
 TOOL "1" --> "0..*" AGENT_TOOL_RL : assigned_to
@@ -170,5 +179,18 @@ EXTERNAL_AGENT "1" --> "0..*" EXTERNAL_AGENT_GROUP_RL : belongs_to
 AGENT_GROUP "1" --> "0..*" EXTERNAL_AGENT_GROUP_RL : includes
 
 AGENT "1" --> "0..*" EXECUTION : executes
+
+note right of AGENT_GROUP
+Default orchestrationMode is SUPERVISOR_ROUTED.
+The supervisor routes only to relevant local or remote agents.
+SEQUENTIAL and PARALLEL are explicit workflow modes.
+end note
+
+note right of PROVIDER
+Provider.type is kept as the adapter routing key.
+llmUrl and apiKey are provider-specific configuration.
+Current adapter: OLLAMA.
+Future adapters, e.g. OPENAI, plug into the same registry.
+end note
 
 @enduml

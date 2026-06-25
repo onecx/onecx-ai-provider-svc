@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="2026-06-24-add-agent-group-orchestration-policy" author="codex">
+        <addColumn tableName="agent_group">
+            <column name="description" type="TEXT"/>
+            <column name="routing_instructions" type="TEXT"/>
+            <column name="orchestration_mode" type="VARCHAR(64)" defaultValue="SUPERVISOR_ROUTED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="response_strategy" type="VARCHAR(64)" defaultValue="LAST">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>
