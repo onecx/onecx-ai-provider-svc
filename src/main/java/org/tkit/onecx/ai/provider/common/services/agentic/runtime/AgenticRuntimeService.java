@@ -153,7 +153,7 @@ public class AgenticRuntimeService {
         }
 
         try {
-            UntypedAgent synthesizer = AgenticServices.agentBuilder()
+            TextAgent synthesizer = AgenticServices.agentBuilder(TextAgent.class)
                     .name("response-synthesizer")
                     .description("Combines root and specialist outputs into one assistant response")
                     .outputKey("response")
@@ -163,9 +163,9 @@ public class AgenticRuntimeService {
                             Do not include agent names, group labels, transcripts, or intermediate chain text.
                             Use specialist output only when it is relevant to the user request.
                             """)
-                    .userMessageProvider(input -> synthesisPrompt(input, request))
+                    .userMessage(synthesisPrompt(synthesisInput(request, rootText, collaborationText), request))
                     .build();
-            Object response = synthesizer.invoke(synthesisInput(request, rootText, collaborationText));
+            Object response = synthesizer.invoke();
             if (response != null && !isBlank(response.toString())) {
                 return response.toString();
             }
@@ -226,7 +226,7 @@ public class AgenticRuntimeService {
     }
 
     private String invokeAgent(UntypedAgent agent, ChatRequestDTOV1 request) {
-        Object result = agent.invoke(agentInput(request));
+        Object result = agent.invokeWithAgenticScope(agentInput(request)).result();
         return result != null ? result.toString() : "";
     }
 

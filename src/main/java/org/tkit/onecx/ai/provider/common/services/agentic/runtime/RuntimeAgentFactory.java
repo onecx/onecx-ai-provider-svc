@@ -111,12 +111,12 @@ public class RuntimeAgentFactory {
         McpToolRegistry toolRegistry = mcpService.createToolRegistry(agent, activeExecutionId.get());
         Map<ToolSpecification, ToolExecutor> toolExecutors = toToolExecutors(toolRegistry, activeExecutionId);
 
-        var builder = AgenticServices.agentBuilder()
+        var builder = AgenticServices.agentBuilder(TextAgent.class)
                 .name(runtimeName(agent))
                 .description(runtimeDescription(agent))
                 .outputKey("response")
                 .chatModel(chatModel)
-                .systemMessageProvider(input -> scaffoldPromptComposer.compose(agent, requestFromInput(input, request)))
+                .systemMessageProvider(input -> systemMessage(agent, requestFromInput(input, request)))
                 .userMessageProvider(input -> userMessage(requestFromInput(input, request)))
                 .maxSequentialToolsInvocations((int) dispatchConfig.mcpConfig().maxIterations());
 
@@ -124,7 +124,7 @@ public class RuntimeAgentFactory {
             builder.tools(toolExecutors);
         }
 
-        UntypedAgent agenticAgent = builder.build();
+        UntypedAgent agenticAgent = new TextAgentAdapter(builder.build());
         UntypedAgent trackedAgent = childExecution
                 ? new LocalExecutionTrackingAgent(agenticAgent, agent, groupId, request, executionIdOrParent, activeExecutionId)
                 : agenticAgent;
@@ -202,6 +202,11 @@ public class RuntimeAgentFactory {
         }
         message.append(extractUserMessage(request));
         return message.toString();
+    }
+
+    private String systemMessage(Agent agent, ChatRequestDTOV1 request) {
+        String composed = scaffoldPromptComposer.compose(agent, request);
+        return !isBlank(composed) ? composed : "You are a helpful assistant.";
     }
 
     private String formatHistory(List<ChatMessageDTOV1> history) {
@@ -406,6 +411,35 @@ public class RuntimeAgentFactory {
         @Override
         public boolean evictAgenticScope(Object memoryId) {
             return delegate.evictAgenticScope(memoryId);
+        }
+    }
+
+    private static final class TextAgentAdapter implements UntypedAgent {
+
+        private final TextAgent delegate;
+
+        private TextAgentAdapter(TextAgent delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Object invoke(Map<String, Object> input) {
+            return delegate.invoke();
+        }
+
+        @Override
+        public ResultWithAgenticScope<String> invokeWithAgenticScope(Map<String, Object> input) {
+            return new ResultWithAgenticScope<>(null, delegate.invoke());
+        }
+
+        @Override
+        public AgenticScope getAgenticScope(Object memoryId) {
+            return null;
+        }
+
+        @Override
+        public boolean evictAgenticScope(Object memoryId) {
+            return false;
         }
     }
 }

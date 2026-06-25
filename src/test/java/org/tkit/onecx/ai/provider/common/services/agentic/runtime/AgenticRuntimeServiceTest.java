@@ -65,14 +65,15 @@ class AgenticRuntimeServiceTest {
         when(executionService.createExecution(eq(root), eq(null), any())).thenReturn(rootExecution);
         when(runtimeAgentFactory.rootAgent(root, request, "exec-root"))
                 .thenReturn(new RuntimeAgent("root", "Root agent", rootUntypedAgent, null));
-        when(rootUntypedAgent.invoke(any())).thenReturn("root answer");
+        when(rootUntypedAgent.invokeWithAgenticScope(any()))
+                .thenReturn(new ResultWithAgenticScope<>(null, "root answer"));
 
         AgenticRuntimeResult result = service.invokeRoot(root, request);
 
         assertThat(result.successful()).isTrue();
         assertThat(result.executionId()).isEqualTo("exec-root");
         assertThat(result.responseText()).isEqualTo("root answer");
-        verify(rootUntypedAgent).invoke(any(Map.class));
+        verify(rootUntypedAgent).invokeWithAgenticScope(any(Map.class));
         verify(executionService).succeedExecution("exec-root", "root answer");
         verify(runtimeAgentFactory, never()).agentsForGroup(any(), any(), any(), any());
     }
@@ -97,7 +98,8 @@ class AgenticRuntimeServiceTest {
         when(executionService.createExecution(eq(root), eq(null), any())).thenReturn(rootExecution);
         when(runtimeAgentFactory.rootAgent(root, request, "exec-root"))
                 .thenReturn(new RuntimeAgent("root", "Root agent", rootUntypedAgent, null));
-        when(rootUntypedAgent.invoke(any())).thenReturn("root answer");
+        when(rootUntypedAgent.invokeWithAgenticScope(any()))
+                .thenReturn(new ResultWithAgenticScope<>(null, "root answer"));
         when(runtimeAgentFactory.agentsForGroup(root, group, request, "exec-root")).thenReturn(java.util.List.of());
 
         AgenticRuntimeResult result = service.invokeRoot(root, request);
