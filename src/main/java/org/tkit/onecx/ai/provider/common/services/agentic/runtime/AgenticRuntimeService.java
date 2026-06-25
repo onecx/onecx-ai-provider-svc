@@ -68,7 +68,7 @@ public class AgenticRuntimeService {
 
     private String invokeRootAgent(Agent agent, ChatRequestDTOV1 request, String executionId) {
         try (RuntimeAgent rootAgent = runtimeAgentFactory.rootAgent(agent, request, executionId)) {
-            return invokeSingleAgenticWorkflow(rootAgent, request);
+            return invokeSingleAgent(rootAgent, request);
         }
     }
 
@@ -86,26 +86,31 @@ public class AgenticRuntimeService {
     }
 
     private String executeGroup(Agent rootAgent, AgentGroup group, ChatRequestDTOV1 request, String parentExecutionId) {
-        List<RuntimeAgent> peerAgents = runtimeAgentFactory.agentsForGroup(rootAgent, group, request, parentExecutionId);
-        if (peerAgents.isEmpty()) {
-            return "";
-        }
-
         AgentGroupOrchestrationMode mode = group.getOrchestrationMode() != null
                 ? group.getOrchestrationMode()
                 : AgentGroupOrchestrationMode.SUPERVISOR_ROUTED;
 
+        if (AgentGroupOrchestrationMode.SUPERVISOR_ROUTED.equals(mode)) {
+            List<RuntimeAgentDelegate> peerAgents = runtimeAgentFactory.delegatesForGroup(rootAgent, group, request,
+                    parentExecutionId);
+            return peerAgents.isEmpty() ? "" : executeLeadAgentGroup(rootAgent, peerAgents, request, parentExecutionId);
+        }
+
+        List<RuntimeAgent> peerAgents = runtimeAgentFactory.agentsForGroup(rootAgent, group, request, parentExecutionId);
+        if (peerAgents.isEmpty()) {
+            return "";
+        }
         return switch (mode) {
-            case SUPERVISOR_ROUTED -> executeLeadAgentGroup(rootAgent, peerAgents, request, parentExecutionId);
             case SEQUENTIAL -> executeWorkflowGroup(rootAgent, group, peerAgents, request, parentExecutionId, true);
             case PARALLEL -> executeWorkflowGroup(rootAgent, group, peerAgents, request, parentExecutionId, false);
+            case SUPERVISOR_ROUTED -> "";
         };
     }
 
-    private String executeLeadAgentGroup(Agent rootAgent, List<RuntimeAgent> peerAgents, ChatRequestDTOV1 request,
+    private String executeLeadAgentGroup(Agent rootAgent, List<RuntimeAgentDelegate> peerAgents, ChatRequestDTOV1 request,
             String parentExecutionId) {
         try (RuntimeAgent leadAgent = runtimeAgentFactory.leadAgent(rootAgent, request, parentExecutionId, peerAgents)) {
-            return invokeSingleAgenticWorkflow(leadAgent, request);
+            return invokeSingleAgent(leadAgent, request);
         }
     }
 
@@ -166,15 +171,10 @@ public class AgenticRuntimeService {
         return input;
     }
 
-    private String invokeSingleAgenticWorkflow(RuntimeAgent agent, ChatRequestDTOV1 request) {
-        UntypedAgent workflow = AgenticServices.sequenceBuilder()
-                .name("lead-agent-" + safeString(agent.name()))
-                .description("Runs the selected lead agent with optional delegate tools")
-                .subAgents(List.of(agent.agent()))
-                .beforeCall(scope -> scope.writeStates(agentInput(request)))
-                .output(this::outputFromScope)
-                .build();
-        Object result = workflow.invoke(agentInput(request));
+    private String invokeSingleAgent(RuntimeAgent agent, ChatRequestDTOV1 request) {
+        Object result = agent.invoker()
+                .invokeWithAgenticScope(agentInput(request))
+                .result();
         return result != null ? result.toString() : "";
     }
 

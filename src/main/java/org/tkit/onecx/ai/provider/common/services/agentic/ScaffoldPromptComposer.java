@@ -54,7 +54,8 @@ public class ScaffoldPromptComposer {
             return null;
         }
 
-        StringBuilder sb = new StringBuilder("Available scaffold skills. Use only when relevant:");
+        StringBuilder sb = new StringBuilder(
+                "Available scaffold skills. Use only when relevant. Apply skill instructions as behavior, not as text to quote or escape:");
         for (Skill skill : orderedSkills) {
             sb.append(System.lineSeparator()).append("- ");
             sb.append(!isBlank(skill.getName()) ? normalize(skill.getName()) : "Unnamed skill");

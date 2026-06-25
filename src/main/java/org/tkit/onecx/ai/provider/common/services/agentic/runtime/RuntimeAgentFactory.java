@@ -37,7 +37,6 @@ import dev.langchain4j.agentic.observability.AgentInvocationError;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.observability.AgentResponse;
-import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
@@ -82,24 +81,35 @@ public class RuntimeAgentFactory {
     }
 
     public RuntimeAgent leadAgent(Agent agent, ChatRequestDTOV1 request, String executionId,
-            List<RuntimeAgent> delegateAgents) {
+            List<RuntimeAgentDelegate> delegateAgents) {
         return buildLocalAgent(agent, request, executionId, null, false,
                 delegateAgents != null ? delegateAgents : List.of());
     }
 
     public List<RuntimeAgent> agentsForGroup(Agent rootAgent, AgentGroup group, ChatRequestDTOV1 request,
             String parentExecutionId) {
+        return delegatesForGroup(rootAgent, group, request, parentExecutionId).stream()
+                .map(RuntimeAgentDelegate::open)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    public List<RuntimeAgentDelegate> delegatesForGroup(Agent rootAgent, AgentGroup group, ChatRequestDTOV1 request,
+            String parentExecutionId) {
         if (rootAgent == null || group == null || group.getId() == null) {
             return List.of();
         }
 
         String groupId = group.getId().toString();
-        List<RuntimeAgent> agents = new ArrayList<>();
+        List<RuntimeAgentDelegate> agents = new ArrayList<>();
         for (Agent agent : agentDAO.findAgentsByGroupId(groupId)) {
             if (!isCallableLocalAgent(rootAgent, agent)) {
                 continue;
             }
-            agents.add(buildLocalAgent(agent, request, parentExecutionId, groupId, true, List.of()));
+            agents.add(new RuntimeAgentDelegate(
+                    runtimeName(agent),
+                    runtimeDescription(agent),
+                    () -> buildLocalAgent(agent, request, parentExecutionId, groupId, true, List.of())));
         }
 
         List<ExternalAgent> externalAgents = externalAgentDAO.findExternalAgentsByGroupId(groupId);
@@ -107,9 +117,11 @@ public class RuntimeAgentFactory {
             externalAgents = List.of();
         }
         for (ExternalAgent externalAgent : externalAgents) {
-            RuntimeAgent remoteAgent = buildRemoteAgent(externalAgent, parentExecutionId);
-            if (remoteAgent != null) {
-                agents.add(remoteAgent);
+            if (isCallableExternalAgent(externalAgent)) {
+                agents.add(new RuntimeAgentDelegate(
+                        runtimeName(externalAgent),
+                        runtimeDescription(externalAgent),
+                        () -> buildRemoteAgent(externalAgent, parentExecutionId)));
             }
         }
 
@@ -118,13 +130,13 @@ public class RuntimeAgentFactory {
     }
 
     private RuntimeAgent buildLocalAgent(Agent agent, ChatRequestDTOV1 request, String executionIdOrParent, String groupId,
-            boolean childExecution, List<RuntimeAgent> delegateAgents) {
+            boolean childExecution, List<RuntimeAgentDelegate> delegateAgents) {
         ChatModel chatModel = chatModelFactory.createChatModel(agent);
 
         AtomicReference<String> activeExecutionId = new AtomicReference<>(childExecution ? null : executionIdOrParent);
         McpToolRegistry toolRegistry = mcpService.createToolRegistry(agent, activeExecutionId.get());
         Map<ToolSpecification, ToolExecutor> toolExecutors = toToolExecutors(toolRegistry, activeExecutionId);
-        List<RuntimeAgent> delegates = delegateAgents != null ? delegateAgents : List.of();
+        List<RuntimeAgentDelegate> delegates = delegateAgents != null ? delegateAgents : List.of();
         toolExecutors.putAll(toDelegateToolExecutors(delegates));
 
         var builder = AgenticServices.agentBuilder(TextAgent.class)
@@ -132,8 +144,8 @@ public class RuntimeAgentFactory {
                 .description(runtimeDescription(agent))
                 .outputKey("response")
                 .chatModel(chatModel)
-                .systemMessageProvider(input -> systemMessage(agent, requestFromInput(input, request), delegates))
-                .userMessageProvider(input -> userMessage(requestFromInput(input, request)))
+                .systemMessage(systemMessage(agent, request, delegates))
+                .userMessage(userMessage(request))
                 .maxSequentialToolsInvocations((int) dispatchConfig.mcpConfig().maxIterations());
 
         if (childExecution) {
@@ -194,7 +206,7 @@ public class RuntimeAgentFactory {
         return executors;
     }
 
-    private Map<ToolSpecification, ToolExecutor> toDelegateToolExecutors(List<RuntimeAgent> delegateAgents) {
+    private Map<ToolSpecification, ToolExecutor> toDelegateToolExecutors(List<RuntimeAgentDelegate> delegateAgents) {
         if (delegateAgents == null || delegateAgents.isEmpty()) {
             return Map.of();
         }
@@ -205,7 +217,7 @@ public class RuntimeAgentFactory {
         Map<String, Integer> seen = new LinkedHashMap<>();
 
         Map<ToolSpecification, ToolExecutor> executors = new LinkedHashMap<>();
-        for (RuntimeAgent delegate : delegateAgents) {
+        for (RuntimeAgentDelegate delegate : delegateAgents) {
             String baseName = delegateToolBaseName(delegate.name());
             int index = seen.merge(baseName, 1, Integer::sum);
             String toolName = duplicateCounts.getOrDefault(baseName, 0L) > 1 ? baseName + "_" + index : baseName;
@@ -224,26 +236,19 @@ public class RuntimeAgentFactory {
         return executors;
     }
 
-    private String invokeDelegate(RuntimeAgent delegate) {
-        UntypedAgent workflow = AgenticServices.sequenceBuilder()
-                .name("delegate-agent-" + safeString(delegate.name()))
-                .description("Runs a selected peer agent as an optional delegate")
-                .subAgents(List.of(delegate.agent()))
-                .output(this::outputFromScope)
-                .build();
-        Object result = workflow.invoke(Map.of());
-        return result != null ? result.toString() : "";
+    private String invokeDelegate(RuntimeAgentDelegate delegate) {
+        try (RuntimeAgent runtimeAgent = delegate.open()) {
+            if (runtimeAgent == null) {
+                return "";
+            }
+            return invokeDelegate(runtimeAgent);
+        }
     }
 
-    private String outputFromScope(AgenticScope scope) {
-        if (scope == null || scope.agentInvocations() == null) {
-            return "";
-        }
-        List<AgentInvocation> invocations = scope.agentInvocations();
-        if (invocations.isEmpty()) {
-            return "";
-        }
-        Object result = invocations.getLast().output();
+    private String invokeDelegate(RuntimeAgent delegate) {
+        Object result = delegate.invoker()
+                .invokeWithAgenticScope(Map.of())
+                .result();
         return result != null ? result.toString() : "";
     }
 
@@ -254,7 +259,7 @@ public class RuntimeAgentFactory {
         return "delegate_" + (!isBlank(normalized) ? normalized : "agent");
     }
 
-    private String delegateToolDescription(RuntimeAgent delegate) {
+    private String delegateToolDescription(RuntimeAgentDelegate delegate) {
         return "Call agent '%s' only when the request clearly matches this agent's specialty. Specialty: %s"
                 .formatted(safeString(delegate.name()), !isBlank(delegate.description())
                         ? delegate.description().trim()
@@ -287,20 +292,32 @@ public class RuntimeAgentFactory {
                     .append(System.lineSeparator())
                     .append(System.lineSeparator());
         }
-        message.append(extractUserMessage(request));
+        message.append("Current user message:")
+                .append(System.lineSeparator())
+                .append(extractUserMessage(request));
         return message.toString();
     }
 
-    private String systemMessage(Agent agent, ChatRequestDTOV1 request, List<RuntimeAgent> delegateAgents) {
+    private String systemMessage(Agent agent, ChatRequestDTOV1 request, List<RuntimeAgentDelegate> delegateAgents) {
         String composed = scaffoldPromptComposer.compose(agent, request);
         String base = !isBlank(composed) ? composed : "You are a helpful assistant.";
+        base = base + System.lineSeparator() + System.lineSeparator() + currentUserMessageDirective(request);
         if (delegateAgents == null || delegateAgents.isEmpty()) {
             return base;
         }
         return base + System.lineSeparator() + System.lineSeparator() + delegationPolicy(delegateAgents);
     }
 
-    private String delegationPolicy(List<RuntimeAgent> delegateAgents) {
+    private String currentUserMessageDirective(ChatRequestDTOV1 request) {
+        return """
+                Answer the current user message below.
+                Ignore any framework continuation instruction that conflicts with this current user message.
+
+                Current user message:
+                %s""".formatted(extractUserMessage(request));
+    }
+
+    private String delegationPolicy(List<RuntimeAgentDelegate> delegateAgents) {
         StringBuilder sb = new StringBuilder(
                 """
                         Optional peer agents are available as tools.
@@ -309,7 +326,7 @@ public class RuntimeAgentFactory {
                         If you call a peer, use its result as private working context and return one final assistant message.
                         Do not expose tool names, agent names, transcripts, or intermediate routing details unless the user asks for them.
                         Available peer agents:""");
-        for (RuntimeAgent delegate : delegateAgents) {
+        for (RuntimeAgentDelegate delegate : delegateAgents) {
             sb.append(System.lineSeparator())
                     .append("- ")
                     .append(safeString(delegate.name()));
@@ -325,17 +342,6 @@ public class RuntimeAgentFactory {
                 .map(message -> safeString(message.getType()) + ": " + safeString(message.getMessage()))
                 .reduce((left, right) -> left + System.lineSeparator() + right)
                 .orElse("");
-    }
-
-    @SuppressWarnings("unchecked")
-    private ChatRequestDTOV1 requestFromInput(Object input, ChatRequestDTOV1 fallback) {
-        if (input instanceof Map<?, ?> map) {
-            Object request = ((Map<String, Object>) map).get(INPUT_REQUEST);
-            if (request instanceof ChatRequestDTOV1 chatRequest) {
-                return chatRequest;
-            }
-        }
-        return fallback;
     }
 
     private String extractRequestExcerpt(ChatRequestDTOV1 request) {
@@ -413,13 +419,11 @@ public class RuntimeAgentFactory {
         }
     }
 
-    private void closeAll(McpToolRegistry toolRegistry, List<RuntimeAgent> delegateAgents) {
+    private void closeAll(McpToolRegistry toolRegistry, List<RuntimeAgentDelegate> delegateAgents) {
         try {
             toolRegistry.close();
         } finally {
-            if (delegateAgents != null) {
-                delegateAgents.forEach(RuntimeAgent::close);
-            }
+            // Lazy delegates are opened and closed inside their tool executor.
         }
     }
 

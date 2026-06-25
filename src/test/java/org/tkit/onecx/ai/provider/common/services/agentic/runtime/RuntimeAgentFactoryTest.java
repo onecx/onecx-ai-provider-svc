@@ -70,7 +70,8 @@ class RuntimeAgentFactoryTest {
         when(mcpService.createToolRegistry(agent, "exec-root")).thenReturn(McpToolRegistry.empty());
 
         UntypedAgent delegateInvoker = mock(UntypedAgent.class);
-        RuntimeAgent delegate = new RuntimeAgent("onecx-agent", "Expert for OneCX documentation", delegateInvoker, null);
+        RuntimeAgentDelegate delegate = new RuntimeAgentDelegate("onecx-agent", "Expert for OneCX documentation",
+                () -> new RuntimeAgent("onecx-agent", "Expert for OneCX documentation", delegateInvoker, null));
 
         try (RuntimeAgent runtimeAgent = factory.leadAgent(agent, request, "exec-root", List.of(delegate))) {
             Object result = runtimeAgent.invoker()
@@ -82,6 +83,8 @@ class RuntimeAgentFactoryTest {
                     .extracting(spec -> spec.name())
                     .contains("delegate_onecx_agent");
             assertThat(chatModel.lastRequest.toString()).contains("Optional peer agents are available as tools");
+            assertThat(chatModel.lastRequest.toString()).contains("Current user message:");
+            assertThat(chatModel.lastRequest.toString()).contains("How big is a tiger?");
             verify(delegateInvoker, never()).invokeWithAgenticScope(any());
         }
     }

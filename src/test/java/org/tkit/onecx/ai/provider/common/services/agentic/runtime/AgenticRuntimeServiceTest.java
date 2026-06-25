@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +21,9 @@ import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
 import org.tkit.onecx.ai.provider.domain.models.Execution;
 import org.tkit.onecx.ai.provider.domain.models.enums.AgentGroupOrchestrationMode;
 
+import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
 
@@ -95,7 +99,7 @@ public class AgenticRuntimeServiceTest {
     }
 
     private RuntimeAgent staticRuntimeAgent(String output) {
-        return new RuntimeAgent("root", "Root agent", new StaticTextAgent(output), null, null);
+        return new RuntimeAgent("root", "Root agent", new StaticUntypedAgent(output), null);
     }
 
     private ChatRequestDTOV1 chatRequest(String text) {
@@ -107,18 +111,32 @@ public class AgenticRuntimeServiceTest {
         return request;
     }
 
-    public static final class StaticTextAgent implements TextAgent {
+    private static final class StaticUntypedAgent implements UntypedAgent {
 
         private final String output;
 
-        public StaticTextAgent(String output) {
+        private StaticUntypedAgent(String output) {
             this.output = output;
         }
 
         @Override
-        @dev.langchain4j.agentic.Agent
-        public String invoke() {
+        public Object invoke(Map<String, Object> input) {
             return output;
+        }
+
+        @Override
+        public ResultWithAgenticScope<String> invokeWithAgenticScope(Map<String, Object> input) {
+            return new ResultWithAgenticScope<>(null, output);
+        }
+
+        @Override
+        public AgenticScope getAgenticScope(Object memoryId) {
+            return null;
+        }
+
+        @Override
+        public boolean evictAgenticScope(Object memoryId) {
+            return false;
         }
     }
 }
