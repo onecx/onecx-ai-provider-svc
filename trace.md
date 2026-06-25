@@ -1,15 +1,110 @@
-onecx-ai-provider-svc  | 2026-06-25 07:14:06,477 WARNING [io.quarkus.opentelemetry.runtime.exporter.otlp.sender.VertxGrpcSender] (vert.x-eventloop-thread-6) Failed to export TraceRequestMarshaler. The request could not be executed. Full error message: Connection refused: localhost/127.0.0.1:4317
-onecx-ai-provider-svc  | 2026-06-25 07:14:53,312 INFO  [dev.langchain4j.http.client.log.LoggingHttpClient] (executor-thread-1) HTTP response:
+onecx-ai-provider-svc  | 2026-06-25 08:56:06,258 WARN  [dev.langchain4j.agentic.agent.AgentInvocationHandler] (executor-thread-2) Improper invocation of a standalone agent outside of an agentic system, consider using AiServices instead.
+
+onecx-ai-provider-svc  | 2026-06-25 08:54:57,688 WARNING [io.quarkus.opentelemetry.runtime.exporter.otlp.sender.VertxGrpcSender] (vert.x-eventloop-thread-4) Failed to export TraceRequestMarshaler. The request could not be executed. Full error message: Connection refused: localhost/127.0.0.1:4317
+onecx-ai-provider-svc  | 2026-06-25 08:56:05,863 INFO  [org.tkit.onecx.ai.provider.common.services.dispatch.ChatDispatchService] (executor-thread-2) Received chat request: class ChatRequestDTOV1 {
+onecx-ai-provider-svc  |     requestContext: class RequestContextDTOV1 {
+onecx-ai-provider-svc  |         filter: class AgentFilterDTOV1 {
+onecx-ai-provider-svc  |             key: APP_ID
+onecx-ai-provider-svc  |             value: ABC
+onecx-ai-provider-svc  |         }
+onecx-ai-provider-svc  |         aiContext: {}
+onecx-ai-provider-svc  |     }
+onecx-ai-provider-svc  |     chatMessage: class ChatMessageDTOV1 {
+onecx-ai-provider-svc  |         conversationId: 123
+onecx-ai-provider-svc  |         message: Hello santa-clause, how big is a tiger
+onecx-ai-provider-svc  |         type: USER
+onecx-ai-provider-svc  |         creationDate: null
+onecx-ai-provider-svc  |     }
+onecx-ai-provider-svc  |     conversation: null
+onecx-ai-provider-svc  | }
+onecx-ai-provider-svc  | 2026-06-25 08:56:05,871 INFO  [org.tkit.quarkus.jpa.daos.AbstractDAO] (executor-thread-2) Initialize the entity service org.tkit.onecx.ai.provider.domain.daos.AgentDAO_Subclass for entity class org.tkit.onecx.ai.provider.domain.models.Agent/Agent/id
+onecx-ai-provider-svc  | 2026-06-25 08:56:06,071 INFO  [org.tkit.onecx.ai.provider.common.services.execution.ExecutionService] (executor-thread-2) Creating execution exec-5a96c6dca3c14dc9 for agent 1234567 in tenant default
+onecx-ai-provider-svc  | 2026-06-25 08:56:06,074 INFO  [org.tkit.quarkus.jpa.daos.AbstractDAO] (executor-thread-2) Initialize the entity service org.tkit.onecx.ai.provider.domain.daos.ExecutionDAO_Subclass for entity class org.tkit.onecx.ai.provider.domain.models.Execution/Execution/id
+onecx-ai-provider-svc  | 2026-06-25 08:56:06,236 INFO  [org.tkit.onecx.ai.provider.common.services.execution.ExecutionService] (executor-thread-2) Started execution exec-5a96c6dca3c14dc9
+onecx-ai-provider-svc  | 2026-06-25 08:56:06,258 WARN  [dev.langchain4j.agentic.agent.AgentInvocationHandler] (executor-thread-2) Improper invocation of a standalone agent outside of an agentic system, consider using AiServices instead.
+onecx-ai-provider-svc  | 2026-06-25 08:57:03,366 INFO  [dev.langchain4j.http.client.log.LoggingHttpClient] (executor-thread-2) HTTP response:
 onecx-ai-provider-svc  | - status code: 200
-onecx-ai-provider-svc  | - headers: [Connection: keep-alive], [Content-Length: 1350], [Content-Type: application/json; charset=utf-8], [Date: Thu, 25 Jun 2026 07:14:53 GMT], [Via: 1.1 Caddy]
-onecx-ai-provider-svc  | - body: {"model":"ministral-3:8b","created_at":"2026-06-25T07:14:53.525582312Z","message":{"role":"assistant","content":"A tiger’s size can vary depending on whether it’s a male or female, but here’s a general idea:\n\n- **Siberian Tiger (the largest subspecies):**\n  - **Males:** Around **10 feet (3 meters) long** (including tail) and **3.3 feet (1 meter) tall** at the shoulder. They can weigh **500–670 lbs (225–300 kg)**.\n  - **Females:** Slightly smaller, about **8.5 feet (2.6 meters) long** and **2.8 feet (0.85 meters) tall**, weighing **265–375 lbs (120–170 kg)**.\n\n- **Bengal Tiger (commonly found in India/Asia):**\n  - **Males:** Around **9–10 feet (2.7–3 meters) long** and **3 feet (0.9 meters) tall**, weighing **300–550 lbs (136–250 kg)**.\n  - **Females:** About **7.5–8.5 feet (2.3–2.6 meters) long** and **2.7 feet (0.8 meters) tall**, weighing **165–265 lbs (75–120 kg)**.\n\nTigers are the largest cats in the world, and their size helps them hunt and dominate their habitats. Now, let me tell you something magical—imagine a tiger as big as a house, but with a heart as soft as snowflakes! *hohoho*\n\nYeah"},"done":true,"done_reason":"stop","total_duration":50311850562,"load_duration":241761430,"prompt_eval_count":213,"prompt_eval_duration":137846903,"eval_count":350,"eval_duration":49402578587}
+onecx-ai-provider-svc  | - headers: [Connection: keep-alive], [Content-Length: 2041], [Content-Type: application/json; charset=utf-8], [Date: Thu, 25 Jun 2026 08:57:03 GMT], [Via: 1.1 Caddy]
+onecx-ai-provider-svc  | - body: {"model":"ministral-3:8b","created_at":"2026-06-25T08:57:03.552967258Z","message":{"role":"assistant","content":"Ah, got it! Here’s how I’ll proceed with your request—keeping it concise and within the given constraints:\n\n---\n\n**Example continuation** (since no prior content was provided, I’ll illustrate how I’d adapt to a hypothetical scenario where you’d ask about Santa Claus):\n\n---\n*\"Santa Claus is known for his jolly demeanor, magical sleigh, and his mission to deliver gifts to children worldwide on Christmas Eve. He’s often depicted wearing a red suit with white fur trim, a wide-brimmed hat, and carrying a sack full of toys. His workshop, located at the North Pole, is said to be bustling with elves who help him prepare for the holiday season. Santa’s reindeer, led by Rudolph with his glowing red nose, pull his sleigh across the night sky—though some say he can also travel via time or magic!*\n\n*Fun fact: The modern image of Santa Claus is heavily influenced by the 1823 poem ‘A Visit from St. Nicholas’ (also known as ‘The Night Before Christmas’) by Clement Clarke Moore, though some credit it to his friend, Washington Irving. The Coca-Cola ads of the 1930s further cemented his iconic red suit.*\n\n*hohoho*\nyeah\"*\n\n---\n**Key notes for your reference:**\n1. **Santa-clause-skill** is triggered when Santa Claus is mentioned, ending with *\"hohoho\"* (as per your instruction).\n2. **APP_ID=ABC** is noted but not used in responses unless explicitly required (e.g., for API calls or filters).\n3. **Scaffold skills** are only applied when relevant (here, the `santa-clause-skill` was the only fit).\n\n---\n**Ready for your actual content!** Drop your question or topic, and I’ll tailor the response accordingly—always keeping it festive, accurate, and within the given rules.\n\nyeah"},"done":true,"done_reason":"stop","total_duration":56363354390,"load_duration":179027963,"prompt_eval_count":117,"prompt_eval_duration":136215837,"eval_count":397,"eval_duration":55411997749}
 onecx-ai-provider-svc  |
-onecx-ai-provider-svc  | 2026-06-25 07:14:53,341 WARN  [org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeService] (executor-thread-1) Agentic runtime failed for root agent 'yeah-agent': dev.langchain4j.agentic.agent.AgentInvocationException: Failed to invoke agent method: public abstract java.lang.Object dev.langchain4j.agentic.UntypedAgent.invoke(java.util.Map)
-onecx-ai-provider-svc  |        at dev.langchain4j.agentic.agent.AgentInvocationHandler.invokeStandaloneAgent(AgentInvocationHandler.java:181)
+onecx-ai-provider-svc  | 2026-06-25 08:57:03,404 INFO  [org.tkit.onecx.ai.provider.common.services.mcp.McpService] (executor-thread-2) Discovering tools from MCP server: https://onecx-docs-ai-dev.dev.one-cx.org/mcp
+onecx-ai-provider-svc  | 2026-06-25 08:57:04,621 INFO  [org.tkit.onecx.ai.provider.common.services.mcp.McpService] (executor-thread-2) Discovered 1 tool(s) from https://onecx-docs-ai-dev.dev.one-cx.org/mcp
+onecx-ai-provider-svc  | 2026-06-25 08:57:04,621 INFO  [org.tkit.onecx.ai.provider.common.services.mcp.McpService] (executor-thread-2) Created tool registry with 1 MCP tools from agent
+onecx-ai-provider-svc  | 2026-06-25 08:57:04,627 INFO  [org.tkit.quarkus.jpa.daos.AbstractDAO] (executor-thread-2) Initialize the entity service org.tkit.onecx.ai.provider.domain.daos.ExternalAgentDAO_Subclass for entity class org.tkit.onecx.ai.provider.domain.models.ExternalAgent/ExternalAgent/id
+onecx-ai-provider-svc  | 2026-06-25 08:57:08,333 WARNING [io.quarkus.opentelemetry.runtime.exporter.otlp.sender.VertxGrpcSender] (vert.x-eventloop-thread-8) Failed to export TraceRequestMarshaler. The request could not be executed. Full error message: Connection refused: localhost/127.0.0.1:4317
+onecx-ai-provider-svc  | 2026-06-25 08:57:25,301 INFO  [dev.langchain4j.http.client.log.LoggingHttpClient] (executor-thread-2) HTTP response:
+onecx-ai-provider-svc  | - status code: 200
+onecx-ai-provider-svc  | - headers: [Connection: keep-alive], [Content-Length: 449], [Content-Type: application/json; charset=utf-8], [Date: Thu, 25 Jun 2026 08:57:25 GMT], [Via: 1.1 Caddy]
+onecx-ai-provider-svc  | - body: {"model":"ministral-3:8b","created_at":"2026-06-25T08:57:25.471513633Z","message":{"role":"assistant","content":"```json\n{\n  \"agentName\": \"onecx-agent\",\n  \"arguments\": {\n    \"userRequest\": \"Hello santa-clause, how big is a tiger\"\n  }\n}\n```"},"done":true,"done_reason":"stop","total_duration":20024575135,"load_duration":185117928,"prompt_eval_count":390,"prompt_eval_duration":14100055390,"eval_count":41,"eval_duration":5674368528}
+onecx-ai-provider-svc  |
+onecx-ai-provider-svc  | 2026-06-25 08:57:25,311 INFO  [dev.langchain4j.agentic.supervisor.SupervisorPlanner] (executor-thread-2) Agent Invocation: AgentInvocation{agentName='onecx-agent', arguments={userRequest=Hello santa-clause, how big is a tiger}}
+onecx-ai-provider-svc  | 2026-06-25 08:57:25,323 INFO  [org.tkit.onecx.ai.provider.common.services.execution.ExecutionService] (executor-thread-2) Execution exec-5a96c6dca3c14dc9 transitioned to WAITING_AGENT
+onecx-ai-provider-svc  | 2026-06-25 08:57:25,344 INFO  [org.tkit.onecx.ai.provider.common.services.execution.ExecutionService] (executor-thread-2) Creating execution exec-c8efff76696645a8 for agent onecx-agent in tenant default
+onecx-ai-provider-svc  | 2026-06-25 08:57:25,361 INFO  [org.tkit.onecx.ai.provider.common.services.execution.ExecutionService] (executor-thread-2) Started execution exec-c8efff76696645a8
+onecx-ai-provider-svc  | 2026-06-25 08:57:29,240 WARNING [io.quarkus.opentelemetry.runtime.exporter.otlp.sender.VertxGrpcSender] (vert.x-eventloop-thread-8) Failed to export TraceRequestMarshaler. The request could not be executed. Full error message: Connection refused: localhost/127.0.0.1:4317
+onecx-ai-provider-svc  | 2026-06-25 08:58:09,851 WARNING [io.quarkus.opentelemetry.runtime.exporter.otlp.sender.VertxGrpcSender] (vert.x-eventloop-thread-8) Failed to export TraceRequestMarshaler. The request could not be executed. Full error message: Connection refused: localhost/127.0.0.1:4317
+onecx-ai-provider-svc  | 2026-06-25 08:58:25,626 WARN  [dev.langchain4j.internal.RetryUtils] (executor-thread-2) A retriable exception occurred. Remaining retries: 2 of 2: dev.langchain4j.exception.InternalServerException:
+onecx-ai-provider-svc  |        at dev.langchain4j.internal.ExceptionMapper$DefaultExceptionMapper.mapHttpStatusCode(ExceptionMapper.java:56)
+onecx-ai-provider-svc  |        at dev.langchain4j.internal.ExceptionMapper$DefaultExceptionMapper.mapException(ExceptionMapper.java:44)
+onecx-ai-provider-svc  |        at dev.langchain4j.internal.ExceptionMapper.withExceptionMapper(ExceptionMapper.java:31)
+onecx-ai-provider-svc  |        at dev.langchain4j.internal.RetryUtils.lambda$withRetryMappingExceptions$1(RetryUtils.java:326)
+onecx-ai-provider-svc  |        at dev.langchain4j.internal.RetryUtils$RetryPolicy.withRetry(RetryUtils.java:204)
+onecx-ai-provider-svc  |        at dev.langchain4j.internal.RetryUtils.withRetry(RetryUtils.java:263)
+onecx-ai-provider-svc  |        at dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions(RetryUtils.java:326)
+onecx-ai-provider-svc  |        at dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions(RetryUtils.java:309)
+onecx-ai-provider-svc  |        at dev.langchain4j.model.ollama.OllamaChatModel.doChat(OllamaChatModel.java:41)
+onecx-ai-provider-svc  |        at dev.langchain4j.model.chat.ChatModel.chat(ChatModel.java:61)
+onecx-ai-provider-svc  |        at dev.langchain4j.model.chat.ChatModel.chat(ChatModel.java:36)
+onecx-ai-provider-svc  |        at dev.langchain4j.guardrail.SynchronousChatExecutor.execute(SynchronousChatExecutor.java:32)
+onecx-ai-provider-svc  |        at dev.langchain4j.guardrail.AbstractChatExecutor.executeInternal(AbstractChatExecutor.java:66)
+onecx-ai-provider-svc  |        at dev.langchain4j.guardrail.AbstractChatExecutor.execute(AbstractChatExecutor.java:52)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.AiServiceMethodImplementationSupport.doImplement0(AiServiceMethodImplementationSupport.java:403)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.AiServiceMethodImplementationSupport.doImplement(AiServiceMethodImplementationSupport.java:209)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.AiServiceMethodImplementationSupport.implement(AiServiceMethodImplementationSupport.java:184)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$1.apply(MethodImplementationSupportProducer.java:31)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$1.apply(MethodImplementationSupportProducer.java:28)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.SpanWrapper.wrap(SpanWrapper.java:32)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$2.apply(MethodImplementationSupportProducer.java:40)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$2.apply(MethodImplementationSupportProducer.java:37)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MetricsTimedWrapper$2.get(MetricsTimedWrapper.java:42)
+onecx-ai-provider-svc  |        at io.micrometer.core.instrument.composite.CompositeTimer.record(CompositeTimer.java:69)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MetricsTimedWrapper.wrap(MetricsTimedWrapper.java:39)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$2.apply(MethodImplementationSupportProducer.java:40)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$2.apply(MethodImplementationSupportProducer.java:37)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MetricsCountedWrapper.wrap(MetricsCountedWrapper.java:22)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$2.apply(MethodImplementationSupportProducer.java:40)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$2.apply(MethodImplementationSupportProducer.java:37)
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1.implement(MethodImplementationSupportProducer.java:46)
+onecx-ai-provider-svc  |        at org.tkit.onecx.ai.provider.common.services.agentic.runtime.TextAgent$$QuarkusImpl.invoke(Unknown Source)
+onecx-ai-provider-svc  |        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+onecx-ai-provider-svc  |        at java.base/java.lang.reflect.Method.invoke(Method.java:565)
 onecx-ai-provider-svc  |        at dev.langchain4j.agentic.agent.AgentInvocationHandler.invoke(AgentInvocationHandler.java:165)
 onecx-ai-provider-svc  |        at jdk.proxy2/jdk.proxy2.$Proxy106.invoke(Unknown Source)
-onecx-ai-provider-svc  |        at org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeService.invokeAgent(AgenticRuntimeService.java:229)
-onecx-ai-provider-svc  |        at org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeService.invokeRoot(AgenticRuntimeService.java:54)
+onecx-ai-provider-svc  |        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+onecx-ai-provider-svc  |        at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+onecx-ai-provider-svc  |        at dev.langchain4j.agentic.internal.AgentInvoker.internalInvoke(AgentInvoker.java:48)
+onecx-ai-provider-svc  |        at dev.langchain4j.agentic.internal.AgentInvoker.invoke(AgentInvoker.java:34)
+onecx-ai-provider-svc  |        at dev.langchain4j.agentic.internal.AbstractAgentInvoker.invoke(AbstractAgentInvoker.java:88)
+onecx-ai-provider-svc  |        at dev.langchain4j.agentic.internal.AgentExecutor.agentResponse(AgentExecutor.java:94)
+onecx-ai-provider-svc  |        at dev.langchain4j.agentic.internal.AgentExecutor.internalExecute(AgentExecutor.java:67)
+onecx-ai-provider-svc  |        at dev.langchain4j.agentic.internal.AgentExecutor.execute(AgentExecutor.java:37)
+onecx-ai-provider-svc  |        at dev.langchain4j.agentic.internal.AgentExecutor.execute(AgentExecutor.java:25)
+onecx-ai-provider-svc  |        at dev.langchain4j.agentic.internal.PlannerBasedInvocationHandler$PlannerLoop.loop(PlannerBasedInvocationHandler.java:374)
+onecx-ai-provider-svc  |        at dev.langchain4j.agentic.internal.PlannerBasedInvocationHandler.executeAgentMethod(PlannerBasedInvocationHandler.java:203)
+onecx-ai-provider-svc  |        at dev.langchain4j.agentic.internal.PlannerBasedInvocationHandler.invoke(PlannerBasedInvocationHandler.java:180)
+onecx-ai-provider-svc  |        at jdk.proxy2/jdk.proxy2.$Proxy116.invoke(Unknown Source)
+onecx-ai-provider-svc  |        at org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeService.executeSupervisorRoutedGroup(AgenticRuntimeService.java:119)
+onecx-ai-provider-svc  |        at org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeService.executeGroup(AgenticRuntimeService.java:99)
+onecx-ai-provider-svc  |        at org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeService.lambda$executeGroups$2(AgenticRuntimeService.java:81)
+onecx-ai-provider-svc  |        at java.base/java.util.stream.ReferencePipeline$3$1.accept(ReferencePipeline.java:214)
+onecx-ai-provider-svc  |        at java.base/java.util.AbstractList$RandomAccessSpliterator.forEachRemaining(AbstractList.java:722)
+onecx-ai-provider-svc  |        at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:570)
+onecx-ai-provider-svc  |        at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:560)
+onecx-ai-provider-svc  |        at java.base/java.util.stream.ReduceOps$ReduceOp.evaluateSequential(ReduceOps.java:921)
+onecx-ai-provider-svc  |        at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:265)
+onecx-ai-provider-svc  |        at java.base/java.util.stream.ReferencePipeline.collect(ReferencePipeline.java:723)
+onecx-ai-provider-svc  |        at org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeService.executeGroups(AgenticRuntimeService.java:84)
+onecx-ai-provider-svc  |        at org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeService.invokeRoot(AgenticRuntimeService.java:57)
 onecx-ai-provider-svc  |        at org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeService_ClientProxy.invokeRoot(Unknown Source)
 onecx-ai-provider-svc  |        at org.tkit.onecx.ai.provider.common.services.dispatch.ChatDispatchService.chat(ChatDispatchService.java:34)
 onecx-ai-provider-svc  |        at org.tkit.onecx.ai.provider.common.services.dispatch.ChatDispatchService_ClientProxy.chat(Unknown Source)
@@ -47,70 +142,11 @@ onecx-ai-provider-svc  |        at org.jboss.threads.DelegatingRunnable.run(Dele
 onecx-ai-provider-svc  |        at org.jboss.threads.ThreadLocalResettingRunnable.run(ThreadLocalResettingRunnable.java:11)
 onecx-ai-provider-svc  |        at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
 onecx-ai-provider-svc  |        at java.base/java.lang.Thread.run(Thread.java:1474)
-onecx-ai-provider-svc  | Caused by: java.lang.reflect.InvocationTargetException
-onecx-ai-provider-svc  |        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:119)
-onecx-ai-provider-svc  |        at java.base/java.lang.reflect.Method.invoke(Method.java:565)
-onecx-ai-provider-svc  |        at dev.langchain4j.agentic.agent.AgentInvocationHandler.invokeStandaloneAgent(AgentInvocationHandler.java:179)
-onecx-ai-provider-svc  |        ... 41 more
-onecx-ai-provider-svc  | Caused by: dev.langchain4j.service.output.OutputParsingException: Failed to parse "A tiger’s size can vary depending on whether it’s a male or female, but here’s a general idea:
+onecx-ai-provider-svc  | Caused by: dev.langchain4j.exception.HttpException:
+onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.jaxrsclient.JaxRsHttpClient.execute(JaxRsHttpClient.java:126)
+onecx-ai-provider-svc  |        at dev.langchain4j.http.client.log.LoggingHttpClient.execute(LoggingHttpClient.java:49)
+onecx-ai-provider-svc  |        at dev.langchain4j.model.ollama.OllamaClient.chat(OllamaClient.java:115)
+onecx-ai-provider-svc  |        at dev.langchain4j.model.ollama.OllamaChatModel.lambda$doChat$0(OllamaChatModel.java:41)
+onecx-ai-provider-svc  |        at dev.langchain4j.internal.ExceptionMapper.withExceptionMapper(ExceptionMapper.java:29)
+onecx-ai-provider-svc  |        ... 95 more
 onecx-ai-provider-svc  |
-onecx-ai-provider-svc  | - **Siberian Tiger (the largest subspecies):**
-onecx-ai-provider-svc  |   - **Males:** Around **10 feet (3 meters) long** (including tail) and **3.3 feet (1 meter) tall** at the shoulder. They can weigh **500–670 lbs (225–300 kg)**.
-onecx-ai-provider-svc  |   - **Females:** Slightly smaller, about **8.5 feet (2.6 meters) long** and **2.8 feet (0.85 meters) tall**, weighing **265–375 lbs (120–170 kg)**.
-onecx-ai-provider-svc  |
-onecx-ai-provider-svc  | - **Bengal Tiger (commonly found in India/Asia):**
-onecx-ai-provider-svc  |   - **Males:** Around **9–10 feet (2.7–3 meters) long** and **3 feet (0.9 meters) tall**, weighing **300–550 lbs (136–250 kg)**.
-onecx-ai-provider-svc  |   - **Females:** About **7.5–8.5 feet (2.3–2.6 meters) long** and **2.7 feet (0.8 meters) tall**, weighing **165–265 lbs (75–120 kg)**.
-onecx-ai-provider-svc  |
-onecx-ai-provider-svc  | Tigers are the largest cats in the world, and their size helps them hunt and dominate their habitats. Now, let me tell you something magical—imagine a tiger as big as a house, but with a heart as soft as snowflakes! *hohoho*
-onecx-ai-provider-svc  |
-onecx-ai-provider-svc  | Yeah" (base64: "QSB0aWdlcuKAmXMgc2l6ZSBjYW4gdmFyeSBkZXBlbmRpbmcgb24gd2hldGhlciBpdOKAmXMgYSBtYWxlIG9yIGZlbWFsZSwgYnV0IGhlcmXigJlzIGEgZ2VuZXJhbCBpZGVhOgoKLSAqKlNpYmVyaWFuIFRpZ2VyICh0aGUgbGFyZ2VzdCBzdWJzcGVjaWVzKToqKgogIC0gKipNYWxlczoqKiBBcm91bmQgKioxMCBmZWV0ICgzIG1ldGVycykgbG9uZyoqIChpbmNsdWRpbmcgdGFpbCkgYW5kICoqMy4zIGZlZXQgKDEgbWV0ZXIpIHRhbGwqKiBhdCB0aGUgc2hvdWxkZXIuIFRoZXkgY2FuIHdlaWdoICoqNTAw4oCTNjcwIGxicyAoMjI14oCTMzAwIGtnKSoqLgogIC0gKipGZW1hbGVzOioqIFNsaWdodGx5IHNtYWxsZXIsIGFib3V0ICoqOC41IGZlZXQgKDIuNiBtZXRlcnMpIGxvbmcqKiBhbmQgKioyLjggZmVldCAoMC44NSBtZXRlcnMpIHRhbGwqKiwgd2VpZ2hpbmcgKioyNjXigJMzNzUgbGJzICgxMjDigJMxNzAga2cpKiouCgotICoqQmVuZ2FsIFRpZ2VyIChjb21tb25seSBmb3VuZCBpbiBJbmRpYS9Bc2lhKToqKgogIC0gKipNYWxlczoqKiBBcm91bmQgKio54oCTMTAgZmVldCAoMi434oCTMyBtZXRlcnMpIGxvbmcqKiBhbmQgKiozIGZlZXQgKDAuOSBtZXRlcnMpIHRhbGwqKiwgd2VpZ2hpbmcgKiozMDDigJM1NTAgbGJzICgxMzbigJMyNTAga2cpKiouCiAgLSAqKkZlbWFsZXM6KiogQWJvdXQgKio3LjXigJM4LjUgZmVldCAoMi4z4oCTMi42IG1ldGVycykgbG9uZyoqIGFuZCAqKjIuNyBmZWV0ICgwLjggbWV0ZXJzKSB0YWxsKiosIHdlaWdoaW5nICoqMTY14oCTMjY1IGxicyAoNzXigJMxMjAga2cpKiouCgpUaWdlcnMgYXJlIHRoZSBsYXJnZXN0IGNhdHMgaW4gdGhlIHdvcmxkLCBhbmQgdGhlaXIgc2l6ZSBoZWxwcyB0aGVtIGh1bnQgYW5kIGRvbWluYXRlIHRoZWlyIGhhYml0YXRzLiBOb3csIGxldCBtZSB0ZWxsIHlvdSBzb21ldGhpbmcgbWFnaWNhbOKAlGltYWdpbmUgYSB0aWdlciBhcyBiaWcgYXMgYSBob3VzZSwgYnV0IHdpdGggYSBoZWFydCBhcyBzb2Z0IGFzIHNub3dmbGFrZXMhICpob2hvaG8qCgpZZWFo") into java.lang.Object
-onecx-ai-provider-svc  |        at dev.langchain4j.service.output.ParsingUtils.outputParsingException(ParsingUtils.java:106)
-onecx-ai-provider-svc  |        at dev.langchain4j.service.output.PojoOutputParser.parse(PojoOutputParser.java:64)
-onecx-ai-provider-svc  |        at dev.langchain4j.service.output.ServiceOutputParser.parseText(ServiceOutputParser.java:70)
-onecx-ai-provider-svc  |        at dev.langchain4j.service.output.ServiceOutputParser.parse(ServiceOutputParser.java:56)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.AiServiceMethodImplementationSupport.doImplement0(AiServiceMethodImplementationSupport.java:619)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.AiServiceMethodImplementationSupport.doImplement(AiServiceMethodImplementationSupport.java:209)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.AiServiceMethodImplementationSupport.implement(AiServiceMethodImplementationSupport.java:184)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$1.apply(MethodImplementationSupportProducer.java:31)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$1.apply(MethodImplementationSupportProducer.java:28)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MetricsCountedWrapper.wrap(MetricsCountedWrapper.java:22)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$2.apply(MethodImplementationSupportProducer.java:40)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$2.apply(MethodImplementationSupportProducer.java:37)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MetricsTimedWrapper$2.get(MetricsTimedWrapper.java:42)
-onecx-ai-provider-svc  |        at io.micrometer.core.instrument.composite.CompositeTimer.record(CompositeTimer.java:69)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MetricsTimedWrapper.wrap(MetricsTimedWrapper.java:39)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$2.apply(MethodImplementationSupportProducer.java:40)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$2.apply(MethodImplementationSupportProducer.java:37)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.SpanWrapper.wrap(SpanWrapper.java:32)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$2.apply(MethodImplementationSupportProducer.java:40)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1$2.apply(MethodImplementationSupportProducer.java:37)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.runtime.aiservice.MethodImplementationSupportProducer$1.implement(MethodImplementationSupportProducer.java:46)
-onecx-ai-provider-svc  |        at dev.langchain4j.agentic.UntypedAgent$$QuarkusImpl.invoke(Unknown Source)
-onecx-ai-provider-svc  |        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
-onecx-ai-provider-svc  |        ... 43 more
-onecx-ai-provider-svc  | Caused by: java.io.UncheckedIOException: com.fasterxml.jackson.core.JsonParseException: Unrecognized token 'A': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false')
-onecx-ai-provider-svc  |  at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1]
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.QuarkusJsonCodecFactory$Codec.fromJson(QuarkusJsonCodecFactory.java:80)
-onecx-ai-provider-svc  |        at dev.langchain4j.internal.Json.fromJson(Json.java:82)
-onecx-ai-provider-svc  |        at dev.langchain4j.internal.JsonParsingUtils.lambda$extractAndParseJson$0(JsonParsingUtils.java:17)
-onecx-ai-provider-svc  |        at dev.langchain4j.internal.JsonParsingUtils.extractAndParseJson(JsonParsingUtils.java:23)
-onecx-ai-provider-svc  |        at dev.langchain4j.internal.JsonParsingUtils.extractAndParseJson(JsonParsingUtils.java:17)
-onecx-ai-provider-svc  |        at dev.langchain4j.service.output.PojoOutputParser.parse(PojoOutputParser.java:61)
-onecx-ai-provider-svc  |        ... 64 more
-onecx-ai-provider-svc  | Caused by: com.fasterxml.jackson.core.JsonParseException: Unrecognized token 'A': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false')
-onecx-ai-provider-svc  |  at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1]
-onecx-ai-provider-svc  |        at com.fasterxml.jackson.core.JsonParser._constructReadException(JsonParser.java:2675)
-onecx-ai-provider-svc  |        at com.fasterxml.jackson.core.json.ReaderBasedJsonParser._reportInvalidToken(ReaderBasedJsonParser.java:3025)
-onecx-ai-provider-svc  |        at com.fasterxml.jackson.core.json.ReaderBasedJsonParser._handleOddValue(ReaderBasedJsonParser.java:2051)
-onecx-ai-provider-svc  |        at com.fasterxml.jackson.core.json.ReaderBasedJsonParser.nextToken(ReaderBasedJsonParser.java:780)
-onecx-ai-provider-svc  |        at com.fasterxml.jackson.databind.ObjectMapper._initForReading(ObjectMapper.java:5139)
-onecx-ai-provider-svc  |        at com.fasterxml.jackson.databind.ObjectMapper._readMapAndClose(ObjectMapper.java:5042)
-onecx-ai-provider-svc  |        at com.fasterxml.jackson.databind.ObjectMapper.readValue(ObjectMapper.java:3954)
-onecx-ai-provider-svc  |        at com.fasterxml.jackson.databind.ObjectMapper.readValue(ObjectMapper.java:3922)
-onecx-ai-provider-svc  |        at io.quarkiverse.langchain4j.QuarkusJsonCodecFactory$Codec.fromJson(QuarkusJsonCodecFactory.java:72)
-onecx-ai-provider-svc  |        ... 69 more
-onecx-ai-provider-svc  |
-onecx-ai-provider-svc  | 2026-06-25 07:14:53,358 WARN  [org.tkit.onecx.ai.provider.common.services.execution.ExecutionService] (executor-thread-1) Execution exec-d9ccefce4c8e4dfb failed: type=AgentInvocationException, message=Failed to invoke agent method: public abstract java.lang.Object dev.langchain4j.agentic.UntypedAgent.invoke(java.util.Map)
-onecx-ai-provider-svc  | 2026-06-25 07:14:53,383 INFO  [org.tkit.onecx.ai.provider.rs.external.v1.controllers.DispatchRestV1Controller] (executor-thread-1) POST /v1/dispatch/chat [400] [111.781s]
-onecx-ai-provider-svc  | 2026-06-25 07:14:57,237 WARNING [io.quarkus.opentelemetry.runtime.exporter.otlp.sender.VertxGrpcSender] (vert.x-eventloop-thread-6) Failed to export TraceRequestMarshaler. The request could not be executed. Full error message: Connection refused: localhost/127.0.0.1:4317
