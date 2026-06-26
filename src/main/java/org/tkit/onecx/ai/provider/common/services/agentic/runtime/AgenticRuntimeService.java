@@ -56,7 +56,9 @@ public class AgenticRuntimeService {
             executionService.succeedExecution(executionId, finalResponse);
             return new AgenticRuntimeResult(executionId, finalResponse, true);
         } catch (Exception ex) {
-            log.warn("Agentic runtime failed for root agent '{}'", agent.getName(), ex);
+            log.warn("Agentic runtime failed for root agent '{}': {}: {}", agent.getName(),
+                    ex.getClass().getSimpleName(), ex.getMessage());
+            log.debug("Agentic runtime failure details for root agent '{}'", agent.getName(), ex);
             try {
                 executionService.failExecution(executionId, ex.getClass().getSimpleName(), ex.getMessage());
             } catch (Exception ignored) {
@@ -68,7 +70,7 @@ public class AgenticRuntimeService {
 
     private String invokeRootAgent(Agent agent, ChatRequestDTOV1 request, String executionId) {
         try (RuntimeAgent rootAgent = runtimeAgentFactory.rootAgent(agent, request, executionId)) {
-            return invokeSingleAgent(rootAgent, request);
+            return invokeSingleAgent(rootAgent, request, executionId, null, "root");
         }
     }
 
@@ -110,7 +112,7 @@ public class AgenticRuntimeService {
     private String executeLeadAgentGroup(Agent rootAgent, List<RuntimeAgentDelegate> peerAgents, ChatRequestDTOV1 request,
             String parentExecutionId) {
         try (RuntimeAgent leadAgent = runtimeAgentFactory.leadAgent(rootAgent, request, parentExecutionId, peerAgents)) {
-            return invokeSingleAgent(leadAgent, request);
+            return invokeSingleAgent(leadAgent, request, parentExecutionId, null, "lead");
         }
     }
 
@@ -121,6 +123,10 @@ public class AgenticRuntimeService {
             runtimeAgents.add(rootRuntimeAgent);
             runtimeAgents.addAll(peerAgents);
             runtimeAgents.sort(Comparator.comparing(agent -> safeString(agent.name()).toLowerCase()));
+            runtimeAgents.forEach(agent -> log.info(
+                    "Invoking agent: kind={}, executionId={}, parentExecutionId={}, groupId={}, agent={}",
+                    sequential ? "sequential-workflow" : "parallel-workflow", parentExecutionId, parentExecutionId,
+                    group.getId(), agent.name()));
             return sequential
                     ? executeSequentialGroup(group, runtimeAgents, request)
                     : executeParallelGroup(group, runtimeAgents, request);
@@ -171,7 +177,12 @@ public class AgenticRuntimeService {
         return input;
     }
 
-    private String invokeSingleAgent(RuntimeAgent agent, ChatRequestDTOV1 request) {
+    private String invokeSingleAgent(RuntimeAgent agent, ChatRequestDTOV1 request, String executionId, String groupId,
+            String kind) {
+        log.info("Invoking agent: kind={}, executionId={}, parentExecutionId={}, groupId={}, agent={}", kind, executionId,
+                null, groupId, agent.name());
+        // Direct invocation is intentional: wrapping this dynamic no-arg agent in a sequence workflow currently
+        // triggers LangChain4j's continuation prompt and can hide the actual user message.
         Object result = agent.invoker()
                 .invokeWithAgenticScope(agentInput(request))
                 .result();

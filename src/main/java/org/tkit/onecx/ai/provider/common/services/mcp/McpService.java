@@ -81,12 +81,16 @@ public class McpService {
                                 client))
                         .toList();
             } catch (Exception ex) {
-                log.error("MCP server not available {}: {}", tool.getUrl(), ex.getMessage(), ex);
+                log.warn("MCP server not available {}: {}: {}", tool.getUrl(), ex.getClass().getSimpleName(),
+                        ex.getMessage());
+                log.debug("MCP server availability failure details for {}", tool.getUrl(), ex);
                 return List.of();
             }
 
         } catch (Exception e) {
-            log.error("Error discovering tools from {}: {}", tool.getUrl(), e.getMessage(), e);
+            log.warn("Error discovering tools from {}: {}: {}", tool.getUrl(), e.getClass().getSimpleName(),
+                    e.getMessage());
+            log.debug("MCP tool discovery failure details for {}", tool.getUrl(), e);
             return List.of();
         }
     }
@@ -98,7 +102,7 @@ public class McpService {
     }
 
     protected List<ToolSpecification> receiveToolSpecificationsFallback(McpClient client) {
-        log.error("Failed to receive tool specifications after retries: {}",
+        log.warn("Failed to receive tool specifications after retries: {}",
                 dispatchConfig.mcpConfig().maxToolExecutionRetries());
         return List.of();
     }

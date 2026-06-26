@@ -81,10 +81,14 @@ public class ExternalAgentDiscoveryService {
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("Agent card discovery at '{}' was interrupted", discoveryUrl, e);
+            log.warn("Agent card discovery at '{}' was interrupted: {}: {}", discoveryUrl, e.getClass().getSimpleName(),
+                    e.getMessage());
+            log.debug("Agent card discovery interruption details for '{}'", discoveryUrl, e);
             return null;
         } catch (IOException e) {
-            log.warn("Failed to fetch agent card from '{}'", discoveryUrl, e);
+            log.warn("Failed to fetch agent card from '{}': {}: {}", discoveryUrl, e.getClass().getSimpleName(),
+                    e.getMessage());
+            log.debug("Agent card discovery failure details for '{}'", discoveryUrl, e);
             return null;
         }
     }

@@ -83,6 +83,13 @@ class RuntimeAgentFactoryTest {
                     .extracting(spec -> spec.name())
                     .contains("delegate_onecx_agent");
             assertThat(chatModel.lastRequest.toString()).contains("Optional peer agents are available as tools");
+            assertThat(chatModel.lastRequest.toString()).contains("A request mentioning OneCX matches peers");
+            assertThat(chatModel.lastRequest.toString()).contains("Do not require the user to mention \"MCP server\"");
+            assertThat(chatModel.lastRequest.toolSpecifications())
+                    .extracting(spec -> spec.description())
+                    .anySatisfy(description -> assertThat(description)
+                            .contains("matches this agent's name, domain, data source, or specialty")
+                            .contains("documentation"));
             assertThat(chatModel.lastRequest.toString()).contains("Current user message:");
             assertThat(chatModel.lastRequest.toString()).contains("How big is a tiger?");
             verify(delegateInvoker, never()).invokeWithAgenticScope(any());

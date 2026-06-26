@@ -260,10 +260,14 @@ public class RuntimeAgentFactory {
     }
 
     private String delegateToolDescription(RuntimeAgentDelegate delegate) {
-        return "Call agent '%s' only when the request clearly matches this agent's specialty. Specialty: %s"
-                .formatted(safeString(delegate.name()), !isBlank(delegate.description())
-                        ? delegate.description().trim()
-                        : "configured peer agent");
+        return """
+                Delegate to agent '%s' when the user's request matches this agent's name, domain, data source, or specialty.
+                Agent specialty: %s
+                Pass a focused request with all context the peer needs. Use this tool even if the user says "docs" or
+                "documentation" without naming an MCP server, when this agent is the documentation/domain specialist.
+                """.formatted(safeString(delegate.name()), !isBlank(delegate.description())
+                ? delegate.description().trim()
+                : "configured peer agent");
     }
 
     private boolean isCallableLocalAgent(Agent rootAgent, Agent candidate) {
@@ -321,7 +325,10 @@ public class RuntimeAgentFactory {
         StringBuilder sb = new StringBuilder(
                 """
                         Optional peer agents are available as tools.
-                        Use a peer agent only when its specialty clearly matches the user's request.
+                        Use a peer agent when the user's request matches the peer's name, description, domain, data source, or specialty.
+                        A request mentioning OneCX matches peers described as responsible for OneCX.
+                        Requests mentioning docs, documentation, reference material, or "based on docs" strongly favor documentation peers.
+                        Do not require the user to mention "MCP server" before using a documentation/domain peer.
                         Do not call a peer merely because it is available.
                         If you call a peer, use its result as private working context and return one final assistant message.
                         Do not expose tool names, agent names, transcripts, or intermediate routing details unless the user asks for them.
@@ -382,7 +389,9 @@ public class RuntimeAgentFactory {
         try {
             executionService.waitForResource(executionId, state);
         } catch (Exception ex) {
-            log.warn("Unable to transition execution {} to {}", executionId, state, ex);
+            log.warn("Unable to transition execution {} to {}: {}: {}", executionId, state, ex.getClass().getSimpleName(),
+                    ex.getMessage());
+            log.debug("Execution transition failure details for {}", executionId, ex);
         }
     }
 
@@ -393,7 +402,9 @@ public class RuntimeAgentFactory {
         try {
             executionService.resumeExecution(executionId);
         } catch (Exception ex) {
-            log.warn("Unable to resume execution {}", executionId, ex);
+            log.warn("Unable to resume execution {}: {}: {}", executionId, ex.getClass().getSimpleName(),
+                    ex.getMessage());
+            log.debug("Execution resume failure details for {}", executionId, ex);
         }
     }
 
@@ -404,7 +415,9 @@ public class RuntimeAgentFactory {
         try {
             executionService.incrementToolCallCount(executionId);
         } catch (Exception ex) {
-            log.warn("Unable to increment tool call count for execution {}", executionId, ex);
+            log.warn("Unable to increment tool call count for execution {}: {}: {}", executionId,
+                    ex.getClass().getSimpleName(), ex.getMessage());
+            log.debug("Execution tool-call count failure details for {}", executionId, ex);
         }
     }
 
@@ -415,7 +428,9 @@ public class RuntimeAgentFactory {
         try {
             executionService.incrementAgentCallCount(parentExecutionId);
         } catch (Exception ex) {
-            log.warn("Unable to increment agent call count for execution {}", parentExecutionId, ex);
+            log.warn("Unable to increment agent call count for execution {}: {}: {}", parentExecutionId,
+                    ex.getClass().getSimpleName(), ex.getMessage());
+            log.debug("Execution agent-call count failure details for {}", parentExecutionId, ex);
         }
     }
 
@@ -433,6 +448,14 @@ public class RuntimeAgentFactory {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private String errorType(Throwable cause) {
+        return cause != null ? cause.getClass().getSimpleName() : "AgentInvocationError";
+    }
+
+    private String errorMessage(Throwable cause) {
+        return cause != null ? cause.getMessage() : null;
     }
 
     private final class ExecutionTrackingAgentListener implements AgentListener {
@@ -460,6 +483,8 @@ public class RuntimeAgentFactory {
             String executionId = execution.getExecutionId();
             childExecutionId.set(executionId);
             activeExecutionId.set(executionId);
+            log.info("Invoking agent: kind=local-delegate, executionId={}, parentExecutionId={}, groupId={}, agent={}",
+                    executionId, parentExecutionId, groupId, runtimeName(agent));
             executionService.startExecution(executionId);
         }
 
@@ -483,7 +508,9 @@ public class RuntimeAgentFactory {
         public void onAgentInvocationError(AgentInvocationError error) {
             String executionId = childExecutionId.get();
             Throwable cause = error != null ? error.error() : null;
-            log.warn("Local agent '{}' invocation failed", runtimeName(agent), cause);
+            log.warn("Local agent '{}' invocation failed: {}: {}", runtimeName(agent), errorType(cause),
+                    errorMessage(cause));
+            log.debug("Local agent '{}' invocation failure details", runtimeName(agent), cause);
             try {
                 if (!isBlank(executionId)) {
                     executionService.failExecution(executionId,
@@ -516,6 +543,8 @@ public class RuntimeAgentFactory {
         @Override
         public void beforeAgentInvocation(AgentRequest agentRequest) {
             transitionExecution(parentExecutionId, ExecutionState.WAITING_AGENT);
+            log.info("Invoking agent: kind=remote-a2a, executionId={}, parentExecutionId={}, groupId={}, agent={}",
+                    null, parentExecutionId, null, name);
         }
 
         @Override
@@ -529,7 +558,9 @@ public class RuntimeAgentFactory {
 
         @Override
         public void onAgentInvocationError(AgentInvocationError error) {
-            log.warn("Remote A2A agent '{}' invocation failed", name, error != null ? error.error() : null);
+            Throwable cause = error != null ? error.error() : null;
+            log.warn("Remote A2A agent '{}' invocation failed: {}: {}", name, errorType(cause), errorMessage(cause));
+            log.debug("Remote A2A agent '{}' invocation failure details", name, cause);
             resumeExecution(parentExecutionId);
         }
 
