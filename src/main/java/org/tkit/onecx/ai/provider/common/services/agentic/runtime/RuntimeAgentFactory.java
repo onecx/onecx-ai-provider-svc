@@ -48,6 +48,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.tool.ToolExecutor;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
@@ -256,6 +257,13 @@ public class RuntimeAgentFactory {
                 return "";
             }
             return invokeDelegate(runtimeAgent, message);
+        } catch (Exception ex) {
+            Throwable rootCause = rootCause(ex);
+            log.warn("Delegate agent '{}' failed: {}: {}", delegate.name(), rootCause.getClass().getSimpleName(),
+                    rootCause.getMessage());
+            log.debug("Delegate agent '{}' failure details", delegate.name(), ex);
+            return "The peer agent '%s' could not complete the delegated request. Continue with the available information."
+                    .formatted(safeString(delegate.name()));
         }
     }
 
@@ -499,6 +507,17 @@ public class RuntimeAgentFactory {
         return cause != null ? cause.getMessage() : null;
     }
 
+    private Throwable rootCause(Throwable throwable) {
+        if (throwable == null) {
+            return new RuntimeException("unknown failure");
+        }
+        Throwable result = throwable;
+        while (result.getCause() != null && result.getCause() != result) {
+            result = result.getCause();
+        }
+        return result;
+    }
+
     private final class ExecutionTrackingAgentListener implements AgentListener {
 
         private final Agent agent;
@@ -613,7 +632,7 @@ public class RuntimeAgentFactory {
 
     private interface LocalChatAgent {
 
-        String chat(String message);
+        String chat(@UserMessage String message);
     }
 
     public static final class LocalAgenticAction implements AgentSpecsProvider {
