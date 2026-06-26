@@ -1471,7 +1471,7 @@ components:
         pageSize: { format: int32, default: 10, maximum: 100, type: integer }
     AgentGroupOrchestrationMode:
       type: string
-      enum: [ SUPERVISOR_ROUTED, SEQUENTIAL, PARALLEL ]
+      enum: [ LEAD_DELEGATES, SUPERVISOR_ROUTED, SEQUENTIAL, PARALLEL ]
     AgentGroupResponseStrategy:
       type: string
       enum: [ LAST, SUMMARY, SCORED ]

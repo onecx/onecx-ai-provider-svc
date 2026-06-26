@@ -7,9 +7,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,6 +74,68 @@ public class AgenticRuntimeServiceTest {
         AgentGroup group = new AgentGroup();
         group.setId("group-empty");
         group.setName("empty");
+
+        Agent root = new Agent();
+        root.setId("root");
+        root.setName("root");
+        root.setA2aEnabled(true);
+        root.setGroups(Set.of(group));
+
+        Execution rootExecution = new Execution();
+        rootExecution.setExecutionId("exec-root");
+
+        ChatRequestDTOV1 request = chatRequest("Hello");
+        when(executionService.createExecution(eq(root), eq(null), any())).thenReturn(rootExecution);
+        when(runtimeAgentFactory.rootAgent(root, request, "exec-root"))
+                .thenReturn(staticRuntimeAgent("root answer"));
+        when(runtimeAgentFactory.delegatesForGroup(root, group, request, "exec-root")).thenReturn(List.of());
+
+        AgenticRuntimeResult result = service.invokeRoot(root, request);
+
+        assertThat(result.successful()).isTrue();
+        assertThat(result.responseText()).isEqualTo("root answer");
+        verify(runtimeAgentFactory).delegatesForGroup(root, group, request, "exec-root");
+        verify(runtimeAgentFactory, never()).agentsForGroup(any(), any(), any(), any());
+        verify(executionService).succeedExecution("exec-root", "root answer");
+    }
+
+    @Test
+    void invokeRoot_withDefaultA2AGroup_usesLeadAgentWithLazyDelegates() {
+        AgentGroup group = new AgentGroup();
+        group.setId("group-lead");
+        group.setName("lead");
+
+        Agent root = new Agent();
+        root.setId("root");
+        root.setName("root");
+        root.setA2aEnabled(true);
+        root.setGroups(Set.of(group));
+
+        Execution rootExecution = new Execution();
+        rootExecution.setExecutionId("exec-root");
+
+        ChatRequestDTOV1 request = chatRequest("How are you?");
+        RuntimeAgentDelegate delegate = new RuntimeAgentDelegate("peer", "Peer expert",
+                () -> staticRuntimeAgent("peer answer"));
+        when(executionService.createExecution(eq(root), eq(null), any())).thenReturn(rootExecution);
+        when(runtimeAgentFactory.delegatesForGroup(root, group, request, "exec-root")).thenReturn(List.of(delegate));
+        when(runtimeAgentFactory.leadAgent(root, request, "exec-root", List.of(delegate)))
+                .thenReturn(staticRuntimeAgent("lead answer"));
+
+        AgenticRuntimeResult result = service.invokeRoot(root, request);
+
+        assertThat(result.successful()).isTrue();
+        assertThat(result.responseText()).isEqualTo("lead answer");
+        verify(runtimeAgentFactory).leadAgent(root, request, "exec-root", List.of(delegate));
+        verify(runtimeAgentFactory, never()).agentsForGroup(any(), any(), any(), any());
+        verify(executionService).succeedExecution("exec-root", "lead answer");
+    }
+
+    @Test
+    void invokeRoot_withSequentialGroup_stillUsesWorkflowAgents() {
+        AgentGroup group = new AgentGroup();
+        group.setId("group-sequential");
+        group.setName("sequential");
         group.setOrchestrationMode(AgentGroupOrchestrationMode.SEQUENTIAL);
 
         Agent root = new Agent();
@@ -89,52 +151,21 @@ public class AgenticRuntimeServiceTest {
         when(executionService.createExecution(eq(root), eq(null), any())).thenReturn(rootExecution);
         when(runtimeAgentFactory.rootAgent(root, request, "exec-root"))
                 .thenReturn(staticRuntimeAgent("root answer"));
-        when(runtimeAgentFactory.agentsForGroup(root, group, request, "exec-root")).thenReturn(java.util.List.of());
+        when(runtimeAgentFactory.agentsForGroup(root, group, request, "exec-root")).thenReturn(List.of());
 
         AgenticRuntimeResult result = service.invokeRoot(root, request);
 
         assertThat(result.successful()).isTrue();
         assertThat(result.responseText()).isEqualTo("root answer");
         verify(runtimeAgentFactory).agentsForGroup(root, group, request, "exec-root");
-        verify(executionService).succeedExecution("exec-root", "root answer");
+        verify(runtimeAgentFactory, never()).delegatesForGroup(any(), any(), any(), any());
     }
 
     @Test
-    void invokeRoot_withSupervisorGroup_keepsPeerDelegatesLazy() {
+    void agentGroupDefaultsToLeadDelegates() {
         AgentGroup group = new AgentGroup();
-        group.setId("group-onecx");
-        group.setName("onecx");
-        group.setOrchestrationMode(AgentGroupOrchestrationMode.SUPERVISOR_ROUTED);
 
-        Agent root = new Agent();
-        root.setId("root");
-        root.setName("root");
-        root.setA2aEnabled(true);
-        root.setGroups(Set.of(group));
-
-        Execution rootExecution = new Execution();
-        rootExecution.setExecutionId("exec-root");
-
-        ChatRequestDTOV1 request = chatRequest("Tell me what the OneCX Generator is for based on the docs");
-        AtomicBoolean peerOpened = new AtomicBoolean(false);
-        RuntimeAgentDelegate delegate = new RuntimeAgentDelegate("onecx-agent", "Answer every question related to OneCX",
-                () -> {
-                    peerOpened.set(true);
-                    return staticRuntimeAgent("peer answer");
-                });
-
-        when(executionService.createExecution(eq(root), eq(null), any())).thenReturn(rootExecution);
-        when(runtimeAgentFactory.delegatesForGroup(root, group, request, "exec-root")).thenReturn(java.util.List.of(delegate));
-        when(runtimeAgentFactory.leadAgent(root, request, "exec-root", java.util.List.of(delegate)))
-                .thenReturn(staticRuntimeAgent("lead answer"));
-
-        AgenticRuntimeResult result = service.invokeRoot(root, request);
-
-        assertThat(result.successful()).isTrue();
-        assertThat(result.responseText()).isEqualTo("lead answer");
-        assertThat(peerOpened).isFalse();
-        verify(runtimeAgentFactory, never()).agentsForGroup(any(), any(), any(), any());
-        verify(executionService).succeedExecution("exec-root", "lead answer");
+        assertThat(group.getOrchestrationMode()).isEqualTo(AgentGroupOrchestrationMode.LEAD_DELEGATES);
     }
 
     private RuntimeAgent staticRuntimeAgent(String output) {

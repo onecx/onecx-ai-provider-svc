@@ -30,9 +30,15 @@ import org.tkit.onecx.ai.provider.domain.models.ExternalAgent;
 import org.tkit.onecx.ai.provider.domain.models.enums.AgentStatus;
 import org.tkit.onecx.ai.provider.domain.models.enums.ExecutionState;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.internal.AgentExecutor;
+import dev.langchain4j.agentic.internal.AgentInvoker;
+import dev.langchain4j.agentic.internal.AgentSpecsProvider;
 import dev.langchain4j.agentic.observability.AgentInvocationError;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentRequest;
@@ -41,6 +47,7 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.tool.ToolExecutor;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
@@ -76,6 +83,9 @@ public class RuntimeAgentFactory {
     @Inject
     DispatchConfig dispatchConfig;
 
+    @Inject
+    ObjectMapper objectMapper;
+
     public RuntimeAgent rootAgent(Agent agent, ChatRequestDTOV1 request, String executionId) {
         return buildLocalAgent(agent, request, executionId, null, false, List.of());
     }
@@ -84,6 +94,10 @@ public class RuntimeAgentFactory {
             List<RuntimeAgentDelegate> delegateAgents) {
         return buildLocalAgent(agent, request, executionId, null, false,
                 delegateAgents != null ? delegateAgents : List.of());
+    }
+
+    public ChatModel chatModel(Agent agent) {
+        return chatModelFactory.createChatModel(agent);
     }
 
     public List<RuntimeAgent> agentsForGroup(Agent rootAgent, AgentGroup group, ChatRequestDTOV1 request,
@@ -139,27 +153,25 @@ public class RuntimeAgentFactory {
         List<RuntimeAgentDelegate> delegates = delegateAgents != null ? delegateAgents : List.of();
         toolExecutors.putAll(toDelegateToolExecutors(delegates));
 
-        var builder = AgenticServices.agentBuilder(TextAgent.class)
-                .name(runtimeName(agent))
-                .description(runtimeDescription(agent))
-                .outputKey("response")
+        var builder = AiServices.builder(LocalChatAgent.class)
                 .chatModel(chatModel)
                 .systemMessage(systemMessage(agent, request, delegates))
-                .userMessage(userMessage(request))
+                .userMessageProvider(input -> userMessage(request, inputMessage(input, extractUserMessage(request))))
                 .maxSequentialToolsInvocations((int) dispatchConfig.mcpConfig().maxIterations());
-
-        if (childExecution) {
-            builder.listener(new ExecutionTrackingAgentListener(agent, groupId, request, executionIdOrParent,
-                    activeExecutionId));
-        }
 
         if (!toolExecutors.isEmpty()) {
             builder.tools(toolExecutors);
         }
 
-        TextAgent agenticAgent = builder.build();
-        UntypedAgent invoker = new TextAgentAdapter(agenticAgent);
-        return new RuntimeAgent(runtimeName(agent), runtimeDescription(agent), agenticAgent, invoker,
+        LocalChatAgent chatAgent = builder.build();
+        AgentListener listener = childExecution
+                ? new ExecutionTrackingAgentListener(agent, groupId, request, executionIdOrParent, activeExecutionId)
+                : null;
+        LocalAgenticAction action = new LocalAgenticAction(runtimeName(agent), runtimeDescription(agent), chatAgent,
+                listener);
+        AgentExecutor agentExecutor = action.toAgentExecutor();
+        return new RuntimeAgent(runtimeName(agent), runtimeDescription(agent), agentExecutor,
+                new AgenticWorkflowInvocationAdapter(runtimeName(agent), agentExecutor),
                 () -> closeAll(toolRegistry, delegates));
     }
 
@@ -180,11 +192,12 @@ public class RuntimeAgentFactory {
         }
 
         UntypedAgent a2aAgent = AgenticServices.a2aBuilder(card.url())
-                .inputKeys(INPUT_REQUEST)
+                .inputKeys("message")
                 .outputKey("response")
                 .listener(new RemoteExecutionTrackingAgentListener(parentExecutionId, runtimeName(externalAgent)))
                 .build();
-        return new RuntimeAgent(runtimeName(externalAgent), runtimeDescription(externalAgent), a2aAgent, null);
+        return new RuntimeAgent(runtimeName(externalAgent), runtimeDescription(externalAgent), a2aAgent,
+                new AgenticWorkflowInvocationAdapter(runtimeName(externalAgent), a2aAgent), null);
     }
 
     private Map<ToolSpecification, ToolExecutor> toToolExecutors(McpToolRegistry toolRegistry,
@@ -231,23 +244,24 @@ public class RuntimeAgentFactory {
                             .additionalProperties(false)
                             .build())
                     .build();
-            executors.put(specification, (request, memoryId) -> invokeDelegate(delegate));
+            executors.put(specification,
+                    (request, memoryId) -> invokeDelegate(delegate, extractToolMessage(request.arguments())));
         }
         return executors;
     }
 
-    private String invokeDelegate(RuntimeAgentDelegate delegate) {
+    private String invokeDelegate(RuntimeAgentDelegate delegate, String message) {
         try (RuntimeAgent runtimeAgent = delegate.open()) {
             if (runtimeAgent == null) {
                 return "";
             }
-            return invokeDelegate(runtimeAgent);
+            return invokeDelegate(runtimeAgent, message);
         }
     }
 
-    private String invokeDelegate(RuntimeAgent delegate) {
+    private String invokeDelegate(RuntimeAgent delegate, String message) {
         Object result = delegate.invoker()
-                .invokeWithAgenticScope(Map.of())
+                .invokeWithAgenticScope(Map.of("message", safeString(message)))
                 .result();
         return result != null ? result.toString() : "";
     }
@@ -286,7 +300,7 @@ public class RuntimeAgentFactory {
                 && !isBlank(externalAgent.getDiscoveryUrl());
     }
 
-    private String userMessage(ChatRequestDTOV1 request) {
+    private String userMessage(ChatRequestDTOV1 request, String currentMessage) {
         StringBuilder message = new StringBuilder();
         if (request != null && request.getConversation() != null && request.getConversation().getHistory() != null
                 && !request.getConversation().getHistory().isEmpty()) {
@@ -298,7 +312,7 @@ public class RuntimeAgentFactory {
         }
         message.append("Current user message:")
                 .append(System.lineSeparator())
-                .append(extractUserMessage(request));
+                .append(!isBlank(currentMessage) ? currentMessage : extractUserMessage(request));
         return message.toString();
     }
 
@@ -325,7 +339,9 @@ public class RuntimeAgentFactory {
         StringBuilder sb = new StringBuilder(
                 """
                         Optional peer agents are available as tools.
-                        Use a peer agent when the user's request matches the peer's name, description, domain, data source, or specialty.
+                        You are the lead agent and own the final answer.
+                        Answer normal, general, basic, conversational, ambiguous, or unmatched requests yourself.
+                        Use a peer agent only when the user's request clearly matches the peer's name, description, domain, data source, or specialty.
                         A request mentioning OneCX matches peers described as responsible for OneCX.
                         Requests mentioning docs, documentation, reference material, or "based on docs" strongly favor documentation peers.
                         Do not require the user to mention "MCP server" before using a documentation/domain peer.
@@ -364,6 +380,31 @@ public class RuntimeAgentFactory {
             return "";
         }
         return request.getChatMessage().getMessage();
+    }
+
+    @SuppressWarnings("unchecked")
+    private String inputMessage(Object input, String fallback) {
+        if (input instanceof Map<?, ?> map) {
+            Object message = ((Map<String, Object>) map).get("message");
+            if (message != null && !isBlank(message.toString())) {
+                return message.toString();
+            }
+        }
+        return fallback;
+    }
+
+    private String extractToolMessage(String arguments) {
+        if (isBlank(arguments)) {
+            return "";
+        }
+        try {
+            JsonNode root = objectMapper.readTree(arguments);
+            JsonNode message = root.get("message");
+            return message != null && !message.isNull() ? message.asText() : arguments;
+        } catch (Exception ex) {
+            log.debug("Unable to parse delegate tool arguments as JSON", ex);
+            return arguments;
+        }
     }
 
     private String runtimeName(Agent agent) {
@@ -570,22 +611,100 @@ public class RuntimeAgentFactory {
         }
     }
 
-    private static final class TextAgentAdapter implements UntypedAgent {
+    private interface LocalChatAgent {
 
-        private final TextAgent delegate;
+        String chat(String message);
+    }
 
-        private TextAgentAdapter(TextAgent delegate) {
+    public static final class LocalAgenticAction implements AgentSpecsProvider {
+
+        private static final java.lang.reflect.Method INVOKE_METHOD = invokeMethod();
+
+        private final String name;
+        private final String description;
+        private final LocalChatAgent chatAgent;
+        private final AgentListener listener;
+
+        private LocalAgenticAction(String name, String description, LocalChatAgent chatAgent, AgentListener listener) {
+            this.name = name;
+            this.description = description;
+            this.chatAgent = chatAgent;
+            this.listener = listener;
+        }
+
+        public String invoke(AgenticScope scope) {
+            Object fallback = scope != null ? scope.readState("message") : null;
+            String resolvedMessage = fallback != null ? fallback.toString() : "";
+            if (blank(resolvedMessage) && scope != null) {
+                resolvedMessage = scope.contextAsConversation();
+            }
+            return chatAgent.chat(resolvedMessage);
+        }
+
+        private AgentExecutor toAgentExecutor() {
+            return new AgentExecutor(AgentInvoker.fromSpec(this, INVOKE_METHOD, name), this);
+        }
+
+        @Override
+        public String outputKey() {
+            return "response";
+        }
+
+        @Override
+        public String description() {
+            return description;
+        }
+
+        @Override
+        public boolean async() {
+            return false;
+        }
+
+        @Override
+        public AgentListener listener() {
+            return listener;
+        }
+
+        private static java.lang.reflect.Method invokeMethod() {
+            try {
+                return LocalAgenticAction.class.getMethod("invoke", AgenticScope.class);
+            } catch (NoSuchMethodException ex) {
+                throw new IllegalStateException("Unable to resolve local agentic action method", ex);
+            }
+        }
+
+        private static boolean blank(String value) {
+            return value == null || value.trim().isEmpty();
+        }
+    }
+
+    private static final class AgenticWorkflowInvocationAdapter implements UntypedAgent {
+
+        private final String name;
+        private final Object delegate;
+
+        private AgenticWorkflowInvocationAdapter(String name, Object delegate) {
+            this.name = name;
             this.delegate = delegate;
         }
 
         @Override
         public Object invoke(Map<String, Object> input) {
-            return delegate.invoke();
+            return invokeWithAgenticScope(input).result();
         }
 
         @Override
         public ResultWithAgenticScope<String> invokeWithAgenticScope(Map<String, Object> input) {
-            return new ResultWithAgenticScope<>(null, delegate.invoke());
+            Map<String, Object> safeInput = input != null ? input : Map.of();
+            UntypedAgent workflow = AgenticServices.sequenceBuilder()
+                    .name("single-agent-" + safeName(name))
+                    .description("Invokes one configured agent with explicit runtime input")
+                    .subAgents(List.of(delegate))
+                    .beforeCall(scope -> scope.writeStates(safeInput))
+                    .output(AgenticWorkflowInvocationAdapter::lastOutput)
+                    .build();
+            ResultWithAgenticScope<String> result = workflow.invokeWithAgenticScope(safeInput);
+            return result != null ? result : new ResultWithAgenticScope<>(null, "");
         }
 
         @Override
@@ -597,5 +716,25 @@ public class RuntimeAgentFactory {
         public boolean evictAgenticScope(Object memoryId) {
             return false;
         }
+
+        private static String lastOutput(AgenticScope scope) {
+            if (scope == null || scope.agentInvocations() == null || scope.agentInvocations().isEmpty()) {
+                return "";
+            }
+            return scope.agentInvocations().stream()
+                    .map(invocation -> invocation.output())
+                    .filter(Objects::nonNull)
+                    .map(Object::toString)
+                    .filter(output -> !output.isBlank())
+                    .reduce((previous, current) -> current)
+                    .orElse("");
+        }
+
+        private static String safeName(String name) {
+            String normalized = name != null ? name.toLowerCase().replaceAll("[^a-z0-9]+", "-") : "";
+            normalized = normalized.replaceAll("^-+|-+$", "");
+            return !normalized.isBlank() ? normalized : "agent";
+        }
     }
+
 }

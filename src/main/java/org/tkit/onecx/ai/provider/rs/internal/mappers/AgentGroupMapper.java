@@ -56,7 +56,7 @@ public interface AgentGroupMapper {
     @AfterMapping
     default void applyDefaults(@MappingTarget AgentGroup agentGroup) {
         if (agentGroup.getOrchestrationMode() == null) {
-            agentGroup.setOrchestrationMode(AgentGroupOrchestrationMode.SUPERVISOR_ROUTED);
+            agentGroup.setOrchestrationMode(AgentGroupOrchestrationMode.LEAD_DELEGATES);
         }
         if (agentGroup.getResponseStrategy() == null) {
             agentGroup.setResponseStrategy(AgentGroupResponseStrategy.LAST);

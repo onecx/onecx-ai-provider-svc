@@ -35,7 +35,7 @@ public class AgentGroup extends TraceableEntity {
 
     @Column(name = "ORCHESTRATION_MODE")
     @Enumerated(EnumType.STRING)
-    private AgentGroupOrchestrationMode orchestrationMode = AgentGroupOrchestrationMode.SUPERVISOR_ROUTED;
+    private AgentGroupOrchestrationMode orchestrationMode = AgentGroupOrchestrationMode.LEAD_DELEGATES;
 
     @Column(name = "RESPONSE_STRATEGY")
     @Enumerated(EnumType.STRING)

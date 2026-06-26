@@ -8,7 +8,7 @@
         <addColumn tableName="agent_group">
             <column name="description" type="TEXT"/>
             <column name="routing_instructions" type="TEXT"/>
-            <column name="orchestration_mode" type="VARCHAR(64)" defaultValue="SUPERVISOR_ROUTED">
+            <column name="orchestration_mode" type="VARCHAR(64)" defaultValue="LEAD_DELEGATES">
                 <constraints nullable="false"/>
             </column>
             <column name="response_strategy" type="VARCHAR(64)" defaultValue="LAST">

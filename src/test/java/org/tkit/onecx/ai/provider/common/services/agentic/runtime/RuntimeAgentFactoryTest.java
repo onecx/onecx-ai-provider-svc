@@ -21,6 +21,7 @@ import org.tkit.onecx.ai.provider.domain.models.Provider;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -50,11 +51,12 @@ class RuntimeAgentFactoryTest {
         when(mcpService.createToolRegistry(agent, "exec-root")).thenReturn(McpToolRegistry.empty());
 
         try (RuntimeAgent runtimeAgent = factory.rootAgent(agent, request, "exec-root")) {
-            assertThat(runtimeAgent.agent()).isInstanceOf(TextAgent.class);
+            assertThat(runtimeAgent.agent()).isInstanceOf(AgentExecutor.class);
+            assertThat(runtimeAgent.invoker()).isInstanceOf(UntypedAgent.class);
             assertThat(runtimeAgent.invoker()).isNotSameAs(runtimeAgent.agent());
 
             Object result = runtimeAgent.invoker()
-                    .invokeWithAgenticScope(java.util.Map.of(RuntimeAgentFactory.INPUT_REQUEST, request))
+                    .invokeWithAgenticScope(java.util.Map.of("message", "How big is a tiger?"))
                     .result();
 
             assertThat(result).isEqualTo("Tigers are large cats.");
@@ -75,7 +77,7 @@ class RuntimeAgentFactoryTest {
 
         try (RuntimeAgent runtimeAgent = factory.leadAgent(agent, request, "exec-root", List.of(delegate))) {
             Object result = runtimeAgent.invoker()
-                    .invokeWithAgenticScope(Map.of(RuntimeAgentFactory.INPUT_REQUEST, request))
+                    .invokeWithAgenticScope(Map.of("message", "How big is a tiger?"))
                     .result();
 
             assertThat(result).isEqualTo("Tigers are large cats.");
@@ -83,6 +85,10 @@ class RuntimeAgentFactoryTest {
                     .extracting(spec -> spec.name())
                     .contains("delegate_onecx_agent");
             assertThat(chatModel.lastRequest.toString()).contains("Optional peer agents are available as tools");
+            assertThat(chatModel.lastRequest.toString()).contains("You are the lead agent and own the final answer");
+            assertThat(chatModel.lastRequest.toString())
+                    .contains("Answer normal, general, basic, conversational, ambiguous, or unmatched requests yourself");
+            assertThat(chatModel.lastRequest.toString()).contains("Use a peer agent only when");
             assertThat(chatModel.lastRequest.toString()).contains("A request mentioning OneCX matches peers");
             assertThat(chatModel.lastRequest.toString()).contains("Do not require the user to mention \"MCP server\"");
             assertThat(chatModel.lastRequest.toolSpecifications())

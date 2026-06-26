@@ -15,11 +15,16 @@ import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
 import org.tkit.onecx.ai.provider.domain.models.Execution;
 import org.tkit.onecx.ai.provider.domain.models.enums.AgentGroupOrchestrationMode;
+import org.tkit.onecx.ai.provider.domain.models.enums.AgentGroupResponseStrategy;
 
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.supervisor.SupervisorAgent;
+import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
+import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
 import lombok.extern.slf4j.Slf4j;
 
@@ -64,7 +69,8 @@ public class AgenticRuntimeService {
             } catch (Exception ignored) {
                 // Execution may already be terminal.
             }
-            return new AgenticRuntimeResult(executionId, ex.getMessage(), false);
+            return new AgenticRuntimeResult(executionId,
+                    "The agent could not complete the request. Please try again.", false);
         }
     }
 
@@ -84,18 +90,20 @@ public class AgenticRuntimeService {
                 .map(group -> executeGroup(agent, group, request, parentExecutionId))
                 .filter(result -> !isBlank(result))
                 .map(String::trim)
-                .collect(Collectors.joining(System.lineSeparator()));
+                .findFirst()
+                .orElse("");
     }
 
     private String executeGroup(Agent rootAgent, AgentGroup group, ChatRequestDTOV1 request, String parentExecutionId) {
         AgentGroupOrchestrationMode mode = group.getOrchestrationMode() != null
                 ? group.getOrchestrationMode()
-                : AgentGroupOrchestrationMode.SUPERVISOR_ROUTED;
+                : AgentGroupOrchestrationMode.LEAD_DELEGATES;
 
+        if (AgentGroupOrchestrationMode.LEAD_DELEGATES.equals(mode)) {
+            return executeLeadDelegatesGroup(rootAgent, group, request, parentExecutionId);
+        }
         if (AgentGroupOrchestrationMode.SUPERVISOR_ROUTED.equals(mode)) {
-            List<RuntimeAgentDelegate> peerAgents = runtimeAgentFactory.delegatesForGroup(rootAgent, group, request,
-                    parentExecutionId);
-            return peerAgents.isEmpty() ? "" : executeLeadAgentGroup(rootAgent, peerAgents, request, parentExecutionId);
+            return executeSupervisorRoutedGroup(rootAgent, group, request, parentExecutionId);
         }
 
         List<RuntimeAgent> peerAgents = runtimeAgentFactory.agentsForGroup(rootAgent, group, request, parentExecutionId);
@@ -103,16 +111,64 @@ public class AgenticRuntimeService {
             return "";
         }
         return switch (mode) {
+            case LEAD_DELEGATES -> "";
+            case SUPERVISOR_ROUTED -> "";
             case SEQUENTIAL -> executeWorkflowGroup(rootAgent, group, peerAgents, request, parentExecutionId, true);
             case PARALLEL -> executeWorkflowGroup(rootAgent, group, peerAgents, request, parentExecutionId, false);
-            case SUPERVISOR_ROUTED -> "";
         };
     }
 
-    private String executeLeadAgentGroup(Agent rootAgent, List<RuntimeAgentDelegate> peerAgents, ChatRequestDTOV1 request,
+    private String executeLeadDelegatesGroup(Agent rootAgent, AgentGroup group, ChatRequestDTOV1 request,
             String parentExecutionId) {
+        List<RuntimeAgentDelegate> peerAgents = runtimeAgentFactory.delegatesForGroup(rootAgent, group, request,
+                parentExecutionId);
+        if (peerAgents.isEmpty()) {
+            return "";
+        }
         try (RuntimeAgent leadAgent = runtimeAgentFactory.leadAgent(rootAgent, request, parentExecutionId, peerAgents)) {
-            return invokeSingleAgent(leadAgent, request, parentExecutionId, null, "lead");
+            return invokeSingleAgent(leadAgent, request, parentExecutionId, group.getId(), "lead-delegates");
+        }
+    }
+
+    private String executeSupervisorRoutedGroup(Agent rootAgent, AgentGroup group, ChatRequestDTOV1 request,
+            String parentExecutionId) {
+        List<RuntimeAgent> runtimeAgents = new ArrayList<>();
+        try {
+            RuntimeAgent rootRuntimeAgent = runtimeAgentFactory.rootAgent(rootAgent, request, parentExecutionId);
+            runtimeAgents.add(rootRuntimeAgent);
+            runtimeAgents.addAll(runtimeAgentFactory.agentsForGroup(rootAgent, group, request, parentExecutionId));
+            if (runtimeAgents.isEmpty()) {
+                return "";
+            }
+
+            runtimeAgents.sort(Comparator.comparing(agent -> safeString(agent.name()).toLowerCase()));
+            runtimeAgents.forEach(agent -> log.info(
+                    "Invoking agent: kind=supervisor-candidate, executionId={}, parentExecutionId={}, groupId={}, agent={}",
+                    parentExecutionId, parentExecutionId, group.getId(), agent.name()));
+
+            SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
+                    .name("a2a-supervisor-" + safeString(group.getId()))
+                    .description("Routes the user request to the most relevant configured agents")
+                    .chatModel(runtimeAgentFactory.chatModel(rootAgent))
+                    .subAgents(runtimeAgents.stream().map(RuntimeAgent::agent).toList())
+                    .responseStrategy(toSupervisorResponseStrategy(group.getResponseStrategy()))
+                    .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY_AND_SUMMARIZATION)
+                    .maxAgentsInvocations(Math.max(1, runtimeAgents.size()))
+                    .requestGenerator(scope -> supervisorRequest(rootAgent, group, request, runtimeAgents))
+                    .errorHandler(error -> {
+                        log.warn("Supervisor agent '{}' failed: {}", error.agentName(),
+                                error.exception() != null ? error.exception().getMessage() : null);
+                        log.debug("Supervisor agent failure details for '{}'", error.agentName(),
+                                error.exception());
+                        return ErrorRecoveryResult.result("");
+                    })
+                    .build();
+
+            String supervisorRequest = supervisorRequest(rootAgent, group, request, runtimeAgents);
+            var result = supervisor.invokeWithAgenticScope(supervisorRequest);
+            return result != null && result.result() != null ? result.result() : "";
+        } finally {
+            runtimeAgents.forEach(RuntimeAgent::close);
         }
     }
 
@@ -170,6 +226,58 @@ public class AgenticRuntimeService {
                 .collect(Collectors.joining(System.lineSeparator()));
     }
 
+    private String supervisorRequest(Agent rootAgent, AgentGroup group, ChatRequestDTOV1 request,
+            List<RuntimeAgent> runtimeAgents) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Route and answer the current user request using the most relevant configured agents.")
+                .append(System.lineSeparator())
+                .append("Do not call agents that are unrelated to the request.")
+                .append(System.lineSeparator())
+                .append("If no peer agent clearly fits better, call the initially dispatched agent.")
+                .append(System.lineSeparator())
+                .append("The initially dispatched agent is the fallback for general, conversational, ambiguous, or unmatched requests.")
+                .append(System.lineSeparator())
+                .append("Return one final assistant message.")
+                .append(System.lineSeparator())
+                .append(System.lineSeparator())
+                .append("Current user message:")
+                .append(System.lineSeparator())
+                .append(extractUserMessage(request))
+                .append(System.lineSeparator())
+                .append(System.lineSeparator())
+                .append("Initially dispatched agent: ")
+                .append(safeString(rootAgent.getName()))
+                .append(System.lineSeparator());
+        if (!isBlank(group.getDescription())) {
+            sb.append("Group description: ").append(group.getDescription().trim()).append(System.lineSeparator());
+        }
+        if (!isBlank(group.getRoutingInstructions())) {
+            sb.append("Group routing instructions: ").append(group.getRoutingInstructions().trim())
+                    .append(System.lineSeparator());
+        }
+        sb.append("Available agents:");
+        for (RuntimeAgent agent : runtimeAgents) {
+            sb.append(System.lineSeparator())
+                    .append("- ")
+                    .append(safeString(agent.name()));
+            if (!isBlank(agent.description())) {
+                sb.append(": ").append(agent.description().trim());
+            }
+        }
+        return sb.toString();
+    }
+
+    private SupervisorResponseStrategy toSupervisorResponseStrategy(AgentGroupResponseStrategy strategy) {
+        if (strategy == null) {
+            return SupervisorResponseStrategy.SUMMARY;
+        }
+        return switch (strategy) {
+            case LAST -> SupervisorResponseStrategy.LAST;
+            case SUMMARY -> SupervisorResponseStrategy.SUMMARY;
+            case SCORED -> SupervisorResponseStrategy.SCORED;
+        };
+    }
+
     private Map<String, Object> agentInput(ChatRequestDTOV1 request) {
         Map<String, Object> input = new LinkedHashMap<>();
         input.put(RuntimeAgentFactory.INPUT_REQUEST, request);
@@ -181,8 +289,6 @@ public class AgenticRuntimeService {
             String kind) {
         log.info("Invoking agent: kind={}, executionId={}, parentExecutionId={}, groupId={}, agent={}", kind, executionId,
                 null, groupId, agent.name());
-        // Direct invocation is intentional: wrapping this dynamic no-arg agent in a sequence workflow currently
-        // triggers LangChain4j's continuation prompt and can hide the actual user message.
         Object result = agent.invoker()
                 .invokeWithAgenticScope(agentInput(request))
                 .result();
