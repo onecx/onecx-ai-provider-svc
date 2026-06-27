@@ -15,7 +15,7 @@
     <version>999-SNAPSHOT</version>
     <packaging>quarkus</packaging>
     <properties>
-        <quarkus-langchain4j.version>1.10.0</quarkus-langchain4j.version>
+        <quarkus-langchain4j.version>1.11.2</quarkus-langchain4j.version>
     </properties>
     <dependencies>
         <dependency>
