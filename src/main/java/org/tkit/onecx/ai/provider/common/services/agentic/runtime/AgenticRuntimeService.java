@@ -46,7 +46,7 @@ public class AgenticRuntimeService {
     RuntimeAgentFactory runtimeAgentFactory;
 
     @Inject
-    @ConfigProperty(name = "onecx.ai.dispatch.runtime.timeout", defaultValue = "120")
+    @ConfigProperty(name = "onecx.ai.dispatch.runtime.timeout", defaultValue = "1200")
     long runtimeTimeout;
 
     @Inject

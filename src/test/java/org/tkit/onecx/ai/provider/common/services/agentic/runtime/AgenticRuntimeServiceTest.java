@@ -45,7 +45,7 @@ public class AgenticRuntimeServiceTest {
         service = new AgenticRuntimeService();
         service.executionService = executionService;
         service.runtimeAgentFactory = runtimeAgentFactory;
-        service.runtimeTimeout = 120L;
+        service.runtimeTimeout = 1200L;
     }
 
     @Test

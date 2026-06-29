@@ -31,7 +31,7 @@ public interface DispatchConfig {
          * Maximum number of iterations for tool calls in MCP processing
          */
         @WithName("max-iterations")
-        @WithDefault("3")
+        @WithDefault("10")
         long maxIterations();
 
         /**
