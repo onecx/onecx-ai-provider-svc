@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,6 +19,7 @@ import org.tkit.onecx.ai.provider.common.services.mcp.McpService;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpTool;
 import org.tkit.onecx.ai.provider.common.services.mcp.McpToolRegistry;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
+import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
 import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
@@ -39,8 +41,11 @@ import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
 
 @QuarkusTest
+@TestProfile(RuntimeAgentFactoryTest.McpIterationProfile.class)
 class RuntimeAgentFactoryTest {
 
     @Inject
@@ -172,6 +177,56 @@ class RuntimeAgentFactoryTest {
             assertThat(onecxModel.secondRequest.toString()).contains("OneCX Generator docs result");
             assertThat(rootModel.secondRequest.toString()).contains("OneCX peer answer from OneCX Generator docs result");
             verify(mcpClient).executeTool(expectedMcpRequest);
+        }
+    }
+
+    @Test
+    void supervisorCandidates_doNotOpenRuntimeUntilSelected() {
+        Agent rootAgent = agent("root-agent");
+        AgentGroup group = new AgentGroup();
+        ChatRequestDTOV1 request = chatRequest("Hello");
+        CapturingChatModel chatModel = new CapturingChatModel("root answer");
+        when(chatModelFactory.createChatModel(rootAgent)).thenReturn(chatModel);
+        when(mcpService.createToolRegistry(rootAgent, "exec-root")).thenReturn(McpToolRegistry.empty());
+
+        List<RuntimeAgent> candidates = factory.supervisorCandidatesForGroup(rootAgent, group, request, "exec-root");
+
+        assertThat(candidates).hasSize(1);
+        verify(chatModelFactory, never()).createChatModel(rootAgent);
+        verify(mcpService, never()).createToolRegistry(rootAgent, "exec-root");
+
+        Object result = candidates.get(0).invoker()
+                .invokeWithAgenticScope(Map.of("message", "Hello"))
+                .result();
+
+        assertThat(result).isEqualTo("root answer");
+        verify(chatModelFactory).createChatModel(rootAgent);
+        verify(mcpService).createToolRegistry(rootAgent, "exec-root");
+    }
+
+    @Test
+    void rootAgent_usesConfiguredMcpMaxIterationsForSequentialToolCalls() {
+        Agent agent = agent("docs-agent");
+        ChatRequestDTOV1 request = chatRequest("Answer with docs");
+        RepeatedToolCallingChatModel chatModel = new RepeatedToolCallingChatModel(4);
+        McpClient mcpClient = mock(McpClient.class);
+        ToolSpecification toolSpecification = toolSpec("search_docs");
+
+        when(chatModelFactory.createChatModel(agent)).thenReturn(chatModel);
+        when(mcpClient.executeTool(any())).thenAnswer(invocation -> ToolExecutionResult.builder()
+                .resultText("tool result " + chatModel.toolExecutions.incrementAndGet())
+                .build());
+        when(mcpService.createToolRegistry(agent, "exec-root")).thenReturn(new McpToolRegistry(List.of(
+                new McpTool("tool-search-docs", "http://mcp", toolSpecification, mcpClient))));
+
+        try (RuntimeAgent runtimeAgent = factory.rootAgent(agent, request, "exec-root")) {
+            Object result = runtimeAgent.invoker()
+                    .invokeWithAgenticScope(Map.of("message", "Answer with docs"))
+                    .result();
+
+            assertThat(result).isEqualTo("final answer after tools");
+            assertThat(chatModel.chatCalls.get()).isEqualTo(5);
+            verify(mcpClient, times(4)).executeTool(any());
         }
     }
 
@@ -329,6 +384,42 @@ class RuntimeAgentFactoryTest {
             return ChatResponse.builder()
                     .aiMessage(AiMessage.from("OneCX peer answer from OneCX Generator docs result"))
                     .build();
+        }
+    }
+
+    private static final class RepeatedToolCallingChatModel implements ChatModel {
+
+        private final int toolCallsBeforeFinal;
+        private final AtomicInteger chatCalls = new AtomicInteger();
+        private final AtomicInteger toolExecutions = new AtomicInteger();
+
+        private RepeatedToolCallingChatModel(int toolCallsBeforeFinal) {
+            this.toolCallsBeforeFinal = toolCallsBeforeFinal;
+        }
+
+        @Override
+        public ChatResponse doChat(ChatRequest chatRequest) {
+            int call = chatCalls.incrementAndGet();
+            if (call <= toolCallsBeforeFinal) {
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.from(ToolExecutionRequest.builder()
+                                .id("mcp-call-" + call)
+                                .name("search_docs")
+                                .arguments("{\"query\":\"OneCX Generator " + call + "\"}")
+                                .build()))
+                        .build();
+            }
+            return ChatResponse.builder()
+                    .aiMessage(AiMessage.from("final answer after tools"))
+                    .build();
+        }
+    }
+
+    public static class McpIterationProfile implements QuarkusTestProfile {
+
+        @Override
+        public Map<String, String> getConfigOverrides() {
+            return Map.of("onecx.ai.dispatch.mcp.max-iterations", "5");
         }
     }
 

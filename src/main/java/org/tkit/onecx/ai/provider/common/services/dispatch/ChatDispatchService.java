@@ -7,6 +7,7 @@ import jakarta.ws.rs.core.Response;
 import org.tkit.onecx.ai.provider.common.services.agent.AgentService;
 import org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeResult;
 import org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeService;
+import org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeStatus;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
@@ -34,12 +35,18 @@ public class ChatDispatchService {
         AgenticRuntimeResult result = agenticRuntimeService.invokeRoot(agent, chatRequestDTO);
         Response.ResponseBuilder responseBuilder = result.successful()
                 ? Response.ok(mapToChatMessageResponseDTO(result.responseText()))
-                : Response.status(Response.Status.BAD_REQUEST)
+                : Response.status(responseStatus(result))
                         .entity(result.responseText() != null ? result.responseText() : "Agent invocation failed");
         if (result.executionId() != null && !result.executionId().isBlank()) {
             responseBuilder.header("X-Execution-Id", result.executionId());
         }
         return responseBuilder.build();
+    }
+
+    private Response.Status responseStatus(AgenticRuntimeResult result) {
+        return result != null && AgenticRuntimeStatus.TIMEOUT.equals(result.status())
+                ? Response.Status.GATEWAY_TIMEOUT
+                : Response.Status.BAD_REQUEST;
     }
 
     private ChatMessageDTOV1 mapToChatMessageResponseDTO(String responseMessage) {

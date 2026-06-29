@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -109,6 +110,23 @@ public class RuntimeAgentFactory {
                 .toList();
     }
 
+    public List<RuntimeAgent> supervisorCandidatesForGroup(Agent rootAgent, AgentGroup group, ChatRequestDTOV1 request,
+            String parentExecutionId) {
+        if (rootAgent == null) {
+            return List.of();
+        }
+        List<RuntimeAgent> candidates = new ArrayList<>();
+        candidates.add(lazySupervisorCandidate(runtimeName(rootAgent), runtimeDescription(rootAgent),
+                () -> rootAgent(rootAgent, request, parentExecutionId), parentExecutionId,
+                group != null ? group.getId() : null, extractUserMessage(request)));
+        for (RuntimeAgentDelegate delegate : delegatesForGroup(rootAgent, group, request, parentExecutionId)) {
+            candidates.add(lazySupervisorCandidate(delegate.name(), delegate.description(), delegate::open, parentExecutionId,
+                    group != null ? group.getId() : null, extractUserMessage(request)));
+        }
+        candidates.sort(Comparator.comparing(agent -> safeString(agent.name()).toLowerCase()));
+        return candidates;
+    }
+
     public List<RuntimeAgentDelegate> delegatesForGroup(Agent rootAgent, AgentGroup group, ChatRequestDTOV1 request,
             String parentExecutionId) {
         if (rootAgent == null || group == null || group.getId() == null) {
@@ -158,7 +176,7 @@ public class RuntimeAgentFactory {
                 .chatModel(chatModel)
                 .systemMessage(systemMessage(agent, request, delegates))
                 .userMessageProvider(input -> userMessage(request, inputMessage(input, extractUserMessage(request))))
-                .maxSequentialToolsInvocations((int) dispatchConfig.mcpConfig().maxIterations());
+                .maxSequentialToolsInvocations(maxSequentialToolInvocations(agent));
 
         if (!toolExecutors.isEmpty()) {
             builder.tools(toolExecutors);
@@ -174,6 +192,31 @@ public class RuntimeAgentFactory {
         return new RuntimeAgent(runtimeName(agent), runtimeDescription(agent), agentExecutor,
                 new AgenticWorkflowInvocationAdapter(runtimeName(agent), agentExecutor),
                 () -> closeAll(toolRegistry, delegates));
+    }
+
+    private RuntimeAgent lazySupervisorCandidate(String name, String description, Supplier<RuntimeAgent> supplier,
+            String parentExecutionId, Object groupId, String fallbackMessage) {
+        LazySupervisorAgenticAction action = new LazySupervisorAgenticAction(name, description, supplier,
+                parentExecutionId, groupId != null ? groupId.toString() : null, fallbackMessage);
+        AgentExecutor agentExecutor = action.toAgentExecutor();
+        return new RuntimeAgent(name, description, agentExecutor,
+                new AgenticWorkflowInvocationAdapter(name, agentExecutor), null);
+    }
+
+    private int maxSequentialToolInvocations(Agent agent) {
+        long configured = dispatchConfig != null && dispatchConfig.mcpConfig() != null
+                ? dispatchConfig.mcpConfig().maxIterations()
+                : 3;
+        if (configured < 1) {
+            log.warn("Invalid MCP max-iterations={} for agent '{}'; using 1", configured, runtimeName(agent));
+            return 1;
+        }
+        if (configured > Integer.MAX_VALUE) {
+            log.warn("MCP max-iterations={} for agent '{}' exceeds supported range; using {}", configured,
+                    runtimeName(agent), Integer.MAX_VALUE);
+            return Integer.MAX_VALUE;
+        }
+        return (int) configured;
     }
 
     private RuntimeAgent buildRemoteAgent(ExternalAgent externalAgent, String parentExecutionId) {
@@ -689,6 +732,86 @@ public class RuntimeAgentFactory {
                 return LocalAgenticAction.class.getMethod("invoke", AgenticScope.class);
             } catch (NoSuchMethodException ex) {
                 throw new IllegalStateException("Unable to resolve local agentic action method", ex);
+            }
+        }
+
+        private static boolean blank(String value) {
+            return value == null || value.trim().isEmpty();
+        }
+    }
+
+    public static final class LazySupervisorAgenticAction implements AgentSpecsProvider {
+
+        private static final java.lang.reflect.Method INVOKE_METHOD = invokeMethod();
+
+        private final String name;
+        private final String description;
+        private final Supplier<RuntimeAgent> supplier;
+        private final String parentExecutionId;
+        private final String groupId;
+        private final String fallbackMessage;
+
+        private LazySupervisorAgenticAction(String name, String description, Supplier<RuntimeAgent> supplier,
+                String parentExecutionId, String groupId, String fallbackMessage) {
+            this.name = name;
+            this.description = description;
+            this.supplier = supplier;
+            this.parentExecutionId = parentExecutionId;
+            this.groupId = groupId;
+            this.fallbackMessage = fallbackMessage;
+        }
+
+        public String invoke(AgenticScope scope) {
+            log.info("Invoking agent: kind=supervisor-selected, executionId={}, parentExecutionId={}, groupId={}, agent={}",
+                    parentExecutionId, parentExecutionId, groupId, name);
+            try (RuntimeAgent runtimeAgent = supplier.get()) {
+                if (runtimeAgent == null) {
+                    return "";
+                }
+                Object result = runtimeAgent.invoker()
+                        .invokeWithAgenticScope(Map.of("message", resolveMessage(scope)))
+                        .result();
+                return result != null ? result.toString() : "";
+            }
+        }
+
+        private AgentExecutor toAgentExecutor() {
+            return new AgentExecutor(AgentInvoker.fromSpec(this, INVOKE_METHOD, name), this);
+        }
+
+        @Override
+        public String outputKey() {
+            return "response";
+        }
+
+        @Override
+        public String description() {
+            return description;
+        }
+
+        @Override
+        public boolean async() {
+            return false;
+        }
+
+        @Override
+        public AgentListener listener() {
+            return null;
+        }
+
+        private String resolveMessage(AgenticScope scope) {
+            Object message = scope != null ? scope.readState("message") : null;
+            if (message != null && !blank(message.toString())) {
+                return message.toString();
+            }
+            return fallbackMessage != null ? fallbackMessage : "";
+        }
+
+        private static java.lang.reflect.Method invokeMethod() {
+            try {
+                return LazySupervisorAgenticAction.class.getMethod("invoke", AgenticScope.class);
+            } catch (NoSuchMethodException ex) {
+                throw new IllegalStateException("Unable to resolve lazy supervisor agent method", ex);
             }
         }
 

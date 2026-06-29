@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,7 @@ public class AgenticRuntimeServiceTest {
         service = new AgenticRuntimeService();
         service.executionService = executionService;
         service.runtimeAgentFactory = runtimeAgentFactory;
+        service.runtimeTimeout = 120L;
     }
 
     @Test
@@ -162,6 +164,59 @@ public class AgenticRuntimeServiceTest {
     }
 
     @Test
+    void invokeRoot_withSupervisorGroup_usesLazySupervisorCandidates() {
+        AgentGroup group = new AgentGroup();
+        group.setId("group-supervisor");
+        group.setName("supervisor");
+        group.setOrchestrationMode(AgentGroupOrchestrationMode.SUPERVISOR_ROUTED);
+
+        Agent root = new Agent();
+        root.setId("root");
+        root.setName("root");
+        root.setA2aEnabled(true);
+        root.setGroups(Set.of(group));
+
+        Execution rootExecution = new Execution();
+        rootExecution.setExecutionId("exec-root");
+
+        ChatRequestDTOV1 request = chatRequest("Hello");
+        when(executionService.createExecution(eq(root), eq(null), any())).thenReturn(rootExecution);
+        when(runtimeAgentFactory.supervisorCandidatesForGroup(root, group, request, "exec-root")).thenReturn(List.of());
+        when(runtimeAgentFactory.rootAgent(root, request, "exec-root")).thenReturn(staticRuntimeAgent("root answer"));
+
+        AgenticRuntimeResult result = service.invokeRoot(root, request);
+
+        assertThat(result.successful()).isTrue();
+        assertThat(result.responseText()).isEqualTo("root answer");
+        verify(runtimeAgentFactory).supervisorCandidatesForGroup(root, group, request, "exec-root");
+        verify(runtimeAgentFactory, never()).agentsForGroup(any(), any(), any(), any());
+    }
+
+    @Test
+    void invokeRoot_returnsTimeoutWhenRuntimeDeadlineExpires() {
+        Agent root = new Agent();
+        root.setId("root");
+        root.setName("root");
+
+        Execution rootExecution = new Execution();
+        rootExecution.setExecutionId("exec-root");
+
+        ChatRequestDTOV1 request = chatRequest("Hello");
+        AtomicBoolean interrupted = new AtomicBoolean(false);
+        service.runtimeTimeout = 1L;
+        when(executionService.createExecution(eq(root), eq(null), any())).thenReturn(rootExecution);
+        when(runtimeAgentFactory.rootAgent(root, request, "exec-root"))
+                .thenReturn(new RuntimeAgent("root", "Root agent", new SleepingUntypedAgent(interrupted), null));
+
+        AgenticRuntimeResult result = service.invokeRoot(root, request);
+
+        assertThat(result.successful()).isFalse();
+        assertThat(result.status()).isEqualTo(AgenticRuntimeStatus.TIMEOUT);
+        assertThat(result.executionId()).isEqualTo("exec-root");
+        verify(executionService).failExecution(eq("exec-root"), eq("TimeoutException"), any());
+    }
+
+    @Test
     void agentGroupDefaultsToLeadDelegates() {
         AgentGroup group = new AgentGroup();
 
@@ -207,6 +262,45 @@ public class AgenticRuntimeServiceTest {
         @Override
         public boolean evictAgenticScope(Object memoryId) {
             return false;
+        }
+    }
+
+    private static final class SleepingUntypedAgent implements UntypedAgent {
+
+        private final AtomicBoolean interrupted;
+
+        private SleepingUntypedAgent(AtomicBoolean interrupted) {
+            this.interrupted = interrupted;
+        }
+
+        @Override
+        public Object invoke(Map<String, Object> input) {
+            return sleep();
+        }
+
+        @Override
+        public ResultWithAgenticScope<String> invokeWithAgenticScope(Map<String, Object> input) {
+            return new ResultWithAgenticScope<>(null, sleep());
+        }
+
+        @Override
+        public AgenticScope getAgenticScope(Object memoryId) {
+            return null;
+        }
+
+        @Override
+        public boolean evictAgenticScope(Object memoryId) {
+            return false;
+        }
+
+        private String sleep() {
+            try {
+                Thread.sleep(5_000);
+            } catch (InterruptedException ex) {
+                interrupted.set(true);
+                Thread.currentThread().interrupt();
+            }
+            return "late answer";
         }
     }
 }

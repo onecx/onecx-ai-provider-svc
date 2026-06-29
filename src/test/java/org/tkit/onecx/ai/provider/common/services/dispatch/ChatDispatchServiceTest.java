@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.tkit.onecx.ai.provider.common.services.agent.AgentService;
 import org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeResult;
 import org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeService;
+import org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeStatus;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
@@ -64,6 +65,21 @@ class ChatDispatchServiceTest extends AbstractTest {
         try (var response = chatDispatchService.chat(request)) {
             assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
             assertThat(response.getHeaderString("X-Execution-Id")).isEqualTo("exec-123");
+        }
+    }
+
+    @Test
+    void chat_agentRuntimeTimeout_returnsGatewayTimeout() {
+        var agent = new Agent();
+        when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
+        var request = new ChatRequestDTOV1();
+        when(agenticRuntimeService.invokeRoot(any(), any()))
+                .thenReturn(new AgenticRuntimeResult("exec-timeout", "timeout", false, AgenticRuntimeStatus.TIMEOUT));
+
+        try (var response = chatDispatchService.chat(request)) {
+            assertThat(response.getStatus()).isEqualTo(Response.Status.GATEWAY_TIMEOUT.getStatusCode());
+            assertThat(response.getHeaderString("X-Execution-Id")).isEqualTo("exec-timeout");
+            assertThat(response.getEntity()).isEqualTo("timeout");
         }
     }
 }
