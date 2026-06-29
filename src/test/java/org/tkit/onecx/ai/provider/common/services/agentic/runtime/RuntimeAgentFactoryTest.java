@@ -185,6 +185,32 @@ class RuntimeAgentFactoryTest {
     }
 
     @Test
+    void leadAgent_convertsTextDelegateToolCallIntoToolExecution() {
+        Agent rootAgent = agent("root-agent");
+        Agent onecxAgent = agent("onecx-agent");
+        ChatRequestDTOV1 request = chatRequest("What is OneCX?");
+
+        TextDelegateToolCallingChatModel rootModel = new TextDelegateToolCallingChatModel();
+        when(chatModelFactory.createChatModel(rootAgent)).thenReturn(rootModel);
+        when(chatModelFactory.createChatModel(onecxAgent)).thenReturn(new PlainTextChatModel("OneCX specialist answer"));
+        when(mcpService.createToolRegistry(rootAgent, "exec-root")).thenReturn(McpToolRegistry.empty());
+        when(mcpService.createToolRegistry(onecxAgent, "exec-child")).thenReturn(McpToolRegistry.empty());
+
+        RuntimeAgentDelegate delegate = new RuntimeAgentDelegate("onecx-agent", "Answer every question related to OneCX",
+                () -> factory.rootAgent(onecxAgent, request, "exec-child"));
+
+        try (RuntimeAgent runtimeAgent = factory.leadAgent(rootAgent, request, "exec-root", List.of(delegate))) {
+            Object result = runtimeAgent.invoker()
+                    .invokeWithAgenticScope(Map.of("message", "What is OneCX?"))
+                    .result();
+
+            assertThat(result).isEqualTo("Final answer after text delegate tool call");
+            assertThat(rootModel.calls.get()).isEqualTo(2);
+            assertThat(rootModel.secondRequest.toString()).contains("OneCX specialist answer");
+        }
+    }
+
+    @Test
     void supervisorCandidates_doNotOpenRuntimeUntilSelected() {
         Agent rootAgent = agent("root-agent");
         AgentGroup group = new AgentGroup();
@@ -391,6 +417,29 @@ class RuntimeAgentFactoryTest {
             secondRequest = chatRequest;
             return ChatResponse.builder()
                     .aiMessage(AiMessage.from("OneCX peer answer from OneCX Generator docs result"))
+                    .build();
+        }
+    }
+
+    private static final class TextDelegateToolCallingChatModel implements ChatModel {
+
+        private final AtomicInteger calls = new AtomicInteger();
+        private ChatRequest secondRequest;
+
+        @Override
+        public ChatResponse doChat(ChatRequest chatRequest) {
+            if (calls.incrementAndGet() == 1) {
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.from("""
+                                Sure, let me find out.
+
+                                [{"name":"delegate_onecx_agent","arguments":{"message":"What is OneCX?"}}]
+                                """))
+                        .build();
+            }
+            secondRequest = chatRequest;
+            return ChatResponse.builder()
+                    .aiMessage(AiMessage.from("Final answer after text delegate tool call"))
                     .build();
         }
     }

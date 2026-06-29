@@ -86,7 +86,8 @@ public class OpenAiProviderAdapter implements ProviderAdapter {
                 .logRequests(dispatchConfig.providerConfig().logRequests())
                 .logResponses(dispatchConfig.providerConfig().logResponse());
 
-        if (!isBlank(provider.getLlmUrl())) {
+        String baseUrl = provider.getLlmUrl();
+        if (!isBlank(baseUrl)) {
             builder.baseUrl(provider.getLlmUrl());
         }
         return builder.build();
@@ -127,4 +128,5 @@ public class OpenAiProviderAdapter implements ProviderAdapter {
         }
         return result;
     }
+
 }

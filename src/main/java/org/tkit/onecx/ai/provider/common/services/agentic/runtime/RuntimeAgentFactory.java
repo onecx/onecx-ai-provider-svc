@@ -35,6 +35,7 @@ import org.tkit.onecx.ai.provider.domain.models.enums.ExecutionState;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -47,8 +48,11 @@ import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -184,9 +188,15 @@ public class RuntimeAgentFactory {
         Map<ToolSpecification, ToolExecutor> toolExecutors = toToolExecutors(toolRegistry, activeExecutionId);
         List<RuntimeAgentDelegate> delegates = delegateAgents != null ? delegateAgents : List.of();
         toolExecutors.putAll(toDelegateToolExecutors(delegates));
+        Set<String> toolNames = toolExecutors.keySet().stream()
+                .map(ToolSpecification::name)
+                .collect(Collectors.toSet());
+        ChatModel effectiveChatModel = toolNames.isEmpty()
+                ? chatModel
+                : new TextToolCallNormalizingChatModel(chatModel, toolNames);
 
         var builder = AiServices.builder(LocalChatAgent.class)
-                .chatModel(chatModel)
+                .chatModel(effectiveChatModel)
                 .systemMessage(systemMessage(agent, request, delegates, requiredDelegates))
                 .userMessageProvider(input -> userMessage(request, inputMessage(input, extractUserMessage(request))))
                 .maxSequentialToolsInvocations(maxSequentialToolInvocations(agent));
@@ -349,6 +359,127 @@ public class RuntimeAgentFactory {
 
     private boolean containsRoutingToken(String normalizedMessage, String token) {
         return (" " + normalizedMessage + " ").contains(" " + token + " ");
+    }
+
+    private List<ToolExecutionRequest> extractTextToolCalls(String text, Set<String> availableToolNames) {
+        if (isBlank(text) || availableToolNames == null || availableToolNames.isEmpty()) {
+            return List.of();
+        }
+        List<ToolExecutionRequest> requests = new ArrayList<>();
+        for (String candidate : jsonCandidates(text)) {
+            JsonNode root;
+            try {
+                root = objectMapper.readTree(candidate);
+            } catch (Exception ex) {
+                continue;
+            }
+            if (root.isArray()) {
+                for (JsonNode item : root) {
+                    addTextToolCall(item, availableToolNames, requests);
+                }
+            } else {
+                addTextToolCall(root, availableToolNames, requests);
+            }
+            if (!requests.isEmpty()) {
+                return requests;
+            }
+        }
+        return List.of();
+    }
+
+    private List<String> jsonCandidates(String text) {
+        List<String> candidates = new ArrayList<>();
+        for (int i = 0; i < text.length(); i++) {
+            char current = text.charAt(i);
+            if (current == '[' || current == '{') {
+                String candidate = balancedJsonAt(text, i);
+                if (candidate != null) {
+                    candidates.add(candidate);
+                }
+            }
+        }
+        return candidates;
+    }
+
+    private String balancedJsonAt(String text, int start) {
+        char open = text.charAt(start);
+        char close = open == '[' ? ']' : '}';
+        int depth = 0;
+        boolean inString = false;
+        boolean escaped = false;
+        for (int i = start; i < text.length(); i++) {
+            char current = text.charAt(i);
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+            if (current == '\\' && inString) {
+                escaped = true;
+                continue;
+            }
+            if (current == '"') {
+                inString = !inString;
+                continue;
+            }
+            if (inString) {
+                continue;
+            }
+            if (current == open) {
+                depth++;
+            } else if (current == close) {
+                depth--;
+                if (depth == 0) {
+                    return text.substring(start, i + 1);
+                }
+            }
+        }
+        return null;
+    }
+
+    private void addTextToolCall(JsonNode item, Set<String> availableToolNames, List<ToolExecutionRequest> requests) {
+        if (item == null || !item.isObject()) {
+            return;
+        }
+        String name = textField(item, "name");
+        if (isBlank(name)) {
+            name = textField(item, "tool");
+        }
+        if (isBlank(name)) {
+            name = textField(item, "tool_name");
+        }
+        if (!availableToolNames.contains(name)) {
+            return;
+        }
+        String arguments = toolArguments(item);
+        requests.add(ToolExecutionRequest.builder()
+                .id("text-tool-call-" + (requests.size() + 1))
+                .name(name)
+                .arguments(arguments)
+                .build());
+    }
+
+    private String textField(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return value != null && value.isTextual() ? value.asText() : null;
+    }
+
+    private String toolArguments(JsonNode item) {
+        JsonNode arguments = item.get("arguments");
+        if (arguments == null) {
+            arguments = item.get("args");
+        }
+        if (arguments == null || arguments.isNull()) {
+            return "{}";
+        }
+        if (arguments.isTextual()) {
+            String value = arguments.asText();
+            return !isBlank(value) ? value : "{}";
+        }
+        try {
+            return objectMapper.writeValueAsString(arguments);
+        } catch (Exception ex) {
+            return "{}";
+        }
     }
 
     private String invokeDelegate(RuntimeAgentDelegate delegate, String message) {
@@ -800,6 +931,34 @@ public class RuntimeAgentFactory {
     private interface LocalChatAgent {
 
         String chat(@UserMessage String message);
+    }
+
+    private final class TextToolCallNormalizingChatModel implements ChatModel {
+
+        private final ChatModel delegate;
+        private final Set<String> availableToolNames;
+
+        private TextToolCallNormalizingChatModel(ChatModel delegate, Set<String> availableToolNames) {
+            this.delegate = delegate;
+            this.availableToolNames = availableToolNames;
+        }
+
+        @Override
+        public ChatResponse doChat(ChatRequest chatRequest) {
+            ChatResponse response = delegate.chat(chatRequest);
+            if (response == null || response.aiMessage() == null || response.aiMessage().hasToolExecutionRequests()) {
+                return response;
+            }
+            List<ToolExecutionRequest> toolRequests = extractTextToolCalls(response.aiMessage().text(), availableToolNames);
+            if (toolRequests.isEmpty()) {
+                return response;
+            }
+            log.info("Converted assistant text into tool calls: tools={}",
+                    toolRequests.stream().map(ToolExecutionRequest::name).toList());
+            return response.toBuilder()
+                    .aiMessage(AiMessage.from(toolRequests))
+                    .build();
+        }
     }
 
     public static final class LocalAgenticAction implements AgentSpecsProvider {
