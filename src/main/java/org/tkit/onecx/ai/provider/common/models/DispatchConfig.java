@@ -80,6 +80,13 @@ public interface DispatchConfig {
         long timeout();
 
         /**
+         * Maximum number of retries for provider calls
+         */
+        @WithName("max-retries")
+        @WithDefault("2")
+        long maxRetries();
+
+        /**
          * Whether to log the full response from provider calls
          */
         @WithName("log-response")

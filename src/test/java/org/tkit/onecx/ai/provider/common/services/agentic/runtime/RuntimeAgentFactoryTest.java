@@ -135,6 +135,8 @@ class RuntimeAgentFactoryTest {
 
             assertThat(result).isEqualTo("I could not reach the OneCX specialist, but I can still answer briefly.");
             assertThat(chatModel.calls.get()).isEqualTo(2);
+            assertThat(chatModel.firstRequest.toString()).contains("Required peer agents:");
+            assertThat(chatModel.firstRequest.toString()).contains("onecx-agent");
             assertThat(chatModel.secondRequest.toString()).contains("could not complete the delegated request");
         }
     }
@@ -175,6 +177,8 @@ class RuntimeAgentFactoryTest {
             assertThat(rootModel.calls.get()).isEqualTo(2);
             assertThat(onecxModel.calls.get()).isEqualTo(2);
             assertThat(onecxModel.secondRequest.toString()).contains("OneCX Generator docs result");
+            assertThat(rootModel.firstRequest.toString()).contains("Required peer agents:");
+            assertThat(rootModel.firstRequest.toString()).contains("onecx-agent");
             assertThat(rootModel.secondRequest.toString()).contains("OneCX peer answer from OneCX Generator docs result");
             verify(mcpClient).executeTool(expectedMcpRequest);
         }
@@ -297,11 +301,13 @@ class RuntimeAgentFactoryTest {
     private static final class DelegateToolCallingChatModel implements ChatModel {
 
         private final AtomicInteger calls = new AtomicInteger();
+        private ChatRequest firstRequest;
         private ChatRequest secondRequest;
 
         @Override
         public ChatResponse doChat(ChatRequest chatRequest) {
             if (calls.incrementAndGet() == 1) {
+                firstRequest = chatRequest;
                 return ChatResponse.builder()
                         .aiMessage(AiMessage.from(ToolExecutionRequest.builder()
                                 .id("call-1")
@@ -344,11 +350,13 @@ class RuntimeAgentFactoryTest {
     private static final class RootDelegatingChatModel implements ChatModel {
 
         private final AtomicInteger calls = new AtomicInteger();
+        private ChatRequest firstRequest;
         private ChatRequest secondRequest;
 
         @Override
         public ChatResponse doChat(ChatRequest chatRequest) {
             if (calls.incrementAndGet() == 1) {
+                firstRequest = chatRequest;
                 return ChatResponse.builder()
                         .aiMessage(AiMessage.from(ToolExecutionRequest.builder()
                                 .id("delegate-call-1")

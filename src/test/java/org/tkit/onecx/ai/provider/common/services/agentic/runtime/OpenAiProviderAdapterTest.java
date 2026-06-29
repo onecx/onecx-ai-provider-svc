@@ -12,6 +12,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockserver.client.MockServerClient;
 import org.mockserver.model.MediaType;
+import org.mockserver.verify.VerificationTimes;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
@@ -96,6 +97,8 @@ class OpenAiProviderAdapterTest extends AbstractTest {
         stubOpenAiChat(500, "");
 
         assertThat(adapter.healthCheck(buildProvider(mockServerEndpoint, "sk-test"))).isEqualTo(ProviderAdapter.UNHEALTHY);
+        mockServerClient.verify(request().withMethod("POST").withPath(".*chat/completions"),
+                VerificationTimes.exactly(3));
     }
 
     @Test

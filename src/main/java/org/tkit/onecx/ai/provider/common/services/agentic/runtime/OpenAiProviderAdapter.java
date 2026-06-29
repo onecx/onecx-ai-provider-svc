@@ -45,6 +45,8 @@ public class OpenAiProviderAdapter implements ProviderAdapter {
         if (isBlank(modelName)) {
             throw new IllegalArgumentException("Agent model has no model identifier configured");
         }
+        log.info("Creating OpenAI chat model: provider={}, model={}, timeoutSeconds={}, maxRetries={}",
+                provider.getName(), modelName, providerTimeoutSeconds(), providerMaxRetries());
         return buildModel(provider, modelName);
     }
 
@@ -65,7 +67,11 @@ public class OpenAiProviderAdapter implements ProviderAdapter {
             }
             return HEALTHY;
         } catch (Exception e) {
-            log.warn("OpenAI health check failed for provider '{}': {}", provider.getName(), e.getMessage());
+            Throwable rootCause = rootCause(e);
+            log.warn(
+                    "OpenAI health check failed: provider={}, model={}, timeoutSeconds={}, maxRetries={}, errorType={}, message={}",
+                    provider.getName(), HEALTH_CHECK_MODEL, providerTimeoutSeconds(), providerMaxRetries(),
+                    rootCause.getClass().getSimpleName(), rootCause.getMessage());
             log.debug("OpenAI health check failure details for provider '{}'", provider.getName(), e);
             return UNHEALTHY;
         }
@@ -75,7 +81,8 @@ public class OpenAiProviderAdapter implements ProviderAdapter {
         var builder = OpenAiChatModel.builder()
                 .apiKey(provider.getApiKey())
                 .modelName(modelName)
-                .timeout(Duration.ofSeconds(dispatchConfig.providerConfig().timeout()))
+                .timeout(Duration.ofSeconds(providerTimeoutSeconds()))
+                .maxRetries(providerMaxRetries())
                 .logRequests(dispatchConfig.providerConfig().logRequests())
                 .logResponses(dispatchConfig.providerConfig().logResponse());
 
@@ -87,5 +94,37 @@ public class OpenAiProviderAdapter implements ProviderAdapter {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private long providerTimeoutSeconds() {
+        return dispatchConfig != null && dispatchConfig.providerConfig() != null
+                ? dispatchConfig.providerConfig().timeout()
+                : 60;
+    }
+
+    private int providerMaxRetries() {
+        long configured = dispatchConfig != null && dispatchConfig.providerConfig() != null
+                ? dispatchConfig.providerConfig().maxRetries()
+                : 2;
+        if (configured < 0) {
+            log.warn("Invalid provider max-retries={}; using 0", configured);
+            return 0;
+        }
+        if (configured > Integer.MAX_VALUE) {
+            log.warn("Provider max-retries={} exceeds supported range; using {}", configured, Integer.MAX_VALUE);
+            return Integer.MAX_VALUE;
+        }
+        return (int) configured;
+    }
+
+    private Throwable rootCause(Throwable throwable) {
+        if (throwable == null) {
+            return new RuntimeException("unknown failure");
+        }
+        Throwable result = throwable;
+        while (result.getCause() != null && result.getCause() != result) {
+            result = result.getCause();
+        }
+        return result;
     }
 }

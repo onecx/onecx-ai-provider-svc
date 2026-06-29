@@ -198,6 +198,8 @@ public class AgenticRuntimeService {
                     "Starting supervisor routing: executionId={}, groupId={}, rootAgent={}, supervisorModelAgent={}, candidates={}, responseStrategy={}",
                     parentExecutionId, group.getId(), safeString(rootAgent.getName()), safeString(rootAgent.getName()),
                     runtimeAgents.stream().map(RuntimeAgent::name).toList(), responseStrategy);
+            log.info("Creating supervisor planner model from root agent configuration: executionId={}, rootAgent={}",
+                    parentExecutionId, safeString(rootAgent.getName()));
 
             SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                     .name("a2a-supervisor-" + safeString(group.getId()))

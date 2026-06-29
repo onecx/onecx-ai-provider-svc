@@ -9,7 +9,9 @@ import org.tkit.onecx.ai.provider.domain.models.Provider;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 
 import dev.langchain4j.model.chat.ChatModel;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @ApplicationScoped
 public class ChatModelFactory {
 
@@ -20,7 +22,12 @@ public class ChatModelFactory {
         if (agent == null || agent.getModel() == null || agent.getModel().getProvider() == null) {
             throw new IllegalArgumentException("Agent has no associated model or provider");
         }
-        return adapterFor(agent.getModel().getProvider()).createChatModel(agent);
+        Provider provider = agent.getModel().getProvider();
+        ProviderAdapter adapter = adapterFor(provider);
+        log.info("Resolving chat model: agent={}, provider={}, providerType={}, model={}, adapter={}",
+                agent.getName(), provider.getName(), provider.getType(), agent.getModel().getModelIdentifier(),
+                adapter.getClass().getSimpleName());
+        return adapter.createChatModel(agent);
     }
 
     public String healthCheck(Provider provider) {

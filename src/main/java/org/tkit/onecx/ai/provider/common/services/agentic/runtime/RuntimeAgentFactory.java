@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -94,8 +95,9 @@ public class RuntimeAgentFactory {
 
     public RuntimeAgent leadAgent(Agent agent, ChatRequestDTOV1 request, String executionId,
             List<RuntimeAgentDelegate> delegateAgents) {
-        return buildLocalAgent(agent, request, executionId, null, false,
-                delegateAgents != null ? delegateAgents : List.of());
+        List<RuntimeAgentDelegate> delegates = delegateAgents != null ? delegateAgents : List.of();
+        List<RuntimeAgentDelegate> strongMatches = strongMatchingDelegates(request, delegates);
+        return buildLocalAgent(agent, request, executionId, null, false, delegates, strongMatches);
     }
 
     public ChatModel chatModel(Agent agent) {
@@ -164,6 +166,17 @@ public class RuntimeAgentFactory {
 
     private RuntimeAgent buildLocalAgent(Agent agent, ChatRequestDTOV1 request, String executionIdOrParent, String groupId,
             boolean childExecution, List<RuntimeAgentDelegate> delegateAgents) {
+        return buildLocalAgent(agent, request, executionIdOrParent, groupId, childExecution, delegateAgents, List.of());
+    }
+
+    private RuntimeAgent buildLocalAgent(Agent agent, ChatRequestDTOV1 request, String executionIdOrParent, String groupId,
+            boolean childExecution, List<RuntimeAgentDelegate> delegateAgents,
+            List<RuntimeAgentDelegate> requiredDelegates) {
+        log.info(
+                "Building runtime agent: agent={}, executionIdOrParent={}, groupId={}, childExecution={}, delegateTools={}, requiredDelegates={}",
+                runtimeName(agent), executionIdOrParent, groupId, childExecution,
+                delegateAgents != null ? delegateAgents.size() : 0,
+                requiredDelegates != null ? requiredDelegates.size() : 0);
         ChatModel chatModel = chatModelFactory.createChatModel(agent);
 
         AtomicReference<String> activeExecutionId = new AtomicReference<>(childExecution ? null : executionIdOrParent);
@@ -174,7 +187,7 @@ public class RuntimeAgentFactory {
 
         var builder = AiServices.builder(LocalChatAgent.class)
                 .chatModel(chatModel)
-                .systemMessage(systemMessage(agent, request, delegates))
+                .systemMessage(systemMessage(agent, request, delegates, requiredDelegates))
                 .userMessageProvider(input -> userMessage(request, inputMessage(input, extractUserMessage(request))))
                 .maxSequentialToolsInvocations(maxSequentialToolInvocations(agent));
 
@@ -294,6 +307,50 @@ public class RuntimeAgentFactory {
         return executors;
     }
 
+    private List<RuntimeAgentDelegate> strongMatchingDelegates(ChatRequestDTOV1 request,
+            List<RuntimeAgentDelegate> delegateAgents) {
+        if (delegateAgents == null || delegateAgents.isEmpty()) {
+            return List.of();
+        }
+        String normalizedMessage = normalizeForRouting(extractUserMessage(request));
+        if (isBlank(normalizedMessage)) {
+            return List.of();
+        }
+        return delegateAgents.stream()
+                .filter(delegate -> stronglyMatchesDelegate(normalizedMessage, delegate))
+                .sorted(Comparator.comparing(delegate -> safeString(delegate.name()).toLowerCase()))
+                .toList();
+    }
+
+    private boolean stronglyMatchesDelegate(String normalizedMessage, RuntimeAgentDelegate delegate) {
+        for (String token : routingTokens(delegate.name())) {
+            if (containsRoutingToken(normalizedMessage, token)) {
+                return true;
+            }
+        }
+        for (String token : routingTokens(delegate.description())) {
+            if (containsRoutingToken(normalizedMessage, token)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<String> routingTokens(String value) {
+        if (isBlank(value)) {
+            return List.of();
+        }
+        return java.util.Arrays.stream(normalizeForRouting(value).split(" "))
+                .filter(token -> token.length() >= 3)
+                .filter(token -> !GENERIC_ROUTING_TOKENS.contains(token))
+                .distinct()
+                .toList();
+    }
+
+    private boolean containsRoutingToken(String normalizedMessage, String token) {
+        return (" " + normalizedMessage + " ").contains(" " + token + " ");
+    }
+
     private String invokeDelegate(RuntimeAgentDelegate delegate, String message) {
         try (RuntimeAgent runtimeAgent = delegate.open()) {
             if (runtimeAgent == null) {
@@ -368,9 +425,18 @@ public class RuntimeAgentFactory {
     }
 
     private String systemMessage(Agent agent, ChatRequestDTOV1 request, List<RuntimeAgentDelegate> delegateAgents) {
+        return systemMessage(agent, request, delegateAgents, List.of());
+    }
+
+    private String systemMessage(Agent agent, ChatRequestDTOV1 request, List<RuntimeAgentDelegate> delegateAgents,
+            List<RuntimeAgentDelegate> requiredDelegates) {
         String composed = scaffoldPromptComposer.compose(agent, request);
         String base = !isBlank(composed) ? composed : "You are a helpful assistant.";
         base = base + System.lineSeparator() + System.lineSeparator() + currentUserMessageDirective(request);
+        if (requiredDelegates != null && !requiredDelegates.isEmpty()) {
+            base = base + System.lineSeparator() + System.lineSeparator()
+                    + requiredDelegationPolicy(requiredDelegates);
+        }
         if (delegateAgents == null || delegateAgents.isEmpty()) {
             return base;
         }
@@ -401,6 +467,25 @@ public class RuntimeAgentFactory {
                         Do not expose tool names, agent names, transcripts, or intermediate routing details unless the user asks for them.
                         Available peer agents:""");
         for (RuntimeAgentDelegate delegate : delegateAgents) {
+            sb.append(System.lineSeparator())
+                    .append("- ")
+                    .append(safeString(delegate.name()));
+            if (!isBlank(delegate.description())) {
+                sb.append(": ").append(delegate.description().trim());
+            }
+        }
+        return sb.toString();
+    }
+
+    private String requiredDelegationPolicy(List<RuntimeAgentDelegate> requiredDelegates) {
+        StringBuilder sb = new StringBuilder(
+                """
+                        The current user request strongly matches these peer agents by configured name, description, domain, or specialty.
+                        You must delegate to these matching peer agents before producing the final answer.
+                        Use their results as private working context and then return one final assistant message.
+                        Do not expose agent names, tool names, routing details, or intermediate transcripts unless the user asks for them.
+                        Required peer agents:""");
+        for (RuntimeAgentDelegate delegate : requiredDelegates) {
             sb.append(System.lineSeparator())
                     .append("- ")
                     .append(safeString(delegate.name()));
@@ -542,6 +627,13 @@ public class RuntimeAgentFactory {
         return value == null || value.trim().isEmpty();
     }
 
+    private String normalizeForRouting(String value) {
+        return safeString(value).toLowerCase()
+                .replaceAll("[^a-z0-9]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
     private String errorType(Throwable cause) {
         return cause != null ? cause.getClass().getSimpleName() : "AgentInvocationError";
     }
@@ -564,6 +656,11 @@ public class RuntimeAgentFactory {
         }
         return result;
     }
+
+    private static final Set<String> GENERIC_ROUTING_TOKENS = Set.of(
+            "agent", "assistant", "bot", "peer", "local", "remote", "configured", "general", "default",
+            "documentation", "docs", "doc", "expert", "specialist", "answer", "answers", "question", "questions",
+            "related", "responsible", "domain", "data", "source");
 
     private final class ExecutionTrackingAgentListener implements AgentListener {
 

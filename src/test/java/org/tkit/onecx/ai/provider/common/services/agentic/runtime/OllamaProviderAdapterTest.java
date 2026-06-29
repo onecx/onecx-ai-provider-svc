@@ -11,6 +11,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockserver.client.MockServerClient;
 import org.mockserver.model.MediaType;
+import org.mockserver.verify.VerificationTimes;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
@@ -70,6 +71,7 @@ class OllamaProviderAdapterTest extends AbstractTest {
         stubOllamaChat(500, "");
 
         assertThat(adapter.healthCheck(buildProvider(mockServerEndpoint))).isEqualTo(ProviderAdapter.UNHEALTHY);
+        mockServerClient.verify(request().withMethod("POST").withPath("/api/chat"), VerificationTimes.exactly(3));
     }
 
     @Test
