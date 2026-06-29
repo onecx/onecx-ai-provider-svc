@@ -22,15 +22,18 @@ import dev.langchain4j.model.chat.ChatModel;
 class ChatModelFactoryTest {
 
     ProviderAdapter ollamaAdapter;
+    ProviderAdapter openAiAdapter;
     ChatModelFactory factory;
 
     @BeforeEach
     void setUp() {
         ollamaAdapter = mock(ProviderAdapter.class);
         when(ollamaAdapter.supports(ProviderType.OLLAMA)).thenReturn(true);
+        openAiAdapter = mock(ProviderAdapter.class);
+        when(openAiAdapter.supports(ProviderType.OPENAI)).thenReturn(true);
 
         factory = new ChatModelFactory();
-        factory.providerAdapters = instance(List.of(ollamaAdapter));
+        factory.providerAdapters = instance(List.of(ollamaAdapter, openAiAdapter));
     }
 
     @Test
@@ -51,10 +54,19 @@ class ChatModelFactoryTest {
     }
 
     @Test
+    void createChatModel_resolvesOpenAiAdapter() {
+        Agent agent = agent(ProviderType.OPENAI);
+        ChatModel chatModel = mock(ChatModel.class);
+        when(openAiAdapter.createChatModel(agent)).thenReturn(chatModel);
+
+        assertThat(factory.createChatModel(agent)).isSameAs(chatModel);
+    }
+
+    @Test
     void createChatModel_unsupportedProvider_failsClearly() {
-        assertThatThrownBy(() -> factory.createChatModel(agent(ProviderType.OPENAI)))
+        assertThatThrownBy(() -> factory.createChatModel(agent(null)))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Provider type not supported");
+                .hasMessageContaining("Provider has no type configured");
     }
 
     private Agent agent(ProviderType providerType) {

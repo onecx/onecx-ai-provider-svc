@@ -29,6 +29,7 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
@@ -191,27 +192,49 @@ public class AgenticRuntimeService {
                     "Registered supervisor candidate: executionId={}, parentExecutionId={}, groupId={}, agent={}",
                     parentExecutionId, parentExecutionId, group.getId(), agent.name()));
 
+            SupervisorResponseStrategy responseStrategy = toSupervisorResponseStrategy(group.getResponseStrategy());
+            long startedAt = System.currentTimeMillis();
+            log.info(
+                    "Starting supervisor routing: executionId={}, groupId={}, rootAgent={}, supervisorModelAgent={}, candidates={}, responseStrategy={}",
+                    parentExecutionId, group.getId(), safeString(rootAgent.getName()), safeString(rootAgent.getName()),
+                    runtimeAgents.stream().map(RuntimeAgent::name).toList(), responseStrategy);
+
             SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                     .name("a2a-supervisor-" + safeString(group.getId()))
                     .description("Routes the user request to the most relevant configured agents")
                     .chatModel(runtimeAgentFactory.chatModel(rootAgent))
                     .subAgents(runtimeAgents.stream().map(RuntimeAgent::agent).toList())
-                    .responseStrategy(toSupervisorResponseStrategy(group.getResponseStrategy()))
+                    .responseStrategy(responseStrategy)
                     .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY_AND_SUMMARIZATION)
                     .maxAgentsInvocations(Math.max(1, runtimeAgents.size()))
                     .requestGenerator(scope -> supervisorRequest(rootAgent, group, request, runtimeAgents))
                     .errorHandler(error -> {
-                        log.warn("Supervisor agent '{}' failed: {}", error.agentName(),
+                        log.warn("Supervisor-selected candidate '{}' failed: {}: {}", error.agentName(),
+                                error.exception() != null ? error.exception().getClass().getSimpleName() : null,
                                 error.exception() != null ? error.exception().getMessage() : null);
-                        log.debug("Supervisor agent failure details for '{}'", error.agentName(),
+                        log.debug("Supervisor-selected candidate '{}' failure details", error.agentName(),
                                 error.exception());
                         return ErrorRecoveryResult.result("");
                     })
                     .build();
 
             String supervisorRequest = supervisorRequest(rootAgent, group, request, runtimeAgents);
-            var result = supervisor.invokeWithAgenticScope(supervisorRequest);
-            return result != null && result.result() != null ? result.result() : "";
+            try {
+                ResultWithAgenticScope<String> result = supervisor.invokeWithAgenticScope(supervisorRequest);
+                String response = result != null && result.result() != null ? result.result() : "";
+                log.info(
+                        "Completed supervisor routing: executionId={}, groupId={}, rootAgent={}, selectedAgents={}, durationMs={}, resultPresent={}",
+                        parentExecutionId, group.getId(), safeString(rootAgent.getName()), selectedAgents(result),
+                        System.currentTimeMillis() - startedAt, !isBlank(response));
+                return response;
+            } catch (Exception ex) {
+                log.warn(
+                        "Supervisor routing failed: executionId={}, groupId={}, rootAgent={}, durationMs={}, errorType={}, message={}",
+                        parentExecutionId, group.getId(), safeString(rootAgent.getName()),
+                        System.currentTimeMillis() - startedAt, ex.getClass().getSimpleName(), ex.getMessage());
+                log.debug("Supervisor routing failure details for executionId={}", parentExecutionId, ex);
+                throw ex;
+            }
         } finally {
             runtimeAgents.forEach(RuntimeAgent::close);
         }
@@ -269,6 +292,17 @@ public class AgenticRuntimeService {
                 .filter(output -> output != null && !isBlank(output.toString()))
                 .map(output -> output.toString().trim())
                 .collect(Collectors.joining(System.lineSeparator()));
+    }
+
+    private List<String> selectedAgents(ResultWithAgenticScope<String> result) {
+        if (result == null || result.agenticScope() == null || result.agenticScope().agentInvocations() == null) {
+            return List.of();
+        }
+        return result.agenticScope().agentInvocations().stream()
+                .map(AgentInvocation::agentName)
+                .filter(name -> !isBlank(name))
+                .distinct()
+                .toList();
     }
 
     private String supervisorRequest(Agent rootAgent, AgentGroup group, ChatRequestDTOV1 request,

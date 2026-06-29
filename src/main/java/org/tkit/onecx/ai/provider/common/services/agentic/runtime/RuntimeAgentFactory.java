@@ -550,6 +550,10 @@ public class RuntimeAgentFactory {
         return cause != null ? cause.getMessage() : null;
     }
 
+    private long durationSince(Long startedAt) {
+        return startedAt != null ? System.currentTimeMillis() - startedAt : -1;
+    }
+
     private Throwable rootCause(Throwable throwable) {
         if (throwable == null) {
             return new RuntimeException("unknown failure");
@@ -569,6 +573,7 @@ public class RuntimeAgentFactory {
         private final String parentExecutionId;
         private final AtomicReference<String> activeExecutionId;
         private final AtomicReference<String> childExecutionId = new AtomicReference<>();
+        private final AtomicReference<Long> invocationStartedAt = new AtomicReference<>();
 
         private ExecutionTrackingAgentListener(Agent agent, String groupId, ChatRequestDTOV1 request,
                 String parentExecutionId, AtomicReference<String> activeExecutionId) {
@@ -586,6 +591,7 @@ public class RuntimeAgentFactory {
             String executionId = execution.getExecutionId();
             childExecutionId.set(executionId);
             activeExecutionId.set(executionId);
+            invocationStartedAt.set(System.currentTimeMillis());
             log.info("Invoking agent: kind=local-delegate, executionId={}, parentExecutionId={}, groupId={}, agent={}",
                     executionId, parentExecutionId, groupId, runtimeName(agent));
             executionService.startExecution(executionId);
@@ -595,14 +601,20 @@ public class RuntimeAgentFactory {
         public void afterAgentInvocation(AgentResponse agentResponse) {
             String executionId = childExecutionId.get();
             try {
+                String output = agentResponse != null && agentResponse.output() != null ? agentResponse.output().toString()
+                        : "";
                 if (!isBlank(executionId)) {
-                    executionService.succeedExecution(executionId,
-                            agentResponse != null && agentResponse.output() != null ? agentResponse.output().toString() : "");
+                    executionService.succeedExecution(executionId, output);
                 }
+                log.info(
+                        "Completed agent invocation: kind=local-delegate, executionId={}, parentExecutionId={}, groupId={}, agent={}, status=SUCCEEDED, durationMs={}, resultPresent={}",
+                        executionId, parentExecutionId, groupId, runtimeName(agent), durationSince(invocationStartedAt.get()),
+                        !isBlank(output));
                 incrementParentAgentCount(parentExecutionId);
             } finally {
                 childExecutionId.set(null);
                 activeExecutionId.set(null);
+                invocationStartedAt.set(null);
                 resumeExecution(parentExecutionId);
             }
         }
@@ -611,8 +623,10 @@ public class RuntimeAgentFactory {
         public void onAgentInvocationError(AgentInvocationError error) {
             String executionId = childExecutionId.get();
             Throwable cause = error != null ? error.error() : null;
-            log.warn("Local agent '{}' invocation failed: {}: {}", runtimeName(agent), errorType(cause),
-                    errorMessage(cause));
+            log.warn(
+                    "Completed agent invocation: kind=local-delegate, executionId={}, parentExecutionId={}, groupId={}, agent={}, status=FAILED, durationMs={}, errorType={}, message={}",
+                    executionId, parentExecutionId, groupId, runtimeName(agent), durationSince(invocationStartedAt.get()),
+                    errorType(cause), errorMessage(cause));
             log.debug("Local agent '{}' invocation failure details", runtimeName(agent), cause);
             try {
                 if (!isBlank(executionId)) {
@@ -623,6 +637,7 @@ public class RuntimeAgentFactory {
             } finally {
                 childExecutionId.set(null);
                 activeExecutionId.set(null);
+                invocationStartedAt.set(null);
                 resumeExecution(parentExecutionId);
             }
         }
@@ -637,6 +652,7 @@ public class RuntimeAgentFactory {
 
         private final String parentExecutionId;
         private final String name;
+        private final AtomicReference<Long> invocationStartedAt = new AtomicReference<>();
 
         private RemoteExecutionTrackingAgentListener(String parentExecutionId, String name) {
             this.parentExecutionId = parentExecutionId;
@@ -646,6 +662,7 @@ public class RuntimeAgentFactory {
         @Override
         public void beforeAgentInvocation(AgentRequest agentRequest) {
             transitionExecution(parentExecutionId, ExecutionState.WAITING_AGENT);
+            invocationStartedAt.set(System.currentTimeMillis());
             log.info("Invoking agent: kind=remote-a2a, executionId={}, parentExecutionId={}, groupId={}, agent={}",
                     null, parentExecutionId, null, name);
         }
@@ -653,8 +670,14 @@ public class RuntimeAgentFactory {
         @Override
         public void afterAgentInvocation(AgentResponse agentResponse) {
             try {
+                String output = agentResponse != null && agentResponse.output() != null ? agentResponse.output().toString()
+                        : "";
+                log.info(
+                        "Completed agent invocation: kind=remote-a2a, executionId={}, parentExecutionId={}, groupId={}, agent={}, status=SUCCEEDED, durationMs={}, resultPresent={}",
+                        null, parentExecutionId, null, name, durationSince(invocationStartedAt.get()), !isBlank(output));
                 incrementParentAgentCount(parentExecutionId);
             } finally {
+                invocationStartedAt.set(null);
                 resumeExecution(parentExecutionId);
             }
         }
@@ -662,8 +685,12 @@ public class RuntimeAgentFactory {
         @Override
         public void onAgentInvocationError(AgentInvocationError error) {
             Throwable cause = error != null ? error.error() : null;
-            log.warn("Remote A2A agent '{}' invocation failed: {}: {}", name, errorType(cause), errorMessage(cause));
+            log.warn(
+                    "Completed agent invocation: kind=remote-a2a, executionId={}, parentExecutionId={}, groupId={}, agent={}, status=FAILED, durationMs={}, errorType={}, message={}",
+                    null, parentExecutionId, null, name, durationSince(invocationStartedAt.get()), errorType(cause),
+                    errorMessage(cause));
             log.debug("Remote A2A agent '{}' invocation failure details", name, cause);
+            invocationStartedAt.set(null);
             resumeExecution(parentExecutionId);
         }
 
@@ -762,16 +789,31 @@ public class RuntimeAgentFactory {
         }
 
         public String invoke(AgenticScope scope) {
+            long startedAt = System.currentTimeMillis();
             log.info("Invoking agent: kind=supervisor-selected, executionId={}, parentExecutionId={}, groupId={}, agent={}",
                     parentExecutionId, parentExecutionId, groupId, name);
             try (RuntimeAgent runtimeAgent = supplier.get()) {
                 if (runtimeAgent == null) {
+                    log.info(
+                            "Completed agent invocation: kind=supervisor-selected, executionId={}, parentExecutionId={}, groupId={}, agent={}, status=SKIPPED, durationMs={}",
+                            parentExecutionId, parentExecutionId, groupId, name, System.currentTimeMillis() - startedAt);
                     return "";
                 }
                 Object result = runtimeAgent.invoker()
                         .invokeWithAgenticScope(Map.of("message", resolveMessage(scope)))
                         .result();
+                log.info(
+                        "Completed agent invocation: kind=supervisor-selected, executionId={}, parentExecutionId={}, groupId={}, agent={}, status=SUCCEEDED, durationMs={}, resultPresent={}",
+                        parentExecutionId, parentExecutionId, groupId, name, System.currentTimeMillis() - startedAt,
+                        result != null && !blank(result.toString()));
                 return result != null ? result.toString() : "";
+            } catch (Exception ex) {
+                log.warn(
+                        "Completed agent invocation: kind=supervisor-selected, executionId={}, parentExecutionId={}, groupId={}, agent={}, status=FAILED, durationMs={}, errorType={}, message={}",
+                        parentExecutionId, parentExecutionId, groupId, name, System.currentTimeMillis() - startedAt,
+                        ex.getClass().getSimpleName(), ex.getMessage());
+                log.debug("Supervisor-selected agent '{}' invocation failure details", name, ex);
+                throw ex;
             }
         }
 
