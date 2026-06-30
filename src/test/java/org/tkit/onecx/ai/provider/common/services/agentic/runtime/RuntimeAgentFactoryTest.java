@@ -103,14 +103,12 @@ class RuntimeAgentFactoryTest {
             assertThat(chatModel.lastRequest.toString())
                     .contains("Answer normal, general, basic, conversational, ambiguous, or unmatched requests yourself");
             assertThat(chatModel.lastRequest.toString()).contains("Use a peer agent only when");
-            assertThat(chatModel.lastRequest.toString()).contains("A request mentioning OneCX matches peers");
             assertThat(chatModel.lastRequest.toString()).contains("Do not require the user to mention \"MCP server\"");
             assertThat(chatModel.lastRequest.toolSpecifications())
                     .extracting(spec -> spec.description())
                     .anySatisfy(description -> assertThat(description)
                             .contains("matches this agent's name, domain, data source, or specialty")
                             .contains("documentation"));
-            assertThat(chatModel.lastRequest.toString()).contains("Current user message:");
             assertThat(chatModel.lastRequest.toString()).contains("How big is a tiger?");
             verify(delegateInvoker, never()).invokeWithAgenticScope(any());
         }
@@ -135,7 +133,7 @@ class RuntimeAgentFactoryTest {
 
             assertThat(result).isEqualTo("I could not reach the OneCX specialist, but I can still answer briefly.");
             assertThat(chatModel.calls.get()).isEqualTo(2);
-            assertThat(chatModel.firstRequest.toString()).contains("Required peer agents:");
+            assertThat(chatModel.firstRequest.toString()).contains("Optional peer agents are available as tools");
             assertThat(chatModel.firstRequest.toString()).contains("onecx-agent");
             assertThat(chatModel.secondRequest.toString()).contains("could not complete the delegated request");
         }
@@ -145,7 +143,7 @@ class RuntimeAgentFactoryTest {
     void leadAgent_waitsForDelegateMcpToolResultBeforeFinalAnswer() {
         Agent rootAgent = agent("root-agent");
         Agent onecxAgent = agent("onecx-agent");
-        ChatRequestDTOV1 request = chatRequest("Tell me what the OneCX Generator is for");
+        ChatRequestDTOV1 request = chatRequest("Can you ask the OneCX expert?");
 
         RootDelegatingChatModel rootModel = new RootDelegatingChatModel();
         McpCallingChatModel onecxModel = new McpCallingChatModel();
@@ -176,8 +174,10 @@ class RuntimeAgentFactoryTest {
             assertThat(result).isEqualTo("Final answer using OneCX Generator docs result");
             assertThat(rootModel.calls.get()).isEqualTo(2);
             assertThat(onecxModel.calls.get()).isEqualTo(2);
+            assertThat(onecxModel.firstRequest.toString()).contains("Tell me what the OneCX Generator is for");
+            assertThat(onecxModel.firstRequest.toString()).doesNotContain("Can you ask the OneCX expert?");
             assertThat(onecxModel.secondRequest.toString()).contains("OneCX Generator docs result");
-            assertThat(rootModel.firstRequest.toString()).contains("Required peer agents:");
+            assertThat(rootModel.firstRequest.toString()).contains("Optional peer agents are available as tools");
             assertThat(rootModel.firstRequest.toString()).contains("onecx-agent");
             assertThat(rootModel.secondRequest.toString()).contains("OneCX peer answer from OneCX Generator docs result");
             verify(mcpClient).executeTool(expectedMcpRequest);
@@ -257,6 +257,38 @@ class RuntimeAgentFactoryTest {
             assertThat(result).isEqualTo("final answer after tools");
             assertThat(chatModel.chatCalls.get()).isEqualTo(5);
             verify(mcpClient, times(4)).executeTool(any());
+        }
+    }
+
+    @Test
+    void rootAgent_returnsFinalAnswerAfterSingleMcpToolResult() {
+        Agent agent = agent("docs-agent");
+        ChatRequestDTOV1 request = chatRequest("What is OneCX?");
+        McpCallingChatModel chatModel = new McpCallingChatModel();
+        McpClient mcpClient = mock(McpClient.class);
+        ToolExecutionRequest expectedMcpRequest = ToolExecutionRequest.builder()
+                .id("mcp-call-1")
+                .name("search_docs")
+                .arguments("{\"query\":\"OneCX Generator\"}")
+                .build();
+
+        when(chatModelFactory.createChatModel(agent)).thenReturn(chatModel);
+        when(mcpClient.executeTool(expectedMcpRequest)).thenReturn(ToolExecutionResult.builder()
+                .resultText("OneCX docs result")
+                .build());
+        when(mcpService.createToolRegistry(agent, "exec-root")).thenReturn(new McpToolRegistry(List.of(
+                new McpTool("tool-search-docs", "http://mcp", toolSpec("search_docs"), mcpClient))));
+
+        try (RuntimeAgent runtimeAgent = factory.rootAgent(agent, request, "exec-root")) {
+            Object result = runtimeAgent.invoker()
+                    .invokeWithAgenticScope(Map.of("message", "What is OneCX?"))
+                    .result();
+
+            assertThat(result).isEqualTo("OneCX peer answer from OneCX Generator docs result");
+            assertThat(chatModel.calls.get()).isEqualTo(2);
+            assertThat(chatModel.secondRequest.toString()).contains("OneCX docs result");
+            assertThat(chatModel.secondRequest.toString()).doesNotContain("Ignore any framework continuation");
+            verify(mcpClient).executeTool(expectedMcpRequest);
         }
     }
 
@@ -401,11 +433,13 @@ class RuntimeAgentFactoryTest {
     private static final class McpCallingChatModel implements ChatModel {
 
         private final AtomicInteger calls = new AtomicInteger();
+        private ChatRequest firstRequest;
         private ChatRequest secondRequest;
 
         @Override
         public ChatResponse doChat(ChatRequest chatRequest) {
             if (calls.incrementAndGet() == 1) {
+                firstRequest = chatRequest;
                 return ChatResponse.builder()
                         .aiMessage(AiMessage.from(ToolExecutionRequest.builder()
                                 .id("mcp-call-1")
