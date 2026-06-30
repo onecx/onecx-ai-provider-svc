@@ -23,10 +23,10 @@ import io.quarkiverse.mockserver.test.InjectMockServerClient;
 import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
-class OpenAiProviderAdapterTest extends AbstractTest {
+class AnthropicProviderAdapterTest extends AbstractTest {
 
     @Inject
-    OpenAiProviderAdapter adapter;
+    AnthropicProviderAdapter adapter;
 
     @InjectMockServerClient
     MockServerClient mockServerClient;
@@ -34,71 +34,72 @@ class OpenAiProviderAdapterTest extends AbstractTest {
     @ConfigProperty(name = "quarkus.mockserver.endpoint")
     String mockServerEndpoint;
 
-    private static final String OPENAI_OK_BODY = """
+    private static final String ANTHROPIC_OK_BODY = """
             {
-              "id": "chatcmpl-test",
-              "object": "chat.completion",
-              "created": 1780000000,
-              "model": "gpt-4o-mini",
-              "choices": [
-                {
-                  "index": 0,
-                  "message": { "role": "assistant", "content": "pong" },
-                  "finish_reason": "stop"
-                }
+              "id": "msg_test",
+              "type": "message",
+              "role": "assistant",
+              "model": "claude-3-haiku-20240307",
+              "content": [
+                { "type": "text", "text": "pong" }
               ],
-              "usage": { "prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2 }
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "usage": { "input_tokens": 1, "output_tokens": 1 }
             }
             """;
 
     @AfterEach
     void resetMockserver() {
         try {
-            mockServerClient.clear("OPENAI");
+            mockServerClient.clear("ANTHROPIC");
         } catch (Exception _) {
             // mockId not existing
         }
     }
 
     @Test
-    void supports_returnsTrueOnlyForOpenAi() {
-        assertThat(adapter.supports(ProviderType.OPENAI)).isTrue();
+    void supports_returnsTrueOnlyForAnthropic() {
+        assertThat(adapter.supports(ProviderType.ANTHROPIC)).isTrue();
+        assertThat(adapter.supports(ProviderType.OPENAI)).isFalse();
         assertThat(adapter.supports(ProviderType.OLLAMA)).isFalse();
-        assertThat(adapter.supports(ProviderType.ANTHROPIC)).isFalse();
     }
 
     @Test
     void createChatModel_withValidAgent_returnsModel() {
-        assertThat(adapter.createChatModel(buildAgent(mockServerEndpoint, "gpt-4o-mini", "sk-test"))).isNotNull();
+        assertThat(adapter.createChatModel(buildAgent(mockServerEndpoint, "claude-3-haiku-20240307", "sk-ant-test")))
+                .isNotNull();
     }
 
     @Test
     void createChatModel_withoutApiKey_failsClearly() {
-        assertThatThrownBy(() -> adapter.createChatModel(buildAgent(mockServerEndpoint, "gpt-4o-mini", "")))
+        assertThatThrownBy(() -> adapter.createChatModel(buildAgent(mockServerEndpoint, "claude-3-haiku-20240307", "")))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("OpenAI provider has no API key configured");
+                .hasMessageContaining("Anthropic provider has no API key configured");
     }
 
     @Test
     void createChatModel_withoutModelIdentifier_failsClearly() {
-        assertThatThrownBy(() -> adapter.createChatModel(buildAgent(mockServerEndpoint, "", "sk-test")))
+        assertThatThrownBy(() -> adapter.createChatModel(buildAgent(mockServerEndpoint, "", "sk-ant-test")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Agent model has no model identifier configured");
     }
 
     @Test
-    void health_openAiResponds_returnsHealthy() {
-        stubOpenAiChat(200, OPENAI_OK_BODY);
+    void health_anthropicResponds_returnsHealthy() {
+        stubAnthropicMessages(200, ANTHROPIC_OK_BODY);
 
-        assertThat(adapter.healthCheck(buildProvider(mockServerEndpoint, "sk-test"))).isEqualTo(ProviderAdapter.HEALTHY);
+        assertThat(adapter.healthCheck(buildProvider(mockServerEndpoint, "sk-ant-test")))
+                .isEqualTo(ProviderAdapter.HEALTHY);
     }
 
     @Test
-    void health_openAiReturns500_returnsUnhealthy() {
-        stubOpenAiChat(500, "");
+    void health_anthropicReturns500_returnsUnhealthy() {
+        stubAnthropicMessages(500, "");
 
-        assertThat(adapter.healthCheck(buildProvider(mockServerEndpoint, "sk-test"))).isEqualTo(ProviderAdapter.UNHEALTHY);
-        mockServerClient.verify(request().withMethod("POST").withPath(".*chat/completions"),
+        assertThat(adapter.healthCheck(buildProvider(mockServerEndpoint, "sk-ant-test")))
+                .isEqualTo(ProviderAdapter.UNHEALTHY);
+        mockServerClient.verify(request().withMethod("POST").withPath("/messages"),
                 VerificationTimes.exactly(3));
     }
 
@@ -107,12 +108,12 @@ class OpenAiProviderAdapterTest extends AbstractTest {
         assertThat(adapter.healthCheck(buildProvider(mockServerEndpoint, ""))).isEqualTo(ProviderAdapter.UNHEALTHY);
     }
 
-    private void stubOpenAiChat(int statusCode, String body) {
+    private void stubAnthropicMessages(int statusCode, String body) {
         var resp = response().withStatusCode(statusCode);
         if (!body.isBlank()) {
             resp = resp.withContentType(MediaType.APPLICATION_JSON).withBody(body);
         }
-        mockServerClient.when(request().withMethod("POST").withPath(".*chat/completions")).withId("OPENAI").respond(resp);
+        mockServerClient.when(request().withMethod("POST").withPath("/messages")).withId("ANTHROPIC").respond(resp);
     }
 
     private Agent buildAgent(String baseUrl, String modelIdentifier, String apiKey) {
@@ -127,7 +128,7 @@ class OpenAiProviderAdapterTest extends AbstractTest {
 
     private Provider buildProvider(String baseUrl, String apiKey) {
         var provider = new Provider();
-        provider.setType(ProviderType.OPENAI);
+        provider.setType(ProviderType.ANTHROPIC);
         provider.setLlmUrl(baseUrl);
         provider.setApiKey(apiKey);
         return provider;

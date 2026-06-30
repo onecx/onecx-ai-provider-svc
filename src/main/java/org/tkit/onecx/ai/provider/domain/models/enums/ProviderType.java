@@ -5,5 +5,6 @@ package org.tkit.onecx.ai.provider.domain.models.enums;
  */
 public enum ProviderType {
     OLLAMA,
-    OPENAI;
+    OPENAI,
+    ANTHROPIC;
 }

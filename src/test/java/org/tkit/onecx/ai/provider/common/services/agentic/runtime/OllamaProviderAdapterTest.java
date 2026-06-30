@@ -52,6 +52,7 @@ class OllamaProviderAdapterTest extends AbstractTest {
     void supports_returnsTrueOnlyForOllama() {
         assertThat(adapter.supports(ProviderType.OLLAMA)).isTrue();
         assertThat(adapter.supports(ProviderType.OPENAI)).isFalse();
+        assertThat(adapter.supports(ProviderType.ANTHROPIC)).isFalse();
     }
 
     @Test

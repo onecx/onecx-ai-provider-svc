@@ -23,6 +23,7 @@ class ChatModelFactoryTest {
 
     ProviderAdapter ollamaAdapter;
     ProviderAdapter openAiAdapter;
+    ProviderAdapter anthropicAdapter;
     ChatModelFactory factory;
 
     @BeforeEach
@@ -31,9 +32,11 @@ class ChatModelFactoryTest {
         when(ollamaAdapter.supports(ProviderType.OLLAMA)).thenReturn(true);
         openAiAdapter = mock(ProviderAdapter.class);
         when(openAiAdapter.supports(ProviderType.OPENAI)).thenReturn(true);
+        anthropicAdapter = mock(ProviderAdapter.class);
+        when(anthropicAdapter.supports(ProviderType.ANTHROPIC)).thenReturn(true);
 
         factory = new ChatModelFactory();
-        factory.providerAdapters = instance(List.of(ollamaAdapter, openAiAdapter));
+        factory.providerAdapters = instance(List.of(ollamaAdapter, openAiAdapter, anthropicAdapter));
     }
 
     @Test
@@ -58,6 +61,15 @@ class ChatModelFactoryTest {
         Agent agent = agent(ProviderType.OPENAI);
         ChatModel chatModel = mock(ChatModel.class);
         when(openAiAdapter.createChatModel(agent)).thenReturn(chatModel);
+
+        assertThat(factory.createChatModel(agent)).isSameAs(chatModel);
+    }
+
+    @Test
+    void createChatModel_resolvesAnthropicAdapter() {
+        Agent agent = agent(ProviderType.ANTHROPIC);
+        ChatModel chatModel = mock(ChatModel.class);
+        when(anthropicAdapter.createChatModel(agent)).thenReturn(chatModel);
 
         assertThat(factory.createChatModel(agent)).isSameAs(chatModel);
     }
