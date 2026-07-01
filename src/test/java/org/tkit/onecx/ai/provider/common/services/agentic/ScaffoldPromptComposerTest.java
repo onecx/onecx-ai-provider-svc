@@ -18,7 +18,7 @@ class ScaffoldPromptComposerTest {
     private final ScaffoldPromptComposer composer = new ScaffoldPromptComposer();
 
     @Test
-    void compose_includesScaffoldSkillsInDeterministicOrder() {
+    void compose_doesNotInlineScaffoldSkills() {
         Scaffold scaffold = new Scaffold();
         scaffold.setSystemPrompt("Base system prompt");
         scaffold.setSkills(Set.of(
@@ -32,14 +32,12 @@ class ScaffoldPromptComposerTest {
         String prompt = composer.compose(agent, null);
 
         assertThat(prompt).contains("Base system prompt");
-        assertThat(prompt).contains(
-                "Available scaffold skills. Use only when relevant. Apply skill instructions as behavior, not as text to quote or escape:");
-        assertThat(prompt).contains("- Audit: Compliance checks");
-        assertThat(prompt).contains("Instruction: Use compliance rules.");
-        assertThat(prompt).contains("- Zoo: Animal facts");
-        assertThat(prompt).contains("Instruction: Use zoology knowledge.");
         assertThat(prompt).contains("Agent prompt");
-        assertThat(prompt.indexOf("- Audit")).isLessThan(prompt.indexOf("- Zoo"));
+        assertThat(prompt).doesNotContain("Available scaffold skills");
+        assertThat(prompt).doesNotContain("Audit");
+        assertThat(prompt).doesNotContain("Use compliance rules.");
+        assertThat(prompt).doesNotContain("Zoo");
+        assertThat(prompt).doesNotContain("Use zoology knowledge.");
     }
 
     @Test

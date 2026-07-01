@@ -56,6 +56,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.skills.Skills;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
 import lombok.extern.slf4j.Slf4j;
@@ -77,6 +78,9 @@ public class RuntimeAgentFactory {
 
     @Inject
     ScaffoldPromptComposer scaffoldPromptComposer;
+
+    @Inject
+    RuntimeSkillService runtimeSkillService;
 
     @Inject
     McpService mcpService;
@@ -193,15 +197,19 @@ public class RuntimeAgentFactory {
         ChatModel effectiveChatModel = toolNames.isEmpty()
                 ? chatModel
                 : new TextToolCallNormalizingChatModel(chatModel, toolNames);
+        Skills runtimeSkills = runtimeSkillService.runtimeSkills(agent);
 
         var builder = AiServices.builder(LocalChatAgent.class)
                 .chatModel(effectiveChatModel)
-                .systemMessage(systemMessage(agent, request, delegates, requiredDelegates))
+                .systemMessage(systemMessage(agent, request, delegates, requiredDelegates, runtimeSkills))
                 .userMessageProvider(input -> userMessage(request, inputMessage(input, extractUserMessage(request))))
                 .maxSequentialToolsInvocations(maxSequentialToolInvocations(agent));
 
         if (!toolExecutors.isEmpty()) {
             builder.tools(toolExecutors);
+        }
+        if (runtimeSkills != null) {
+            builder.toolProvider(runtimeSkills.toolProvider());
         }
 
         LocalChatAgent chatAgent = builder.build();
@@ -513,13 +521,22 @@ public class RuntimeAgentFactory {
     }
 
     private String systemMessage(Agent agent, ChatRequestDTOV1 request, List<RuntimeAgentDelegate> delegateAgents) {
-        return systemMessage(agent, request, delegateAgents, List.of());
+        return systemMessage(agent, request, delegateAgents, List.of(), null);
     }
 
     private String systemMessage(Agent agent, ChatRequestDTOV1 request, List<RuntimeAgentDelegate> delegateAgents,
             List<RuntimeAgentDelegate> requiredDelegates) {
+        return systemMessage(agent, request, delegateAgents, requiredDelegates, null);
+    }
+
+    private String systemMessage(Agent agent, ChatRequestDTOV1 request, List<RuntimeAgentDelegate> delegateAgents,
+            List<RuntimeAgentDelegate> requiredDelegates, Skills runtimeSkills) {
         String composed = scaffoldPromptComposer.compose(agent, request);
         String base = !isBlank(composed) ? composed : "You are a helpful assistant.";
+        if (runtimeSkills != null) {
+            base = base + System.lineSeparator() + System.lineSeparator()
+                    + runtimeSkillService.activationPrompt(runtimeSkills);
+        }
         if (requiredDelegates != null && !requiredDelegates.isEmpty()) {
             base = base + System.lineSeparator() + System.lineSeparator()
                     + requiredDelegationPolicy(requiredDelegates);

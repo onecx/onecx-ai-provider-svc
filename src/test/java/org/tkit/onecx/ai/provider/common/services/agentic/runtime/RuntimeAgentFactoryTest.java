@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import jakarta.inject.Inject;
@@ -22,6 +23,8 @@ import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
 import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
+import org.tkit.onecx.ai.provider.domain.models.Scaffold;
+import org.tkit.onecx.ai.provider.domain.models.Skill;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -74,6 +77,97 @@ class RuntimeAgentFactoryTest {
                     .result();
 
             assertThat(result).isEqualTo("Tigers are large cats.");
+        }
+    }
+
+    @Test
+    void rootAgent_exposesScaffoldSkillsViaLangChain4jSkills() {
+        Agent agent = agent();
+        Scaffold scaffold = new Scaffold();
+        scaffold.setSystemPrompt("Base system prompt");
+        scaffold.setSkills(Set.of(
+                skill("Zoo", "Animal facts", "Use zoology knowledge."),
+                skill("Audit", "Compliance checks", "Use compliance rules.")));
+        agent.setScaffold(scaffold);
+
+        ChatRequestDTOV1 request = chatRequest("Run an audit");
+        CapturingChatModel chatModel = new CapturingChatModel("Audit complete.");
+        when(chatModelFactory.createChatModel(agent)).thenReturn(chatModel);
+        when(mcpService.createToolRegistry(agent, "exec-root")).thenReturn(McpToolRegistry.empty());
+
+        try (RuntimeAgent runtimeAgent = factory.rootAgent(agent, request, "exec-root")) {
+            Object result = runtimeAgent.invoker()
+                    .invokeWithAgenticScope(Map.of("message", "Run an audit"))
+                    .result();
+
+            assertThat(result).isEqualTo("Audit complete.");
+            assertThat(chatModel.lastRequest.toolSpecifications())
+                    .extracting(ToolSpecification::name)
+                    .contains("activate_skill");
+            assertThat(chatModel.lastRequest.toString()).contains("Available skills:");
+            assertThat(chatModel.lastRequest.toString())
+                    .contains("Activate a relevant skill before applying its instructions.");
+            assertThat(chatModel.lastRequest.toString()).contains("Audit");
+            assertThat(chatModel.lastRequest.toString()).contains("Compliance checks");
+            assertThat(chatModel.lastRequest.toString()).contains("Zoo");
+            assertThat(chatModel.lastRequest.toString()).contains("Animal facts");
+            assertThat(chatModel.lastRequest.toString()).doesNotContain("Use compliance rules.");
+            assertThat(chatModel.lastRequest.toString()).doesNotContain("Use zoology knowledge.");
+        }
+    }
+
+    @Test
+    void rootAgent_skipsInvalidScaffoldSkills() {
+        Agent agent = agent();
+        Scaffold scaffold = new Scaffold();
+        scaffold.setSkills(Set.of(
+                skill("Valid", "", "Use valid skill instructions."),
+                skill("", "Missing name", "Should be skipped."),
+                skill("Missing instruction", "No instruction", "")));
+        agent.setScaffold(scaffold);
+
+        ChatRequestDTOV1 request = chatRequest("Use the valid skill");
+        CapturingChatModel chatModel = new CapturingChatModel("Valid skill answer.");
+        when(chatModelFactory.createChatModel(agent)).thenReturn(chatModel);
+        when(mcpService.createToolRegistry(agent, "exec-root")).thenReturn(McpToolRegistry.empty());
+
+        try (RuntimeAgent runtimeAgent = factory.rootAgent(agent, request, "exec-root")) {
+            Object result = runtimeAgent.invoker()
+                    .invokeWithAgenticScope(Map.of("message", "Use the valid skill"))
+                    .result();
+
+            assertThat(result).isEqualTo("Valid skill answer.");
+            assertThat(chatModel.lastRequest.toolSpecifications())
+                    .extracting(ToolSpecification::name)
+                    .contains("activate_skill");
+            assertThat(chatModel.lastRequest.toString()).contains("Valid");
+            assertThat(chatModel.lastRequest.toString()).doesNotContain("Should be skipped.");
+            assertThat(chatModel.lastRequest.toString()).doesNotContain("Missing instruction");
+        }
+    }
+
+    @Test
+    void rootAgent_withOnlyInvalidScaffoldSkillsDoesNotExposeSkills() {
+        Agent agent = agent();
+        Scaffold scaffold = new Scaffold();
+        scaffold.setSkills(Set.of(
+                skill("", "Missing name", "Should be skipped."),
+                skill("Missing instruction", "No instruction", "")));
+        agent.setScaffold(scaffold);
+
+        ChatRequestDTOV1 request = chatRequest("Hello");
+        CapturingChatModel chatModel = new CapturingChatModel("Hello.");
+        when(chatModelFactory.createChatModel(agent)).thenReturn(chatModel);
+        when(mcpService.createToolRegistry(agent, "exec-root")).thenReturn(McpToolRegistry.empty());
+
+        try (RuntimeAgent runtimeAgent = factory.rootAgent(agent, request, "exec-root")) {
+            Object result = runtimeAgent.invoker()
+                    .invokeWithAgenticScope(Map.of("message", "Hello"))
+                    .result();
+
+            assertThat(result).isEqualTo("Hello.");
+            assertThat(chatModel.lastRequest.toolSpecifications()).isEmpty();
+            assertThat(chatModel.lastRequest.toString()).doesNotContain("Available skills:");
         }
     }
 
@@ -320,6 +414,14 @@ class RuntimeAgentFactoryTest {
         message.setMessage(text);
         request.setChatMessage(message);
         return request;
+    }
+
+    private Skill skill(String name, String description, String instruction) {
+        Skill skill = new Skill();
+        skill.setName(name);
+        skill.setDescription(description);
+        skill.setInstruction(instruction);
+        return skill;
     }
 
     private static final class PlainTextChatModel implements ChatModel {
