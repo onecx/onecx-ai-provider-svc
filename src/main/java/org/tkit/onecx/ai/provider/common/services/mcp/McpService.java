@@ -11,7 +11,6 @@ import jakarta.inject.Inject;
 import org.eclipse.microprofile.faulttolerance.Fallback;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import org.tkit.onecx.ai.provider.common.models.DispatchConfig;
-import org.tkit.onecx.ai.provider.common.services.agentic.tool.ToolPolicyService;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.Tool;
 import org.tkit.onecx.ai.provider.domain.models.enums.ToolType;
@@ -31,9 +30,6 @@ public class McpService {
 
     @Inject
     DispatchConfig dispatchConfig;
-
-    @Inject
-    ToolPolicyService toolPolicyService;
 
     /**
      * Creates a tool registry from all MCP-type tools defined in the agent.
@@ -55,7 +51,7 @@ public class McpService {
 
         // Filter only MCP-type tools
         for (Tool tool : agent.getTools()) {
-            if (tool.getType() == ToolType.MCP && isAllowedByPolicy(agent, tool)) {
+            if (tool.getType() == ToolType.MCP) {
                 allTools.addAll(discoverToolsFromServer(tool));
             }
         }
@@ -121,20 +117,5 @@ public class McpService {
         return DefaultMcpClient.builder()
                 .transport(transportBuilder.build())
                 .build();
-    }
-
-    private boolean isAllowedByPolicy(Agent agent, Tool tool) {
-        if (toolPolicyService == null) {
-            return true;
-        }
-        if (tool.getId() == null) {
-            log.debug("Tool '{}' has no ID; skipping allow-list enforcement", tool.getName());
-            return true;
-        }
-        boolean allowed = toolPolicyService.isToolAllowed(agent, tool.getId().toString());
-        if (!allowed) {
-            log.warn("Tool '{}' denied by policy for agent '{}'", tool.getName(), agent.getName());
-        }
-        return allowed;
     }
 }
