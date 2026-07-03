@@ -6,13 +6,12 @@ import jakarta.ws.rs.core.Response;
 
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.tkit.onecx.ai.provider.common.services.agent.AgentService;
-import org.tkit.onecx.ai.provider.common.services.runtime.ProviderRuntimeClient;
-import org.tkit.onecx.ai.provider.common.services.runtime.RuntimeSnapshotMapper;
-import org.tkit.onecx.ai.provider.common.services.runtime.dto.RuntimeDtos.RuntimeChatResponse;
-import org.tkit.onecx.ai.provider.common.services.runtime.dto.RuntimeDtos.RuntimeStatus;
+import org.tkit.onecx.ai.provider.rs.external.v1.mappers.RuntimeSnapshotMapper;
 
-import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
+import gen.org.tkit.onecx.ai.provider.runtime.client.api.RuntimeInternalApi;
+import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeChatResponse;
+import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeStatus;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -27,7 +26,7 @@ public class ChatDispatchService {
 
     @Inject
     @RestClient
-    ProviderRuntimeClient providerRuntimeClient;
+    RuntimeInternalApi providerRuntimeClient;
 
     public Response chat(ChatRequestDTOV1 chatRequestDTO) {
         log.info("Received chat request: {}", chatRequestDTO);
@@ -38,12 +37,18 @@ public class ChatDispatchService {
                     .entity("No agent found for the given request context")
                     .build();
         }
-        RuntimeChatResponse result = providerRuntimeClient.chat(runtimeSnapshotMapper.toRuntimeRequest(agent, chatRequestDTO));
-        return result != null && RuntimeStatus.SUCCESS.equals(result.status())
-                ? Response.ok(mapToChatMessageResponseDTO(result.message())).build()
-                : Response.status(responseStatus(result))
-                        .entity(result != null && result.message() != null ? result.message() : "Agent invocation failed")
-                        .build();
+        RuntimeChatResponse result;
+        try (Response response = providerRuntimeClient.chat(runtimeSnapshotMapper.toRuntimeRequest(agent, chatRequestDTO))) {
+            result = response.readEntity(RuntimeChatResponse.class);
+        } catch (Exception e) {
+            log.error("Error invoking runtime chat API: {}", e.getMessage(), e);
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Error invoking runtime chat API: " + e.getMessage())
+                    .build();
+        }
+        return Response.status(responseStatus(result))
+                .entity(runtimeSnapshotMapper.mapRuntimeChatMessage(result.getMessage()))
+                .build();
     }
 
     private Response.Status responseStatus(RuntimeChatResponse result) {
@@ -52,10 +57,10 @@ public class ChatDispatchService {
                 : Response.Status.BAD_REQUEST;
     }
 
-    private ChatMessageDTOV1 mapToChatMessageResponseDTO(String responseMessage) {
-        ChatMessageDTOV1 chatMessage = new ChatMessageDTOV1();
-        chatMessage.setMessage(responseMessage != null ? responseMessage : "");
-        chatMessage.setType(ChatMessageDTOV1.TypeEnum.ASSISTANT);
-        return chatMessage;
-    }
+    //    private ChatMessageDTOV1 mapToChatMessageResponseDTO(String responseMessage) {
+    //        ChatMessageDTOV1 chatMessage = new ChatMessageDTOV1();
+    //        chatMessage.setMessage(responseMessage != null ? responseMessage : "");
+    //        chatMessage.setType(ChatMessageDTOV1.TypeEnum.ASSISTANT);
+    //        return chatMessage;
+    //    }
 }

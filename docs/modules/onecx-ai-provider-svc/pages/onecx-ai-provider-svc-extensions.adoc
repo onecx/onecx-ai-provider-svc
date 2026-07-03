@@ -116,6 +116,12 @@ h| Version
 | 
 | 3.33.1.1
 
+| quarkus-rest-client-jackson
+
+| https://quarkus.io/guides/rest-client[Link]
+| 
+| 3.33.1.1
+
 | quarkus-jdbc-postgresql
 
 | https://quarkus.io/guides/datasource[Link]
@@ -164,24 +170,6 @@ h| Version
 | 
 | 
 | 3.33.1.1
-
-| quarkus-langchain4j-ollama
-
-| 
-| 
-| 1.10.0
-
-| quarkus-langchain4j-mcp
-
-| 
-| 
-| 1.10.0
-
-| quarkus-langchain4j-agentic
-
-| 
-| 
-| 1.10.0
 
 
 |===
