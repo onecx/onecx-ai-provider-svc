@@ -9,13 +9,11 @@ import jakarta.transaction.Transactional;
 import org.tkit.onecx.ai.provider.domain.daos.AgentDAO;
 import org.tkit.onecx.ai.provider.domain.daos.AgentGroupDAO;
 import org.tkit.onecx.ai.provider.domain.daos.ModelDAO;
-import org.tkit.onecx.ai.provider.domain.daos.RuntimeConfigDAO;
 import org.tkit.onecx.ai.provider.domain.daos.ScaffoldDAO;
 import org.tkit.onecx.ai.provider.domain.daos.ToolDAO;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
 import org.tkit.onecx.ai.provider.domain.models.Model;
-import org.tkit.onecx.ai.provider.domain.models.RuntimeConfig;
 import org.tkit.onecx.ai.provider.domain.models.Scaffold;
 import org.tkit.onecx.ai.provider.domain.models.Tool;
 
@@ -35,9 +33,6 @@ public class AgentService {
 
     @Inject
     ScaffoldDAO scaffoldDAO;
-
-    @Inject
-    RuntimeConfigDAO runtimeConfigDAO;
 
     @Inject
     AgentGroupDAO agentGroupDAO;
@@ -75,16 +70,6 @@ public class AgentService {
                 resolved = scaffoldDAO.create(agent.getScaffold());
             }
             agent.setScaffold(resolved);
-        }
-
-        // Resolve runtimeConfig
-        if (agent.getRuntimeConfig() != null) {
-            var rtId = agent.getRuntimeConfig().getId();
-            RuntimeConfig resolved = rtId != null ? runtimeConfigDAO.findById(rtId) : null;
-            if (resolved == null) {
-                resolved = runtimeConfigDAO.create(agent.getRuntimeConfig());
-            }
-            agent.setRuntimeConfig(resolved);
         }
 
         // Resolve groups

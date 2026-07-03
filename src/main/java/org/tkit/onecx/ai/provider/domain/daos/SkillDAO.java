@@ -84,6 +84,7 @@ public class SkillDAO extends AbstractDAO<Skill> {
         skill.setName(globalSkill.getName());
         skill.setDescription(globalSkill.getDescription());
         skill.setInstruction(globalSkill.getInstruction());
+        skill.setSource("GLOBAL");
         return skill;
     }
 

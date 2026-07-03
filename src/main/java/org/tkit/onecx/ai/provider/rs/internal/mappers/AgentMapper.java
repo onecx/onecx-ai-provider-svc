@@ -10,7 +10,6 @@ import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
 import org.tkit.onecx.ai.provider.domain.models.Filter;
 import org.tkit.onecx.ai.provider.domain.models.Model;
-import org.tkit.onecx.ai.provider.domain.models.RuntimeConfig;
 import org.tkit.onecx.ai.provider.domain.models.Scaffold;
 import org.tkit.onecx.ai.provider.domain.models.Tool;
 import org.tkit.quarkus.jpa.daos.PageResult;
@@ -25,7 +24,7 @@ import gen.org.tkit.onecx.ai.provider.rs.internal.model.CreateAgentRequestDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.UpdateAgentRequestDTO;
 
 @Mapper(uses = { OffsetDateTimeMapper.class, ProviderMapper.class, ToolMapper.class,
-        ModelMapper.class, ScaffoldMapper.class, RuntimeConfigMapper.class, AgentGroupMapper.class })
+        ModelMapper.class, ScaffoldMapper.class, AgentGroupMapper.class })
 public interface AgentMapper {
 
     AgentSearchCriteria mapCriteria(AgentSearchCriteriaDTO agentSearchCriteriaDTO);
@@ -52,6 +51,8 @@ public interface AgentMapper {
     @Mapping(target = "creationUser", ignore = true)
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
+    @Mapping(target = "globalScaffold", ignore = true)
+    @Mapping(target = "globalTools", ignore = true)
     Agent mapCreate(CreateAgentRequestDTO createAgentRequestDTO);
 
     @Mapping(target = "modificationCount", source = "updateDTO.modificationCount")
@@ -62,9 +63,10 @@ public interface AgentMapper {
     @Mapping(target = "filter", source = "updateDTO.filter")
     @Mapping(target = "model", source = "model")
     @Mapping(target = "scaffold", source = "scaffold")
-    @Mapping(target = "runtimeConfig", source = "runtimeConfig")
     @Mapping(target = "groups", source = "groups")
     @Mapping(target = "tools", source = "tools")
+    @Mapping(target = "globalScaffold", ignore = true)
+    @Mapping(target = "globalTools", ignore = true)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "tenantId", ignore = true)
     @Mapping(target = "persisted", ignore = true)
@@ -74,5 +76,5 @@ public interface AgentMapper {
     @Mapping(target = "creationUser", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     void mapUpdate(@MappingTarget Agent agent, UpdateAgentRequestDTO updateDTO, HashSet<Tool> tools,
-            Model model, Scaffold scaffold, RuntimeConfig runtimeConfig, HashSet<AgentGroup> groups);
+            Model model, Scaffold scaffold, HashSet<AgentGroup> groups);
 }

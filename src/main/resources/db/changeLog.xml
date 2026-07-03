@@ -11,4 +11,5 @@
     <include relativeToChangelogFile="true" file="v5/2026-06-23-provider-skill-model-adjustments.xml"/>
     <include relativeToChangelogFile="true" file="v6/2026-06-24-add-agent-group-orchestration-policy.xml"/>
     <include relativeToChangelogFile="true" file="v7/2026-06-26-default-lead-delegates.xml"/>
+    <include relativeToChangelogFile="true" file="v8/2026-07-03-runtime-split-and-global-entities.xml"/>
 </databaseChangeLog>

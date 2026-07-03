@@ -4,10 +4,12 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 
+import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.tkit.onecx.ai.provider.common.services.agent.AgentService;
-import org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeResult;
-import org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeService;
-import org.tkit.onecx.ai.provider.common.services.agentic.runtime.AgenticRuntimeStatus;
+import org.tkit.onecx.ai.provider.common.services.runtime.ProviderRuntimeClient;
+import org.tkit.onecx.ai.provider.common.services.runtime.RuntimeSnapshotMapper;
+import org.tkit.onecx.ai.provider.common.services.runtime.dto.RuntimeDtos.RuntimeChatResponse;
+import org.tkit.onecx.ai.provider.common.services.runtime.dto.RuntimeDtos.RuntimeStatus;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
@@ -21,7 +23,11 @@ public class ChatDispatchService {
     AgentService agentService;
 
     @Inject
-    AgenticRuntimeService agenticRuntimeService;
+    RuntimeSnapshotMapper runtimeSnapshotMapper;
+
+    @Inject
+    @RestClient
+    ProviderRuntimeClient providerRuntimeClient;
 
     public Response chat(ChatRequestDTOV1 chatRequestDTO) {
         log.info("Received chat request: {}", chatRequestDTO);
@@ -32,19 +38,16 @@ public class ChatDispatchService {
                     .entity("No agent found for the given request context")
                     .build();
         }
-        AgenticRuntimeResult result = agenticRuntimeService.invokeRoot(agent, chatRequestDTO);
-        Response.ResponseBuilder responseBuilder = result.successful()
-                ? Response.ok(mapToChatMessageResponseDTO(result.responseText()))
+        RuntimeChatResponse result = providerRuntimeClient.chat(runtimeSnapshotMapper.toRuntimeRequest(agent, chatRequestDTO));
+        return result != null && RuntimeStatus.SUCCESS.equals(result.status())
+                ? Response.ok(mapToChatMessageResponseDTO(result.message())).build()
                 : Response.status(responseStatus(result))
-                        .entity(result.responseText() != null ? result.responseText() : "Agent invocation failed");
-        if (result.executionId() != null && !result.executionId().isBlank()) {
-            responseBuilder.header("X-Execution-Id", result.executionId());
-        }
-        return responseBuilder.build();
+                        .entity(result != null && result.message() != null ? result.message() : "Agent invocation failed")
+                        .build();
     }
 
-    private Response.Status responseStatus(AgenticRuntimeResult result) {
-        return result != null && AgenticRuntimeStatus.TIMEOUT.equals(result.status())
+    private Response.Status responseStatus(RuntimeChatResponse result) {
+        return result != null && RuntimeStatus.TIMEOUT.equals(result.status())
                 ? Response.Status.GATEWAY_TIMEOUT
                 : Response.Status.BAD_REQUEST;
     }

@@ -55,8 +55,8 @@ public class Agent extends TraceableEntity {
     private Scaffold scaffold;
 
     @ManyToOne
-    @JoinColumn(name = "RUNTIME_CONFIG_ID")
-    private RuntimeConfig runtimeConfig;
+    @JoinColumn(name = "GLOBAL_SCAFFOLD_ID")
+    private GlobalScaffold globalScaffold;
 
     @Embedded
     private Filter filter;
@@ -64,6 +64,10 @@ public class Agent extends TraceableEntity {
     @ManyToMany
     @JoinTable(name = "AGENT_TOOL_RL", joinColumns = @JoinColumn(name = "AGENT_ID"), inverseJoinColumns = @JoinColumn(name = "TOOL_ID"))
     private Set<Tool> tools;
+
+    @ManyToMany
+    @JoinTable(name = "AGENT_GLOBAL_TOOL_RL", joinColumns = @JoinColumn(name = "AGENT_ID"), inverseJoinColumns = @JoinColumn(name = "GLOBAL_TOOL_ID"))
+    private Set<GlobalTool> globalTools;
 
     @ManyToMany
     @JoinTable(name = "AGENT_GROUP_RL", joinColumns = @JoinColumn(name = "AGENT_ID"), inverseJoinColumns = @JoinColumn(name = "GROUP_ID"))

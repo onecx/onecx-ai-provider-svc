@@ -11,7 +11,6 @@ tags:
   - name: toolInternal
   - name: modelInternal
   - name: scaffoldInternal
-  - name: runtimeConfigInternal
   - name: skillInternal
   - name: agentGroupInternal
   - name: externalAgentInternal
@@ -437,96 +436,6 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ScaffoldPageResult' }
-
-  /internal/runtimeConfigs:
-    post:
-      security:
-        - oauth2: [ ocx-ai:all, ocx-ai:write ]
-      tags: [ runtimeConfigInternal ]
-      description: Create a RuntimeConfig
-      operationId: createRuntimeConfig
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/CreateRuntimeConfigRequest' }
-      responses:
-        "201":
-          description: RuntimeConfig created successfully
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/RuntimeConfig' }
-  /internal/runtimeConfigs/{id}:
-    get:
-      security:
-        - oauth2: [ ocx-ai:all, ocx-ai:read ]
-      tags: [ runtimeConfigInternal ]
-      description: Get RuntimeConfig by id
-      operationId: getRuntimeConfigById
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/RuntimeConfig' }
-    put:
-      security:
-        - oauth2: [ ocx-ai:all, ocx-ai:write ]
-      tags: [ runtimeConfigInternal ]
-      description: Update a RuntimeConfig
-      operationId: updateRuntimeConfigById
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/UpdateRuntimeConfigRequest' }
-      responses:
-        "200":
-          description: RuntimeConfig updated successfully
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/RuntimeConfig' }
-    delete:
-      security:
-        - oauth2: [ ocx-ai:all, ocx-ai:delete ]
-      tags: [ runtimeConfigInternal ]
-      description: Delete a RuntimeConfig
-      operationId: deleteRuntimeConfigById
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        "204": { description: RuntimeConfig deleted }
-  /internal/runtimeConfigs/search:
-    post:
-      security:
-        - oauth2: [ ocx-ai:all, ocx-ai:read ]
-      tags: [ runtimeConfigInternal ]
-      description: Find RuntimeConfigs by Search Criteria
-      operationId: findRuntimeConfigByCriteria
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/RuntimeConfigSearchCriteria' }
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/RuntimeConfigPageResult' }
 
   /internal/skills:
     post:
@@ -1021,8 +930,6 @@ components:
           $ref: '#/components/schemas/Model'
         scaffold:
           $ref: '#/components/schemas/Scaffold'
-        runtimeConfig:
-          $ref: '#/components/schemas/RuntimeConfig'
         tools:
           type: array
           items:
@@ -1043,7 +950,6 @@ components:
         filter: { $ref: '#/components/schemas/AgentFilter' }
         model: { $ref: '#/components/schemas/Model' }
         scaffold: { $ref: '#/components/schemas/Scaffold' }
-        runtimeConfig: { $ref: '#/components/schemas/RuntimeConfig' }
         tools:
           type: array
           items:
@@ -1065,7 +971,6 @@ components:
         filter: { $ref: '#/components/schemas/AgentFilter' }
         model: { $ref: '#/components/schemas/Model' }
         scaffold: { $ref: '#/components/schemas/Scaffold' }
-        runtimeConfig: { $ref: '#/components/schemas/RuntimeConfig' }
         tools:
           type: array
           items:
@@ -1107,6 +1012,7 @@ components:
         name: { type: string }
         description: { type: string }
         type: { $ref: '#/components/schemas/ToolType' }
+        source: { type: string, enum: [ TENANT, GLOBAL ] }
         url: { type: string }
         apiKey: { type: string }
         executionPolicy: { $ref: '#/components/schemas/ExecutionPolicy' }
@@ -1218,6 +1124,7 @@ components:
         id: { type: string }
         name: { type: string }
         systemPrompt: { type: string }
+        source: { type: string, enum: [ TENANT, GLOBAL ] }
         sourceProduct: { type: string }
         skills:
           type: array
@@ -1264,55 +1171,6 @@ components:
           items:
             $ref: '#/components/schemas/Scaffold'
 
-    RuntimeConfig:
-      type: object
-      properties:
-        modificationCount: { format: int32, type: integer }
-        creationDate: { $ref: '#/components/schemas/OffsetDateTime' }
-        creationUser: { type: string }
-        modificationDate: { $ref: '#/components/schemas/OffsetDateTime' }
-        modificationUser: { type: string }
-        id: { type: string }
-        endpoint: { type: string }
-        type: { $ref: '#/components/schemas/RuntimeConfigType' }
-        authConfig: { type: string }
-        provider: { $ref: '#/components/schemas/Provider' }
-    CreateRuntimeConfigRequest:
-      type: object
-      properties:
-        endpoint: { type: string }
-        type: { $ref: '#/components/schemas/RuntimeConfigType' }
-        authConfig: { type: string }
-        provider: { $ref: '#/components/schemas/Provider' }
-    UpdateRuntimeConfigRequest:
-      type: object
-      required: [ modificationCount ]
-      properties:
-        modificationCount: { format: int32, type: integer }
-        endpoint: { type: string }
-        type: { $ref: '#/components/schemas/RuntimeConfigType' }
-        authConfig: { type: string }
-        provider: { $ref: '#/components/schemas/Provider' }
-    RuntimeConfigSearchCriteria:
-      type: object
-      properties:
-        endpoint: { type: string }
-        providerId: { type: string }
-        type: { $ref: '#/components/schemas/RuntimeConfigType' }
-        pageNumber: { format: int32, default: 0, type: integer }
-        pageSize: { format: int32, default: 10, maximum: 100, type: integer }
-    RuntimeConfigPageResult:
-      type: object
-      properties:
-        totalElements: { format: int64, type: integer }
-        number: { format: int32, type: integer }
-        size: { format: int32, type: integer }
-        totalPages: { format: int64, type: integer }
-        stream:
-          type: array
-          items:
-            $ref: '#/components/schemas/RuntimeConfig'
-
     Skill:
       type: object
       properties:
@@ -1325,6 +1183,7 @@ components:
         name: { type: string }
         description: { type: string }
         instruction: { type: string }
+        source: { type: string, enum: [ TENANT, GLOBAL ] }
     CreateSkillRequest:
       type: object
       properties:
@@ -1636,11 +1495,6 @@ components:
         - DRAFT
         - LIVE
         - DEPRECATED
-    RuntimeConfigType:
-      type: string
-      enum:
-        - ONECX
-        - AWS_BEDROCK
     ProviderHealthStatus:
       type: object
       properties:

@@ -17,19 +17,16 @@ import org.tkit.onecx.ai.provider.common.services.agent.AgentService;
 import org.tkit.onecx.ai.provider.domain.daos.AgentDAO;
 import org.tkit.onecx.ai.provider.domain.daos.AgentGroupDAO;
 import org.tkit.onecx.ai.provider.domain.daos.ModelDAO;
-import org.tkit.onecx.ai.provider.domain.daos.RuntimeConfigDAO;
 import org.tkit.onecx.ai.provider.domain.daos.ScaffoldDAO;
 import org.tkit.onecx.ai.provider.domain.daos.ToolDAO;
 import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
 import org.tkit.onecx.ai.provider.domain.models.Model;
-import org.tkit.onecx.ai.provider.domain.models.RuntimeConfig;
 import org.tkit.onecx.ai.provider.domain.models.Scaffold;
 import org.tkit.onecx.ai.provider.domain.models.Tool;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.AgentGroupMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.AgentMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ExceptionMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ModelMapper;
-import org.tkit.onecx.ai.provider.rs.internal.mappers.RuntimeConfigMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ScaffoldMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ToolMapper;
 
@@ -58,9 +55,6 @@ public class AgentRestController implements AgentInternalApi {
     ScaffoldDAO scaffoldDAO;
 
     @Inject
-    RuntimeConfigDAO runtimeConfigDAO;
-
-    @Inject
     AgentGroupDAO agentGroupDAO;
 
     @Inject
@@ -77,9 +71,6 @@ public class AgentRestController implements AgentInternalApi {
 
     @Inject
     ScaffoldMapper scaffoldMapper;
-
-    @Inject
-    RuntimeConfigMapper runtimeConfigMapper;
 
     @Inject
     AgentGroupMapper agentGroupMapper;
@@ -155,16 +146,6 @@ public class AgentRestController implements AgentInternalApi {
             }
         }
 
-        // Resolve runtimeConfig
-        RuntimeConfig runtimeConfig = null;
-        if (updateAgentRequestDTO.getRuntimeConfig() != null) {
-            var rtId = updateAgentRequestDTO.getRuntimeConfig().getId();
-            runtimeConfig = rtId != null ? runtimeConfigDAO.findById(rtId) : null;
-            if (runtimeConfig == null) {
-                runtimeConfig = runtimeConfigDAO.create(runtimeConfigMapper.map(updateAgentRequestDTO.getRuntimeConfig()));
-            }
-        }
-
         // Resolve groups
         var groupsToAdd = new HashSet<AgentGroup>();
         if (updateAgentRequestDTO.getGroups() != null) {
@@ -177,7 +158,7 @@ public class AgentRestController implements AgentInternalApi {
             });
         }
 
-        mapper.mapUpdate(item, updateAgentRequestDTO, toolsToAdd, model, scaffold, runtimeConfig, groupsToAdd);
+        mapper.mapUpdate(item, updateAgentRequestDTO, toolsToAdd, model, scaffold, groupsToAdd);
         item = dao.update(item);
         return Response.status(Response.Status.OK).entity(mapper.map(item)).build();
     }

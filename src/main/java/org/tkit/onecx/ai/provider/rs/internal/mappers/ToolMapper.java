@@ -26,6 +26,7 @@ public interface ToolMapper {
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     @Mapping(target = "tenantId", ignore = true)
+    @Mapping(target = "source", ignore = true)
     Tool create(CreateToolRequestDTO createToolRequestDTO);
 
     ToolDTO map(Tool tool);
@@ -33,6 +34,7 @@ public interface ToolMapper {
     @Mapping(target = "persisted", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     @Mapping(target = "tenantId", ignore = true)
+    @Mapping(target = "source", ignore = true)
     Tool map(ToolDTO toolDTO);
 
     @Mapping(target = "persisted", ignore = true)
@@ -43,6 +45,7 @@ public interface ToolMapper {
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     @Mapping(target = "tenantId", ignore = true)
+    @Mapping(target = "source", ignore = true)
     void update(@MappingTarget Tool tool, UpdateToolRequestDTO updateToolRequestDTO);
 
     ToolSearchCriteria mapCriteria(ToolSearchCriteriaDTO criteriaDTO);

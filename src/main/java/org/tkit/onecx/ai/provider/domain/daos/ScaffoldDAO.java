@@ -85,7 +85,8 @@ public class ScaffoldDAO extends AbstractDAO<Scaffold> {
         scaffold.setName(globalScaffold.getName());
         scaffold.setSystemPrompt(globalScaffold.getSystemPrompt());
         scaffold.setSourceProduct(globalScaffold.getSourceProduct());
-        scaffold.setSkills(globalScaffold.getSkills());
+        scaffold.setGlobalSkills(globalScaffold.getSkills());
+        scaffold.setSource("GLOBAL");
         return scaffold;
     }
 

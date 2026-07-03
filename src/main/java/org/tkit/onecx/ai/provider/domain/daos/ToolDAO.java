@@ -93,6 +93,7 @@ public class ToolDAO extends AbstractDAO<Tool> {
         tool.setApiKey(globalTool.getApiKey());
         tool.setExecutionPolicy(globalTool.getExecutionPolicy());
         tool.setAuthMode(globalTool.getAuthMode());
+        tool.setSource("GLOBAL");
         return tool;
     }
 

@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="2026-07-03-create-global-entities" author="codex">
+        <createTable tableName="global_tool">
+            <column name="optlock" type="INTEGER"><constraints nullable="false"/></column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="api_key" type="VARCHAR(255)"/>
+            <column name="auth_mode" type="VARCHAR(255)"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="execution_policy" type="VARCHAR(255)"/>
+            <column name="guid" type="VARCHAR(255)"><constraints nullable="false" primaryKey="true" primaryKeyName="global_tool_pkey"/></column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="type" type="VARCHAR(255)"/>
+            <column name="url" type="VARCHAR(255)"/>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+        <createTable tableName="global_skill">
+            <column name="optlock" type="INTEGER"><constraints nullable="false"/></column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="guid" type="VARCHAR(255)"><constraints nullable="false" primaryKey="true" primaryKeyName="global_skill_pkey"/></column>
+            <column name="instruction" type="VARCHAR(255)"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+        <createTable tableName="global_scaffold">
+            <column name="optlock" type="INTEGER"><constraints nullable="false"/></column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="guid" type="VARCHAR(255)"><constraints nullable="false" primaryKey="true" primaryKeyName="global_scaffold_pkey"/></column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="source_product" type="VARCHAR(255)"/>
+            <column name="system_prompt" type="VARCHAR(255)"/>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+        <createTable tableName="agent_global_tool_rl">
+            <column name="agent_id" type="VARCHAR(255)"><constraints nullable="false" primaryKey="true" primaryKeyName="agent_global_tool_rl_pkey"/></column>
+            <column name="global_tool_id" type="VARCHAR(255)"><constraints nullable="false" primaryKey="true" primaryKeyName="agent_global_tool_rl_pkey"/></column>
+        </createTable>
+        <createTable tableName="scaffold_global_skill_rl">
+            <column name="scaffold_id" type="VARCHAR(255)"><constraints nullable="false" primaryKey="true" primaryKeyName="scaffold_global_skill_rl_pkey"/></column>
+            <column name="global_skill_id" type="VARCHAR(255)"><constraints nullable="false" primaryKey="true" primaryKeyName="scaffold_global_skill_rl_pkey"/></column>
+        </createTable>
+        <createTable tableName="global_scaffold_global_skill_rl">
+            <column name="global_scaffold_id" type="VARCHAR(255)"><constraints nullable="false" primaryKey="true" primaryKeyName="global_scaffold_global_skill_rl_pkey"/></column>
+            <column name="global_skill_id" type="VARCHAR(255)"><constraints nullable="false" primaryKey="true" primaryKeyName="global_scaffold_global_skill_rl_pkey"/></column>
+        </createTable>
+        <addColumn tableName="agent">
+            <column name="global_scaffold_id" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="2026-07-03-migrate-null-tenant-globals" author="codex">
+        <sql>
+            INSERT INTO global_tool (optlock, creationdate, modificationdate, api_key, auth_mode, description, execution_policy, guid, name, type, url, creationuser, modificationuser)
+            SELECT optlock, creationdate, modificationdate, api_key, auth_mode, description, execution_policy, guid, name, type, url, creationuser, modificationuser
+            FROM tool WHERE tenant_id IS NULL;
+
+            INSERT INTO global_skill (optlock, creationdate, modificationdate, description, guid, instruction, name, creationuser, modificationuser)
+            SELECT optlock, creationdate, modificationdate, description, guid, instruction, name, creationuser, modificationuser
+            FROM skill WHERE tenant_id IS NULL;
+
+            INSERT INTO global_scaffold (optlock, creationdate, modificationdate, guid, name, source_product, system_prompt, creationuser, modificationuser)
+            SELECT optlock, creationdate, modificationdate, guid, name, source_product, system_prompt, creationuser, modificationuser
+            FROM scaffold WHERE tenant_id IS NULL;
+
+            INSERT INTO agent_global_tool_rl (agent_id, global_tool_id)
+            SELECT rl.agent_id, rl.tool_id
+            FROM agent_tool_rl rl JOIN tool t ON t.guid = rl.tool_id
+            WHERE t.tenant_id IS NULL;
+
+            INSERT INTO scaffold_global_skill_rl (scaffold_id, global_skill_id)
+            SELECT rl.scaffold_id, rl.skill_id
+            FROM scaffold_skill_rl rl
+            JOIN scaffold s ON s.guid = rl.scaffold_id
+            JOIN skill sk ON sk.guid = rl.skill_id
+            WHERE s.tenant_id IS NOT NULL AND sk.tenant_id IS NULL;
+
+            INSERT INTO global_scaffold_global_skill_rl (global_scaffold_id, global_skill_id)
+            SELECT rl.scaffold_id, rl.skill_id
+            FROM scaffold_skill_rl rl
+            JOIN scaffold s ON s.guid = rl.scaffold_id
+            JOIN skill sk ON sk.guid = rl.skill_id
+            WHERE s.tenant_id IS NULL AND sk.tenant_id IS NULL;
+
+            UPDATE agent a
+            SET global_scaffold_id = a.scaffold_id,
+                scaffold_id = NULL
+            FROM scaffold s
+            WHERE s.guid = a.scaffold_id
+              AND s.tenant_id IS NULL;
+
+            DELETE FROM agent_tool_rl rl USING tool t
+            WHERE t.guid = rl.tool_id AND t.tenant_id IS NULL;
+
+            DELETE FROM scaffold_skill_rl rl USING scaffold s, skill sk
+            WHERE s.guid = rl.scaffold_id
+              AND sk.guid = rl.skill_id
+              AND (s.tenant_id IS NULL OR sk.tenant_id IS NULL);
+
+            DELETE FROM tool WHERE tenant_id IS NULL;
+            DELETE FROM skill WHERE tenant_id IS NULL;
+            DELETE FROM scaffold WHERE tenant_id IS NULL;
+        </sql>
+    </changeSet>
+
+    <changeSet id="2026-07-03-global-entity-foreign-keys" author="codex">
+        <addForeignKeyConstraint baseTableName="agent_global_tool_rl" baseColumnNames="agent_id"
+                                 referencedTableName="agent" referencedColumnNames="guid"
+                                 constraintName="fk_agent_global_tool_agent"/>
+        <addForeignKeyConstraint baseTableName="agent_global_tool_rl" baseColumnNames="global_tool_id"
+                                 referencedTableName="global_tool" referencedColumnNames="guid"
+                                 constraintName="fk_agent_global_tool_tool"/>
+        <addForeignKeyConstraint baseTableName="scaffold_global_skill_rl" baseColumnNames="scaffold_id"
+                                 referencedTableName="scaffold" referencedColumnNames="guid"
+                                 constraintName="fk_scaffold_global_skill_scaffold"/>
+        <addForeignKeyConstraint baseTableName="scaffold_global_skill_rl" baseColumnNames="global_skill_id"
+                                 referencedTableName="global_skill" referencedColumnNames="guid"
+                                 constraintName="fk_scaffold_global_skill_skill"/>
+        <addForeignKeyConstraint baseTableName="global_scaffold_global_skill_rl" baseColumnNames="global_scaffold_id"
+                                 referencedTableName="global_scaffold" referencedColumnNames="guid"
+                                 constraintName="fk_global_scaffold_global_skill_scaffold"/>
+        <addForeignKeyConstraint baseTableName="global_scaffold_global_skill_rl" baseColumnNames="global_skill_id"
+                                 referencedTableName="global_skill" referencedColumnNames="guid"
+                                 constraintName="fk_global_scaffold_global_skill_skill"/>
+        <addForeignKeyConstraint baseTableName="agent" baseColumnNames="global_scaffold_id"
+                                 referencedTableName="global_scaffold" referencedColumnNames="guid"
+                                 constraintName="fk_agent_global_scaffold"/>
+    </changeSet>
+
+    <changeSet id="2026-07-03-drop-runtime-persistence" author="codex">
+        <sql>
+            ALTER TABLE agent DROP CONSTRAINT IF EXISTS fk73uaf47auaa2ld601wwjermmr;
+            ALTER TABLE execution DROP CONSTRAINT IF EXISTS fk_execution_agent;
+        </sql>
+        <dropColumn tableName="agent" columnName="runtime_config_id"/>
+        <dropTable tableName="execution"/>
+        <dropTable tableName="runtime_config"/>
+    </changeSet>
+</databaseChangeLog>

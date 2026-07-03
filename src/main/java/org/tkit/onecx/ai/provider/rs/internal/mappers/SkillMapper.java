@@ -26,6 +26,7 @@ public interface SkillMapper {
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     @Mapping(target = "tenantId", ignore = true)
+    @Mapping(target = "source", ignore = true)
     Skill create(CreateSkillRequestDTO dto);
 
     SkillDTO map(Skill skill);
@@ -33,6 +34,7 @@ public interface SkillMapper {
     @Mapping(target = "persisted", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     @Mapping(target = "tenantId", ignore = true)
+    @Mapping(target = "source", ignore = true)
     Skill map(SkillDTO dto);
 
     @Mapping(target = "persisted", ignore = true)
@@ -43,6 +45,7 @@ public interface SkillMapper {
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     @Mapping(target = "tenantId", ignore = true)
+    @Mapping(target = "source", ignore = true)
     void update(@MappingTarget Skill skill, UpdateSkillRequestDTO dto);
 
     SkillSearchCriteria mapCriteria(SkillSearchCriteriaDTO dto);
