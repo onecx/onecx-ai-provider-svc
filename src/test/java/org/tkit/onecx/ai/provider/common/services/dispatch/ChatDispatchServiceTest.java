@@ -12,10 +12,6 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.tkit.onecx.ai.provider.common.services.agent.AgentService;
-import org.tkit.onecx.ai.provider.common.services.runtime.ProviderRuntimeClient;
-import org.tkit.onecx.ai.provider.common.services.runtime.dto.RuntimeDtos.RuntimeChatRequest;
-import org.tkit.onecx.ai.provider.common.services.runtime.dto.RuntimeDtos.RuntimeChatResponse;
-import org.tkit.onecx.ai.provider.common.services.runtime.dto.RuntimeDtos.RuntimeStatus;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
@@ -23,6 +19,10 @@ import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
+import gen.org.tkit.onecx.ai.provider.runtime.client.api.RuntimeInternalApi;
+import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeChatRequest;
+import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeChatResponse;
+import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeStatus;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -37,7 +37,7 @@ class ChatDispatchServiceTest extends AbstractTest {
 
     @InjectMock
     @RestClient
-    ProviderRuntimeClient providerRuntimeClient;
+    RuntimeInternalApi providerRuntimeClient;
 
     @Test
     void chat_noAgentFound_returnsNotFound() {
@@ -64,8 +64,11 @@ class ChatDispatchServiceTest extends AbstractTest {
 
         when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
         var request = new ChatRequestDTOV1();
+        var runtimeResponse = new RuntimeChatResponse();
+        runtimeResponse.setMessage("reply");
+        runtimeResponse.setStatus(RuntimeStatus.SUCCESS);
         when(providerRuntimeClient.chat(any()))
-                .thenReturn(new RuntimeChatResponse("reply", RuntimeStatus.SUCCESS, null, null));
+                .thenReturn(Response.ok(runtimeResponse).build());
 
         try (var response = chatDispatchService.chat(request)) {
             assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -74,8 +77,8 @@ class ChatDispatchServiceTest extends AbstractTest {
 
         var requestCaptor = ArgumentCaptor.forClass(RuntimeChatRequest.class);
         verify(providerRuntimeClient).chat(requestCaptor.capture());
-        assertThat(requestCaptor.getValue().rootAgent().model().modelIdentifier()).isEqualTo("mistral");
-        assertThat(requestCaptor.getValue().rootAgent().model().provider().type()).isEqualTo("OLLAMA");
+        assertThat(requestCaptor.getValue().getRootAgent().getModel().getModelIdentifier()).isEqualTo("mistral");
+        assertThat(requestCaptor.getValue().getRootAgent().getModel().getProvider().getType()).isEqualTo("OLLAMA");
     }
 
     @Test
@@ -83,8 +86,13 @@ class ChatDispatchServiceTest extends AbstractTest {
         var agent = new Agent();
         when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
         var request = new ChatRequestDTOV1();
+        var runtimeResponse = new RuntimeChatResponse();
+        runtimeResponse.setMessage("timeout");
+        runtimeResponse.setStatus(RuntimeStatus.TIMEOUT);
+        runtimeResponse.setErrorType("TimeoutException");
+        runtimeResponse.setErrorMessage("timeout");
         when(providerRuntimeClient.chat(any()))
-                .thenReturn(new RuntimeChatResponse("timeout", RuntimeStatus.TIMEOUT, "TimeoutException", "timeout"));
+                .thenReturn(Response.ok(runtimeResponse).build());
 
         try (var response = chatDispatchService.chat(request)) {
             assertThat(response.getStatus()).isEqualTo(Response.Status.GATEWAY_TIMEOUT.getStatusCode());
@@ -98,8 +106,13 @@ class ChatDispatchServiceTest extends AbstractTest {
         var agent = new Agent();
         when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
         var request = new ChatRequestDTOV1();
+        var runtimeResponse = new RuntimeChatResponse();
+        runtimeResponse.setMessage("failed");
+        runtimeResponse.setStatus(RuntimeStatus.FAILED);
+        runtimeResponse.setErrorType("RuntimeException");
+        runtimeResponse.setErrorMessage("failed");
         when(providerRuntimeClient.chat(any()))
-                .thenReturn(new RuntimeChatResponse("failed", RuntimeStatus.FAILED, "RuntimeException", "failed"));
+                .thenReturn(Response.ok(runtimeResponse).build());
 
         try (var response = chatDispatchService.chat(request)) {
             assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
