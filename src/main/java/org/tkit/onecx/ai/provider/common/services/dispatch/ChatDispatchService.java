@@ -62,11 +62,16 @@ public class ChatDispatchService {
         }
         return RuntimeStatus.SUCCESS.equals(result != null ? result.getStatus() : null)
                 ? Response.ok(runtimeSnapshotMapper.mapRuntimeChatMessage(result.getMessage(),
-                        chatRequestDTO.getConversation().getConversationId())).build()
+                        conversationId(chatRequestDTO))).build()
                 : Response.status(responseStatus(result))
                         .entity(result != null && result.getMessage() != null ? result.getMessage()
                                 : "Agent invocation failed")
                         .build();
+    }
+
+    private String conversationId(ChatRequestDTOV1 request) {
+        return request != null && request.getConversation() != null ? request.getConversation().getConversationId()
+                : null;
     }
 
     private Response.Status responseStatus(RuntimeChatResponse result) {
