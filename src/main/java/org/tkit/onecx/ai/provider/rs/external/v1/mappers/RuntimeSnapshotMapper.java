@@ -34,10 +34,10 @@ import gen.org.tkit.onecx.ai.provider.runtime.client.model.ScaffoldSnapshot;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.SkillSnapshot;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.ToolSnapshot;
 
-@Mapper(componentModel = "cdi", uses = OffsetDateTimeMapper.class)
-public abstract class RuntimeSnapshotMapper {
+@Mapper(uses = OffsetDateTimeMapper.class)
+public interface RuntimeSnapshotMapper {
 
-    public RuntimeChatRequest toRuntimeRequest(Agent agent, ChatRequestDTOV1 chatRequestDTO,
+    default RuntimeChatRequest toRuntimeRequest(Agent agent, ChatRequestDTOV1 chatRequestDTO,
             List<AgentGroupSnapshot> groups) {
         var request = new RuntimeChatRequest();
         request.setChatRequest(mapChatRequest(chatRequestDTO));
@@ -45,16 +45,16 @@ public abstract class RuntimeSnapshotMapper {
         return request;
     }
 
-    public AgentSnapshot mapAgent(Agent agent) {
+    default AgentSnapshot mapAgent(Agent agent) {
         return mapAgent(agent, List.of());
     }
 
-    public AgentSnapshot mapAgent(Agent agent, List<AgentGroupSnapshot> groups) {
+    default AgentSnapshot mapAgent(Agent agent, List<AgentGroupSnapshot> groups) {
         if (agent == null) {
             return null;
         }
         var snapshot = new AgentSnapshot();
-        snapshot.setId(id(agent.getId()));
+        snapshot.setId(agent.getId());
         snapshot.setName(agent.getName());
         snapshot.setDescription(agent.getDescription());
         snapshot.setAdditionalPrompt(agent.getAdditionalPrompt());
@@ -68,13 +68,13 @@ public abstract class RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    public AgentGroupSnapshot mapGroup(AgentGroup group, List<AgentSnapshot> agents,
+    default AgentGroupSnapshot mapGroup(AgentGroup group, List<AgentSnapshot> agents,
             List<ExternalAgentSnapshot> externalAgents) {
         if (group == null) {
             return null;
         }
         var snapshot = new AgentGroupSnapshot();
-        snapshot.setId(id(group.getId()));
+        snapshot.setId(group.getId());
         snapshot.setName(group.getName());
         snapshot.setDescription(group.getDescription());
         snapshot.setRoutingInstructions(group.getRoutingInstructions());
@@ -85,12 +85,12 @@ public abstract class RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    public ExternalAgentSnapshot mapExternalAgent(ExternalAgent agent) {
+    default ExternalAgentSnapshot mapExternalAgent(ExternalAgent agent) {
         if (agent == null) {
             return null;
         }
         var snapshot = new ExternalAgentSnapshot();
-        snapshot.setId(id(agent.getId()));
+        snapshot.setId(agent.getId());
         snapshot.setName(agent.getName());
         snapshot.setDescription(agent.getDescription());
         snapshot.setDiscoveryUrl(agent.getDiscoveryUrl());
@@ -100,14 +100,15 @@ public abstract class RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    public ChatMessageDTOV1 mapRuntimeChatMessage(String message) {
+    default ChatMessageDTOV1 mapRuntimeChatMessage(String message, String conversationId) {
         var chatMessage = new ChatMessageDTOV1();
         chatMessage.setMessage(message != null ? message : "");
         chatMessage.setType(ChatMessageDTOV1.TypeEnum.ASSISTANT);
+        chatMessage.setConversationId(conversationId);
         return chatMessage;
     }
 
-    private ChatRequest mapChatRequest(ChatRequestDTOV1 request) {
+    default ChatRequest mapChatRequest(ChatRequestDTOV1 request) {
         if (request == null) {
             return null;
         }
@@ -118,7 +119,7 @@ public abstract class RuntimeSnapshotMapper {
         return runtimeChatRequest;
     }
 
-    private RequestContext mapRequestContext(ChatRequestDTOV1 request) {
+    default RequestContext mapRequestContext(ChatRequestDTOV1 request) {
         if (request.getRequestContext() == null) {
             return null;
         }
@@ -135,7 +136,7 @@ public abstract class RuntimeSnapshotMapper {
         return requestContext;
     }
 
-    private Conversation mapConversation(ChatRequestDTOV1 request) {
+    default Conversation mapConversation(ChatRequestDTOV1 request) {
         if (request.getConversation() == null) {
             return null;
         }
@@ -150,7 +151,7 @@ public abstract class RuntimeSnapshotMapper {
         return conversation;
     }
 
-    private ChatMessage mapChatMessage(ChatMessageDTOV1 message) {
+    default ChatMessage mapChatMessage(ChatMessageDTOV1 message) {
         if (message == null) {
             return null;
         }
@@ -162,12 +163,12 @@ public abstract class RuntimeSnapshotMapper {
         return runtimeMessage;
     }
 
-    private ModelSnapshot mapModel(Model model) {
+    default ModelSnapshot mapModel(Model model) {
         if (model == null) {
             return null;
         }
         var snapshot = new ModelSnapshot();
-        snapshot.setId(id(model.getId()));
+        snapshot.setId(model.getId());
         snapshot.setName(model.getName());
         snapshot.setModelIdentifier(model.getModelIdentifier());
         snapshot.setModelConfig(model.getModelConfig());
@@ -176,12 +177,12 @@ public abstract class RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    private ProviderSnapshot mapProvider(Provider provider) {
+    default ProviderSnapshot mapProvider(Provider provider) {
         if (provider == null) {
             return null;
         }
         var snapshot = new ProviderSnapshot();
-        snapshot.setId(id(provider.getId()));
+        snapshot.setId(provider.getId());
         snapshot.setName(provider.getName());
         snapshot.setType(provider.getType() != null ? provider.getType().name() : null);
         snapshot.setDescription(provider.getDescription());
@@ -191,7 +192,7 @@ public abstract class RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    private ScaffoldSnapshot mapScaffold(Scaffold scaffold) {
+    default ScaffoldSnapshot mapScaffold(Scaffold scaffold) {
         if (scaffold == null) {
             return null;
         }
@@ -203,7 +204,7 @@ public abstract class RuntimeSnapshotMapper {
             skills.addAll(scaffold.getGlobalSkills().stream().map(this::mapGlobalSkill).toList());
         }
         var snapshot = new ScaffoldSnapshot();
-        snapshot.setId(id(scaffold.getId()));
+        snapshot.setId(scaffold.getId());
         snapshot.setSource(ScaffoldSnapshot.SourceEnum.TENANT);
         snapshot.setName(scaffold.getName());
         snapshot.setSystemPrompt(scaffold.getSystemPrompt());
@@ -212,12 +213,12 @@ public abstract class RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    private ScaffoldSnapshot mapGlobalScaffold(GlobalScaffold scaffold) {
+    default ScaffoldSnapshot mapGlobalScaffold(GlobalScaffold scaffold) {
         if (scaffold == null) {
             return null;
         }
         var snapshot = new ScaffoldSnapshot();
-        snapshot.setId(id(scaffold.getId()));
+        snapshot.setId(scaffold.getId());
         snapshot.setSource(ScaffoldSnapshot.SourceEnum.GLOBAL);
         snapshot.setName(scaffold.getName());
         snapshot.setSystemPrompt(scaffold.getSystemPrompt());
@@ -228,9 +229,9 @@ public abstract class RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    private SkillSnapshot mapSkill(Skill skill) {
+    default SkillSnapshot mapSkill(Skill skill) {
         var snapshot = new SkillSnapshot();
-        snapshot.setId(id(skill.getId()));
+        snapshot.setId(skill.getId());
         snapshot.setSource(SkillSnapshot.SourceEnum.TENANT);
         snapshot.setName(skill.getName());
         snapshot.setDescription(skill.getDescription());
@@ -238,9 +239,9 @@ public abstract class RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    private SkillSnapshot mapGlobalSkill(GlobalSkill skill) {
+    default SkillSnapshot mapGlobalSkill(GlobalSkill skill) {
         var snapshot = new SkillSnapshot();
-        snapshot.setId(id(skill.getId()));
+        snapshot.setId(skill.getId());
         snapshot.setSource(SkillSnapshot.SourceEnum.GLOBAL);
         snapshot.setName(skill.getName());
         snapshot.setDescription(skill.getDescription());
@@ -248,7 +249,7 @@ public abstract class RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    private List<ToolSnapshot> mapTools(Agent agent) {
+    default List<ToolSnapshot> mapTools(Agent agent) {
         var tools = new ArrayList<ToolSnapshot>();
         if (agent.getTools() != null) {
             tools.addAll(agent.getTools().stream().map(this::mapTool).toList());
@@ -259,9 +260,9 @@ public abstract class RuntimeSnapshotMapper {
         return tools;
     }
 
-    private ToolSnapshot mapTool(Tool tool) {
+    default ToolSnapshot mapTool(Tool tool) {
         var snapshot = new ToolSnapshot();
-        snapshot.setId(id(tool.getId()));
+        snapshot.setId(tool.getId());
         snapshot.setSource(ToolSnapshot.SourceEnum.TENANT);
         snapshot.setName(tool.getName());
         snapshot.setDescription(tool.getDescription());
@@ -272,9 +273,9 @@ public abstract class RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    private ToolSnapshot mapGlobalTool(GlobalTool tool) {
+    default ToolSnapshot mapGlobalTool(GlobalTool tool) {
         var snapshot = new ToolSnapshot();
-        snapshot.setId(id(tool.getId()));
+        snapshot.setId(tool.getId());
         snapshot.setSource(ToolSnapshot.SourceEnum.GLOBAL);
         snapshot.setName(tool.getName());
         snapshot.setDescription(tool.getDescription());
@@ -283,9 +284,5 @@ public abstract class RuntimeSnapshotMapper {
         snapshot.setApiKey(tool.getApiKey());
         snapshot.setAuthMode(tool.getAuthMode() != null ? tool.getAuthMode().name() : null);
         return snapshot;
-    }
-
-    private String id(Object id) {
-        return id != null ? id.toString() : null;
     }
 }

@@ -61,7 +61,8 @@ public class ChatDispatchService {
                     .build();
         }
         return RuntimeStatus.SUCCESS.equals(result != null ? result.getStatus() : null)
-                ? Response.ok(runtimeSnapshotMapper.mapRuntimeChatMessage(result.getMessage())).build()
+                ? Response.ok(runtimeSnapshotMapper.mapRuntimeChatMessage(result.getMessage(),
+                        chatRequestDTO.getConversation().getConversationId())).build()
                 : Response.status(responseStatus(result))
                         .entity(result != null && result.getMessage() != null ? result.getMessage()
                                 : "Agent invocation failed")
@@ -82,7 +83,7 @@ public class ChatDispatchService {
     }
 
     private AgentGroupSnapshot mapGroup(AgentGroup group) {
-        var groupId = group.getId() != null ? group.getId().toString() : null;
+        var groupId = group.getId() != null ? group.getId() : null;
         var agents = agentDAO.findAgentsByGroupId(groupId).stream()
                 .filter(agent -> agent.getId() != null)
                 .map(runtimeSnapshotMapper::mapAgent)
