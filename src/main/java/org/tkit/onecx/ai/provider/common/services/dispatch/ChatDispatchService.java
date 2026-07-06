@@ -78,7 +78,8 @@ public class ChatDispatchService {
     }
 
     private String conversationId(ChatRequestDTOV1 request) {
-        return request != null && request.getConversation() != null ? request.getConversation().getConversationId()
+        return request != null && request.getChatMessage() != null && request.getChatMessage().getConversationId() != null
+                ? request.getChatMessage().getConversationId()
                 : null;
     }
 
