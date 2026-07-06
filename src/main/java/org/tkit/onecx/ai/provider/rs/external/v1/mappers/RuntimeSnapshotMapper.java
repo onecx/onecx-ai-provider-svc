@@ -19,7 +19,6 @@ import org.tkit.quarkus.rs.mappers.OffsetDateTimeMapper;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
-import gen.org.tkit.onecx.ai.provider.runtime.client.model.AgentFilter;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.AgentGroupSnapshot;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.AgentSnapshot;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.ChatMessage;
@@ -54,12 +53,10 @@ public interface RuntimeSnapshotMapper {
             return null;
         }
         var snapshot = new AgentSnapshot();
-        snapshot.setId(agent.getId());
         snapshot.setName(agent.getName());
         snapshot.setDescription(agent.getDescription());
         snapshot.setAdditionalPrompt(agent.getAdditionalPrompt());
         snapshot.setA2aEnabled(agent.getA2aEnabled());
-        snapshot.setStatus(agent.getStatus() != null ? agent.getStatus().name() : null);
         snapshot.setModel(mapModel(agent.getModel()));
         snapshot.setScaffold(agent.getGlobalScaffold() != null ? mapGlobalScaffold(agent.getGlobalScaffold())
                 : mapScaffold(agent.getScaffold()));
@@ -74,7 +71,6 @@ public interface RuntimeSnapshotMapper {
             return null;
         }
         var snapshot = new AgentGroupSnapshot();
-        snapshot.setId(group.getId());
         snapshot.setName(group.getName());
         snapshot.setDescription(group.getDescription());
         snapshot.setRoutingInstructions(group.getRoutingInstructions());
@@ -90,7 +86,6 @@ public interface RuntimeSnapshotMapper {
             return null;
         }
         var snapshot = new ExternalAgentSnapshot();
-        snapshot.setId(agent.getId());
         snapshot.setName(agent.getName());
         snapshot.setDescription(agent.getDescription());
         snapshot.setDiscoveryUrl(agent.getDiscoveryUrl());
@@ -124,14 +119,6 @@ public interface RuntimeSnapshotMapper {
             return null;
         }
         var requestContext = new RequestContext();
-        if (request.getRequestContext().getFilter() != null) {
-            var filter = new AgentFilter();
-            filter.setKey(request.getRequestContext().getFilter().getKey() != null
-                    ? request.getRequestContext().getFilter().getKey().value()
-                    : null);
-            filter.setValue(request.getRequestContext().getFilter().getValue());
-            requestContext.setFilter(filter);
-        }
         requestContext.setAiContext(request.getRequestContext().getAiContext());
         return requestContext;
     }
@@ -168,7 +155,6 @@ public interface RuntimeSnapshotMapper {
             return null;
         }
         var snapshot = new ModelSnapshot();
-        snapshot.setId(model.getId());
         snapshot.setName(model.getName());
         snapshot.setModelIdentifier(model.getModelIdentifier());
         snapshot.setModelConfig(model.getModelConfig());
@@ -182,7 +168,6 @@ public interface RuntimeSnapshotMapper {
             return null;
         }
         var snapshot = new ProviderSnapshot();
-        snapshot.setId(provider.getId());
         snapshot.setName(provider.getName());
         snapshot.setType(provider.getType() != null ? provider.getType().name() : null);
         snapshot.setDescription(provider.getDescription());
@@ -204,11 +189,8 @@ public interface RuntimeSnapshotMapper {
             skills.addAll(scaffold.getGlobalSkills().stream().map(this::mapGlobalSkill).toList());
         }
         var snapshot = new ScaffoldSnapshot();
-        snapshot.setId(scaffold.getId());
-        snapshot.setSource(ScaffoldSnapshot.SourceEnum.TENANT);
         snapshot.setName(scaffold.getName());
         snapshot.setSystemPrompt(scaffold.getSystemPrompt());
-        snapshot.setSourceProduct(scaffold.getSourceProduct());
         snapshot.setSkills(skills);
         return snapshot;
     }
@@ -218,11 +200,8 @@ public interface RuntimeSnapshotMapper {
             return null;
         }
         var snapshot = new ScaffoldSnapshot();
-        snapshot.setId(scaffold.getId());
-        snapshot.setSource(ScaffoldSnapshot.SourceEnum.GLOBAL);
         snapshot.setName(scaffold.getName());
         snapshot.setSystemPrompt(scaffold.getSystemPrompt());
-        snapshot.setSourceProduct(scaffold.getSourceProduct());
         snapshot.setSkills(scaffold.getSkills() != null
                 ? scaffold.getSkills().stream().map(this::mapGlobalSkill).toList()
                 : List.of());
@@ -231,8 +210,6 @@ public interface RuntimeSnapshotMapper {
 
     default SkillSnapshot mapSkill(Skill skill) {
         var snapshot = new SkillSnapshot();
-        snapshot.setId(skill.getId());
-        snapshot.setSource(SkillSnapshot.SourceEnum.TENANT);
         snapshot.setName(skill.getName());
         snapshot.setDescription(skill.getDescription());
         snapshot.setInstruction(skill.getInstruction());
@@ -241,8 +218,6 @@ public interface RuntimeSnapshotMapper {
 
     default SkillSnapshot mapGlobalSkill(GlobalSkill skill) {
         var snapshot = new SkillSnapshot();
-        snapshot.setId(skill.getId());
-        snapshot.setSource(SkillSnapshot.SourceEnum.GLOBAL);
         snapshot.setName(skill.getName());
         snapshot.setDescription(skill.getDescription());
         snapshot.setInstruction(skill.getInstruction());
@@ -262,8 +237,6 @@ public interface RuntimeSnapshotMapper {
 
     default ToolSnapshot mapTool(Tool tool) {
         var snapshot = new ToolSnapshot();
-        snapshot.setId(tool.getId());
-        snapshot.setSource(ToolSnapshot.SourceEnum.TENANT);
         snapshot.setName(tool.getName());
         snapshot.setDescription(tool.getDescription());
         snapshot.setType(tool.getType() != null ? tool.getType().name() : null);
@@ -275,8 +248,6 @@ public interface RuntimeSnapshotMapper {
 
     default ToolSnapshot mapGlobalTool(GlobalTool tool) {
         var snapshot = new ToolSnapshot();
-        snapshot.setId(tool.getId());
-        snapshot.setSource(ToolSnapshot.SourceEnum.GLOBAL);
         snapshot.setName(tool.getName());
         snapshot.setDescription(tool.getDescription());
         snapshot.setType(tool.getType() != null ? tool.getType().name() : null);

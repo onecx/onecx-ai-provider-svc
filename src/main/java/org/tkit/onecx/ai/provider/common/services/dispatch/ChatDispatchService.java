@@ -18,7 +18,6 @@ import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
 import gen.org.tkit.onecx.ai.provider.runtime.client.api.RuntimeInternalApi;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.AgentGroupSnapshot;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeChatResponse;
-import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeStatus;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -50,9 +49,11 @@ public class ChatDispatchService {
                     .entity("No agent found for the given request context")
                     .build();
         }
+        int runtimeStatus;
         RuntimeChatResponse result;
         try (Response response = providerRuntimeClient.chat(
                 runtimeSnapshotMapper.toRuntimeRequest(agent, chatRequestDTO, mapGroups(agent)))) {
+            runtimeStatus = response.getStatus();
             result = response.readEntity(RuntimeChatResponse.class);
         } catch (Exception e) {
             log.error("Error invoking runtime chat API: {}", e.getMessage(), e);
@@ -60,24 +61,25 @@ public class ChatDispatchService {
                     .entity("Error invoking runtime chat API: " + e.getMessage())
                     .build();
         }
-        return RuntimeStatus.SUCCESS.equals(result != null ? result.getStatus() : null)
-                ? Response.ok(runtimeSnapshotMapper.mapRuntimeChatMessage(result.getMessage(),
-                        conversationId(chatRequestDTO))).build()
-                : Response.status(responseStatus(result))
-                        .entity(result != null && result.getMessage() != null ? result.getMessage()
-                                : "Agent invocation failed")
-                        .build();
+        if (runtimeStatus == Response.Status.OK.getStatusCode()) {
+            return Response.ok(runtimeSnapshotMapper.mapRuntimeChatMessage(result.getMessage(),
+                    conversationId(chatRequestDTO))).build();
+        }
+        return Response.status(responseStatus(runtimeStatus))
+                .entity(result != null && result.getMessage() != null ? result.getMessage()
+                        : "Agent invocation failed")
+                .build();
+    }
+
+    private Response.Status responseStatus(int runtimeStatus) {
+        return runtimeStatus == Response.Status.GATEWAY_TIMEOUT.getStatusCode()
+                ? Response.Status.GATEWAY_TIMEOUT
+                : Response.Status.BAD_REQUEST;
     }
 
     private String conversationId(ChatRequestDTOV1 request) {
         return request != null && request.getConversation() != null ? request.getConversation().getConversationId()
                 : null;
-    }
-
-    private Response.Status responseStatus(RuntimeChatResponse result) {
-        return result != null && RuntimeStatus.TIMEOUT.equals(result.getStatus())
-                ? Response.Status.GATEWAY_TIMEOUT
-                : Response.Status.BAD_REQUEST;
     }
 
     private List<AgentGroupSnapshot> mapGroups(Agent agent) {

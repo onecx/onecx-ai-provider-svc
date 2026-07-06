@@ -22,7 +22,6 @@ import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
 import gen.org.tkit.onecx.ai.provider.runtime.client.api.RuntimeInternalApi;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeChatRequest;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeChatResponse;
-import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeStatus;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -66,13 +65,11 @@ class ChatDispatchServiceTest extends AbstractTest {
         var request = new ChatRequestDTOV1();
         var runtimeResponse = new RuntimeChatResponse();
         runtimeResponse.setMessage("reply");
-        runtimeResponse.setStatus(RuntimeStatus.SUCCESS);
         when(providerRuntimeClient.chat(any()))
                 .thenReturn(Response.ok(runtimeResponse).build());
 
         try (var response = chatDispatchService.chat(request)) {
             assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
-            assertThat(response.getHeaderString("X-Execution-Id")).isNull();
         }
 
         var requestCaptor = ArgumentCaptor.forClass(RuntimeChatRequest.class);
@@ -88,15 +85,11 @@ class ChatDispatchServiceTest extends AbstractTest {
         var request = new ChatRequestDTOV1();
         var runtimeResponse = new RuntimeChatResponse();
         runtimeResponse.setMessage("timeout");
-        runtimeResponse.setStatus(RuntimeStatus.TIMEOUT);
-        runtimeResponse.setErrorType("TimeoutException");
-        runtimeResponse.setErrorMessage("timeout");
         when(providerRuntimeClient.chat(any()))
-                .thenReturn(Response.ok(runtimeResponse).build());
+                .thenReturn(Response.status(Response.Status.GATEWAY_TIMEOUT).entity(runtimeResponse).build());
 
         try (var response = chatDispatchService.chat(request)) {
             assertThat(response.getStatus()).isEqualTo(Response.Status.GATEWAY_TIMEOUT.getStatusCode());
-            assertThat(response.getHeaderString("X-Execution-Id")).isNull();
             assertThat(response.getEntity()).isEqualTo("timeout");
         }
     }
@@ -108,15 +101,11 @@ class ChatDispatchServiceTest extends AbstractTest {
         var request = new ChatRequestDTOV1();
         var runtimeResponse = new RuntimeChatResponse();
         runtimeResponse.setMessage("failed");
-        runtimeResponse.setStatus(RuntimeStatus.FAILED);
-        runtimeResponse.setErrorType("RuntimeException");
-        runtimeResponse.setErrorMessage("failed");
         when(providerRuntimeClient.chat(any()))
-                .thenReturn(Response.ok(runtimeResponse).build());
+                .thenReturn(Response.status(Response.Status.BAD_REQUEST).entity(runtimeResponse).build());
 
         try (var response = chatDispatchService.chat(request)) {
             assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
-            assertThat(response.getHeaderString("X-Execution-Id")).isNull();
             assertThat(response.getEntity()).isEqualTo("failed");
         }
     }
