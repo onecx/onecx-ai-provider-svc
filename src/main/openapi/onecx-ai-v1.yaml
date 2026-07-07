@@ -62,8 +62,8 @@ components:
     filter:
      $ref: '#/components/schemas/AgentFilter'
     aiContext:
-     type: object
-     additionalProperties:
+     type: array
+     items:
       type: string
   AgentFilter:
    type: object
