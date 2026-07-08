@@ -239,7 +239,7 @@
                 </goals>
                 <configuration>
                     <url>
-                        https://raw.githubusercontent.com/onecx/onecx-ai-provider-runtime/refs/heads/feature/init-setup/src/main/openapi/openapi-runtime.yaml
+                        https://raw.githubusercontent.com/onecx/onecx-ai-provider-runtime/refs/heads/main/src/main/openapi/openapi-runtime.yaml
                     </url>
                     <outputDirectory>target/tmp/openapi</outputDirectory>
                     <outputFileName>onecx-ai-runtime.yaml</outputFileName>
