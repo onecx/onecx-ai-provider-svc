@@ -3,6 +3,7 @@ package org.tkit.onecx.ai.provider.domain.models;
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.TenantId;
+import org.tkit.onecx.ai.provider.domain.models.enums.AuthMode;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 import org.tkit.quarkus.jpa.models.TraceableEntity;
 
@@ -35,10 +36,11 @@ public class Provider extends TraceableEntity {
     @Column(name = "LLM_URL")
     private String llmUrl;
 
-    @Column(name = "MODEL_NAME")
-    private String modelName;
-
     @Column(name = "API_KEY")
     private String apiKey;
+
+    @Column(name = "AUTH_MODE")
+    @Enumerated(EnumType.STRING)
+    private AuthMode authMode;
 
 }

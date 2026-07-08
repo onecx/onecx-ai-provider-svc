@@ -11,7 +11,7 @@ app:
         enabled: true
         spec:
           kcConfig:
-            defaultClientScopes: [ ocx-tn:read ]
+            defaultClientScopes: [ ocx-tn:read, ocx-agent:read, ocx-agent:write ]
     microservice:
       spec:
         description: OneCX AI Provider Backend Service

@@ -26,7 +26,6 @@ class ProviderRestControllerTest extends AbstractTest {
         // create provider
         var providerDto = new CreateProviderRequestDTO();
         providerDto.setName("Provider");
-        providerDto.setModelName("ModelName");
 
         var id = given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
@@ -41,7 +40,6 @@ class ProviderRestControllerTest extends AbstractTest {
 
         assertThat(id).isNotNull();
         assertThat(id.getName()).isEqualTo(providerDto.getName());
-        assertThat(id.getModelName()).isEqualTo(providerDto.getModelName());
     }
 
     @Test
@@ -108,7 +106,6 @@ class ProviderRestControllerTest extends AbstractTest {
         assertThat(dto.getName()).isEqualTo("provider1");
         assertThat(dto.getDescription()).isEqualTo("provider_description_1");
         assertThat(dto.getLlmUrl()).isEqualTo("http://some.url.org");
-        assertThat(dto.getModelName()).isEqualTo("model1");
 
     }
 
@@ -151,7 +148,6 @@ class ProviderRestControllerTest extends AbstractTest {
 
         var providerDto = new UpdateProviderRequestDTO();
         providerDto.setName("updated-Provider");
-        providerDto.setModelName("updated-ModelName");
 
         //update with missing modificationCount => constraint exception
         given()
@@ -188,7 +184,6 @@ class ProviderRestControllerTest extends AbstractTest {
         assertThat(dto.getModificationCount()).isNotEqualTo(providerDto.getModificationCount());
         assertThat(dto).isNotNull();
         assertThat(dto.getName()).isEqualTo(providerDto.getName());
-        assertThat(dto.getModelName()).isEqualTo(providerDto.getModelName());
 
         //update with same modificationCount => optimistic lock exception
         given()

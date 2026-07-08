@@ -8,7 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 
 import org.junit.jupiter.api.Test;
-import org.tkit.onecx.ai.provider.common.services.llm.LlmServiceFactory;
+import org.tkit.onecx.ai.provider.common.services.dispatch.ChatDispatchService;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
@@ -22,7 +22,7 @@ class DispatchRestV1ControllerTest {
     DispatchRestV1Controller controller;
 
     @InjectMock
-    LlmServiceFactory llmServiceFactory;
+    ChatDispatchService chatDispatchService;
 
     @Test
     void chat_delegatesToFactory() {
@@ -33,13 +33,13 @@ class DispatchRestV1ControllerTest {
         request.setChatMessage(message);
         Response factoryResponse = Response.ok("ok").build();
 
-        when(llmServiceFactory.chat(request)).thenReturn(factoryResponse);
+        when(chatDispatchService.chat(request)).thenReturn(factoryResponse);
 
         try (Response response = controller.chat(request)) {
             assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
             assertThat(response.getEntity()).isEqualTo("ok");
         }
 
-        verify(llmServiceFactory).chat(request);
+        verify(chatDispatchService).chat(request);
     }
 }

@@ -1,0 +1,379 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+<changeSet author="dev (generated)" id="1783513008600-1">
+        <createTable tableName="agent">
+            <column name="a2a_enabled" type="BOOLEAN"/>
+            <column name="optlock" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="additional_prompt" type="VARCHAR(255)"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="filter_key" type="VARCHAR(255)"/>
+            <column name="filter_value" type="VARCHAR(255)"/>
+            <column name="global_scaffold_id" type="VARCHAR(255)"/>
+            <column name="guid" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="agent_pkey"/>
+            </column>
+            <column name="model_id" type="VARCHAR(255)"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="scaffold_id" type="VARCHAR(255)"/>
+            <column name="status" type="VARCHAR(255)"/>
+            <column name="tenant_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-2">
+        <createTable tableName="agent_group">
+            <column name="optlock" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="guid" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="agent_group_pkey"/>
+            </column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="orchestration_mode" type="VARCHAR(255)"/>
+            <column name="response_strategy" type="VARCHAR(255)"/>
+            <column name="routing_instructions" type="VARCHAR(255)"/>
+            <column name="tenant_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-3">
+        <createTable tableName="external_agent">
+            <column name="enabled" type="BOOLEAN"/>
+            <column name="optlock" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="api_key" type="VARCHAR(255)"/>
+            <column name="auth_mode" type="VARCHAR(255)"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="discovery_url" type="VARCHAR(255)"/>
+            <column name="guid" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="external_agent_pkey"/>
+            </column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="tenant_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-4">
+        <createTable tableName="global_tool">
+            <column name="optlock" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="api_key" type="VARCHAR(255)"/>
+            <column name="auth_mode" type="VARCHAR(255)"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="execution_policy" type="VARCHAR(255)"/>
+            <column name="guid" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="global_tool_pkey"/>
+            </column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="type" type="VARCHAR(255)"/>
+            <column name="url" type="VARCHAR(255)"/>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-5">
+        <createTable tableName="model">
+            <column name="optlock" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="communication_mode" type="VARCHAR(255)"/>
+            <column name="guid" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="model_pkey"/>
+            </column>
+            <column name="model_config" type="VARCHAR(255)"/>
+            <column name="model_identifier" type="VARCHAR(255)"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="provider_id" type="VARCHAR(255)"/>
+            <column name="tenant_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-6">
+        <createTable tableName="provider">
+            <column name="optlock" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="api_key" type="VARCHAR(255)"/>
+            <column name="auth_mode" type="VARCHAR(255)"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="guid" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="provider_pkey"/>
+            </column>
+            <column name="llm_url" type="VARCHAR(255)"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="tenant_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type" type="VARCHAR(255)"/>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-7">
+        <createTable tableName="tool">
+            <column name="optlock" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="api_key" type="VARCHAR(255)"/>
+            <column name="auth_mode" type="VARCHAR(255)"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="execution_policy" type="VARCHAR(255)"/>
+            <column name="guid" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="tool_pkey"/>
+            </column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="tenant_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type" type="VARCHAR(255)"/>
+            <column name="url" type="VARCHAR(255)"/>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-8">
+        <createTable tableName="agent_global_tool_rl">
+            <column name="agent_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="agent_global_tool_rl_pkey"/>
+            </column>
+            <column name="global_tool_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="agent_global_tool_rl_pkey"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-9">
+        <createTable tableName="agent_group_rl">
+            <column name="agent_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="agent_group_rl_pkey"/>
+            </column>
+            <column name="group_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="agent_group_rl_pkey"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-10">
+        <createTable tableName="agent_tool_rl">
+            <column name="agent_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="agent_tool_rl_pkey"/>
+            </column>
+            <column name="tool_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="agent_tool_rl_pkey"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-11">
+        <createTable tableName="external_agent_group_rl">
+            <column name="external_agent_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="external_agent_group_rl_pkey"/>
+            </column>
+            <column name="group_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="external_agent_group_rl_pkey"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-12">
+        <createTable tableName="global_scaffold_global_skill_rl">
+            <column name="global_scaffold_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="global_scaffold_global_skill_rl_pkey"/>
+            </column>
+            <column name="global_skill_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="global_scaffold_global_skill_rl_pkey"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-13">
+        <createTable tableName="global_scaffold">
+            <column name="optlock" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="guid" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="global_scaffold_pkey"/>
+            </column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="source_product" type="VARCHAR(255)"/>
+            <column name="system_prompt" type="VARCHAR(255)"/>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-14">
+        <createTable tableName="global_skill">
+            <column name="optlock" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="guid" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="global_skill_pkey"/>
+            </column>
+            <column name="instruction" type="VARCHAR(255)"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-15">
+        <createTable tableName="scaffold_global_skill_rl">
+            <column name="global_skill_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="scaffold_global_skill_rl_pkey"/>
+            </column>
+            <column name="scaffold_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="scaffold_global_skill_rl_pkey"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-16">
+        <createTable tableName="scaffold">
+            <column name="optlock" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="guid" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="scaffold_pkey"/>
+            </column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="source_product" type="VARCHAR(255)"/>
+            <column name="system_prompt" type="VARCHAR(255)"/>
+            <column name="tenant_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-17">
+        <createTable tableName="scaffold_skill_rl">
+            <column name="scaffold_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="scaffold_skill_rl_pkey"/>
+            </column>
+            <column name="skill_id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="scaffold_skill_rl_pkey"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-18">
+        <createTable tableName="skill">
+            <column name="optlock" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="guid" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="skill_pkey"/>
+            </column>
+            <column name="instruction" type="VARCHAR(255)"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="tenant_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-19">
+        <addForeignKeyConstraint baseColumnNames="group_id" baseTableName="agent_group_rl" constraintName="fk2ov6h2pk3w134s2vq5qbnp18l" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="agent_group" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-20">
+        <addForeignKeyConstraint baseColumnNames="global_scaffold_id" baseTableName="agent" constraintName="fk44phf46q2pirs7tu7awq57j9y" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="global_scaffold" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-21">
+        <addForeignKeyConstraint baseColumnNames="agent_id" baseTableName="agent_tool_rl" constraintName="fk6er8nyy0705w6cu9l8a4l6qx5" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="agent" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-22">
+        <addForeignKeyConstraint baseColumnNames="global_tool_id" baseTableName="agent_global_tool_rl" constraintName="fk7wbw35fwyvi4mgeffbao27v91" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="global_tool" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-23">
+        <addForeignKeyConstraint baseColumnNames="agent_id" baseTableName="agent_global_tool_rl" constraintName="fk87vdfnqr0hymyhu5b53cq3kqp" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="agent" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-24">
+        <addForeignKeyConstraint baseColumnNames="group_id" baseTableName="external_agent_group_rl" constraintName="fk99iucyrye8oasw9of2stsin5r" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="agent_group" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-25">
+        <addForeignKeyConstraint baseColumnNames="model_id" baseTableName="agent" constraintName="fkddpt0k1yx3n5i5r4g3bpanxjl" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="model" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-26">
+        <addForeignKeyConstraint baseColumnNames="global_skill_id" baseTableName="global_scaffold_global_skill_rl" constraintName="fkfyt2qqh3dbp602y4lo9mbk5dc" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="global_skill" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-27">
+        <addForeignKeyConstraint baseColumnNames="global_scaffold_id" baseTableName="global_scaffold_global_skill_rl" constraintName="fkhnhm4756u1clnuo5yi8413ar4" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="global_scaffold" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-28">
+        <addForeignKeyConstraint baseColumnNames="external_agent_id" baseTableName="external_agent_group_rl" constraintName="fkjbhwse9hdvcxcydwno1v5uswg" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="external_agent" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-29">
+        <addForeignKeyConstraint baseColumnNames="provider_id" baseTableName="model" constraintName="fkjdlsb8qmjo9qfv13mkdb00pvx" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="provider" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-30">
+        <addForeignKeyConstraint baseColumnNames="skill_id" baseTableName="scaffold_skill_rl" constraintName="fkkn0pbdl72wgw2urbte95rbypm" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="skill" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-31">
+        <addForeignKeyConstraint baseColumnNames="scaffold_id" baseTableName="scaffold_global_skill_rl" constraintName="fkl1gtobe51v2rbr3xdg1g3bq88" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="scaffold" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-32">
+        <addForeignKeyConstraint baseColumnNames="scaffold_id" baseTableName="agent" constraintName="fkldtivcg2prtewse9my8qdaff0" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="scaffold" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-33">
+        <addForeignKeyConstraint baseColumnNames="global_skill_id" baseTableName="scaffold_global_skill_rl" constraintName="fkoxbual4it0jtj985qvsacwvxc" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="global_skill" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-34">
+        <addForeignKeyConstraint baseColumnNames="tool_id" baseTableName="agent_tool_rl" constraintName="fkp0ly1k3fxd6aa420h90yioysr" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="tool" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-35">
+        <addForeignKeyConstraint baseColumnNames="scaffold_id" baseTableName="scaffold_skill_rl" constraintName="fkrmsbosxpgpu7gkudi71o9xyvg" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="scaffold" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-36">
+        <addForeignKeyConstraint baseColumnNames="agent_id" baseTableName="agent_group_rl" constraintName="fks5dpe6qrare0fhut5yb9nhj4w" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="guid" referencedTableName="agent" validate="true"/>
+    </changeSet>
+    <changeSet author="dev (generated)" id="1783513008600-37">
+    <createTable tableName="dataimportlog">
+        <column name="id" type="VARCHAR(255)">
+            <constraints nullable="false" primaryKey="true" primaryKeyName="dataimportlog_pkey"/>
+        </column>
+        <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+        <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+        <column name="file" type="VARCHAR(255)"/>
+        <column name="md5" type="VARCHAR(255)"/>
+        <column name="error" type="VARCHAR(255)"/>
+    </createTable>
+    </changeSet>
+</databaseChangeLog>

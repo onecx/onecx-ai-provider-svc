@@ -14,9 +14,6 @@
     <name>OneCX AI Provider Backend Service</name>
     <version>999-SNAPSHOT</version>
     <packaging>quarkus</packaging>
-    <properties>
-        <quarkus-langchain4j.version>1.10.0</quarkus-langchain4j.version>
-    </properties>
     <dependencies>
         <dependency>
             <groupId>org.tkit.onecx.quarkus</groupId>
@@ -99,6 +96,10 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-rest-client-jackson</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jdbc-postgresql</artifactId>
         </dependency>
         <dependency>
@@ -129,17 +130,6 @@
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
-        </dependency>
-        <!-- LANGCHAIN4J -->
-        <dependency>
-            <groupId>io.quarkiverse.langchain4j</groupId>
-            <artifactId>quarkus-langchain4j-ollama</artifactId>
-            <version>${quarkus-langchain4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkiverse.langchain4j</groupId>
-            <artifactId>quarkus-langchain4j-mcp</artifactId>
-            <version>${quarkus-langchain4j.version}</version>
         </dependency>
         <!-- TEST -->
         <dependency>
@@ -236,6 +226,27 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+            <groupId>com.googlecode.maven-download-plugin</groupId>
+            <artifactId>download-maven-plugin</artifactId>
+            <executions>
+            <execution>
+                <id>onecx-ai-runtime</id>
+                <phase>generate-resources</phase>
+                <goals>
+                    <goal>wget</goal>
+                </goals>
+                <configuration>
+                    <url>
+                        https://raw.githubusercontent.com/onecx/onecx-ai-provider-runtime/refs/heads/main/src/main/openapi/openapi-runtime.yaml
+                    </url>
+                    <outputDirectory>target/tmp/openapi</outputDirectory>
+                    <outputFileName>onecx-ai-runtime.yaml</outputFileName>
+                    <skipCache>true</skipCache>
+                </configuration>
+            </execution>
+            </executions>
             </plugin>
         </plugins>
     </build>
