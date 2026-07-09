@@ -100,6 +100,7 @@ public interface RuntimeSnapshotMapper {
         chatMessage.setMessage(message != null ? message : "");
         chatMessage.setType(ChatMessageDTOV1.TypeEnum.ASSISTANT);
         chatMessage.setConversationId(conversationId);
+        chatMessage.setCreationDate(System.currentTimeMillis());
         return chatMessage;
     }
 
