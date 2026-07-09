@@ -146,6 +146,12 @@ h| Version
 | https://github.com/quarkusio/quarkusio.github.io/blob/develop/_generated-doc/latest/config/quarkus-opentelemetry.adoc[Link]
 | 3.33.1.1
 
+| quarkus-rest-client-oidc-filter
+
+| https://quarkus.io/guides/security-openid-connect-client-reference#rest-client-oidc-filter[Link]
+| https://github.com/quarkusio/quarkusio.github.io/blob/develop/_generated-doc/latest/config/quarkus-rest-client-oidc-filter.adoc[Link]
+| 3.33.1.1
+
 | tkit-quarkus-security
 
 | https://1000kit.github.io/tkit-quarkus/current/tkit-quarkus/tkit-quarkus-security.html[Link]

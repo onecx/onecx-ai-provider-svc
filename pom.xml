@@ -167,6 +167,10 @@
             <artifactId>tkit-quarkus-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-rest-client-oidc-filter</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
