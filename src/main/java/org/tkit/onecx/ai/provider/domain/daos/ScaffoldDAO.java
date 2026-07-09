@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.transaction.Transactional;
 
 import org.tkit.onecx.ai.provider.domain.criteria.ScaffoldSearchCriteria;
 import org.tkit.onecx.ai.provider.domain.models.GlobalScaffold;
@@ -47,6 +48,7 @@ public class ScaffoldDAO extends AbstractDAO<Scaffold> {
         }
     }
 
+    @Transactional
     public PageResult<Scaffold> findScaffoldsByCriteriaIncludingGlobal(ScaffoldSearchCriteria criteria) {
         try {
             var tenantScaffolds = findScaffoldsByCriteria(criteria);

@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.transaction.Transactional;
 
 import org.tkit.onecx.ai.provider.domain.criteria.SkillSearchCriteria;
 import org.tkit.onecx.ai.provider.domain.models.GlobalSkill;
@@ -46,6 +47,7 @@ public class SkillDAO extends AbstractDAO<Skill> {
         }
     }
 
+    @Transactional
     public PageResult<Skill> findSkillsByCriteriaIncludingGlobal(SkillSearchCriteria criteria) {
         try {
             var tenantSkills = findSkillsByCriteria(criteria);

@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.transaction.Transactional;
 
 import org.tkit.onecx.ai.provider.domain.criteria.ToolSearchCriteria;
 import org.tkit.onecx.ai.provider.domain.models.GlobalTool;
@@ -51,6 +52,7 @@ public class ToolDAO extends AbstractDAO<Tool> {
         }
     }
 
+    @Transactional
     public PageResult<Tool> findToolsByCriteriaIncludingGlobal(ToolSearchCriteria criteria) {
         try {
             var tenantTools = findToolsByCriteria(criteria);
