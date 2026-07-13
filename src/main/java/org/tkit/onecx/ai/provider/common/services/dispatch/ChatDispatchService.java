@@ -78,7 +78,7 @@ public class ChatDispatchService {
     }
 
     private String conversationId(ChatRequestDTOV1 request) {
-        return request != null && request.getChatMessage() != null && request.getChatMessage().getConversationId() != null
+        return request.getChatMessage() != null && request.getChatMessage().getConversationId() != null
                 ? request.getChatMessage().getConversationId()
                 : null;
     }
@@ -91,12 +91,10 @@ public class ChatDispatchService {
     }
 
     private AgentGroupSnapshot mapGroup(AgentGroup group) {
-        var groupId = group.getId() != null ? group.getId() : null;
-        var agents = agentDAO.findAgentsByGroupId(groupId).stream()
-                .filter(agent -> agent.getId() != null)
+        var agents = agentDAO.findAgentsByGroupId(group.getId()).stream()
                 .map(runtimeSnapshotMapper::mapAgent)
                 .toList();
-        var externalAgents = externalAgentDAO.findExternalAgentsByGroupId(groupId).stream()
+        var externalAgents = externalAgentDAO.findExternalAgentsByGroupId(group.getId()).stream()
                 .map(runtimeSnapshotMapper::mapExternalAgent)
                 .toList();
         return runtimeSnapshotMapper.mapGroup(group, agents, externalAgents);

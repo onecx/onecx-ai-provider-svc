@@ -4,6 +4,7 @@ import java.util.Set;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
@@ -28,11 +29,11 @@ public class Scaffold extends AbstractScaffold {
     @Transient
     private String source = "TENANT";
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "SCAFFOLD_SKILL_RL", joinColumns = @JoinColumn(name = "SCAFFOLD_ID"), inverseJoinColumns = @JoinColumn(name = "SKILL_ID"))
     private Set<Skill> skills;
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "SCAFFOLD_GLOBAL_SKILL_RL", joinColumns = @JoinColumn(name = "SCAFFOLD_ID"), inverseJoinColumns = @JoinColumn(name = "GLOBAL_SKILL_ID"))
     private Set<GlobalSkill> globalSkills;
 }

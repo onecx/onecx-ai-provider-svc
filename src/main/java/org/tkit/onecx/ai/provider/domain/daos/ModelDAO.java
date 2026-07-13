@@ -27,9 +27,8 @@ public class ModelDAO extends AbstractDAO<Model> {
             List<Predicate> predicates = new ArrayList<>();
 
             addSearchStringPredicate(predicates, cb, root.get("name"), criteria.getName());
-            if (criteria.getProviderId() != null && !criteria.getProviderId().isBlank()) {
-                predicates.add(cb.equal(root.get("provider").get("id"), criteria.getProviderId()));
-            }
+            addSearchStringPredicate(predicates, cb, root.get("provider").get("id"), criteria.getProviderId());
+
             if (criteria.getCommunicationMode() != null) {
                 predicates.add(cb.equal(root.get("communicationMode"), criteria.getCommunicationMode()));
             }

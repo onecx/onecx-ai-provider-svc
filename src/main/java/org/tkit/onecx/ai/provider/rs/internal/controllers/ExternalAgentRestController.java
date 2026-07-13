@@ -40,12 +40,11 @@ public class ExternalAgentRestController implements ExternalAgentInternalApi {
     ExceptionMapper exceptionMapper;
 
     @Override
-    @Transactional
     public Response createExternalAgent(CreateExternalAgentRequestDTO createExternalAgentRequestDTO) {
         var item = mapper.create(createExternalAgentRequestDTO);
         // Resolve groups
         var groups = new HashSet<AgentGroup>();
-        if (createExternalAgentRequestDTO.getGroupIds() != null) {
+        if (!createExternalAgentRequestDTO.getGroupIds().isEmpty()) {
             createExternalAgentRequestDTO.getGroupIds().forEach(groupId -> {
                 var group = agentGroupDAO.findById(groupId);
                 if (group != null) {
@@ -81,7 +80,6 @@ public class ExternalAgentRestController implements ExternalAgentInternalApi {
     }
 
     @Override
-    @Transactional
     public Response updateExternalAgentById(String id, UpdateExternalAgentRequestDTO updateExternalAgentRequestDTO) {
         var item = dao.findById(id);
         if (item == null) {
@@ -89,7 +87,7 @@ public class ExternalAgentRestController implements ExternalAgentInternalApi {
         }
         // Resolve groups
         var groups = new HashSet<AgentGroup>();
-        if (updateExternalAgentRequestDTO.getGroupIds() != null) {
+        if (!updateExternalAgentRequestDTO.getGroupIds().isEmpty()) {
             updateExternalAgentRequestDTO.getGroupIds().forEach(groupId -> {
                 var group = agentGroupDAO.findById(groupId);
                 if (group != null) {

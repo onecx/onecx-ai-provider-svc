@@ -5,7 +5,6 @@ import static org.tkit.quarkus.jpa.utils.QueryCriteriaUtil.addSearchStringPredic
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -13,7 +12,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
 
 import org.tkit.onecx.ai.provider.domain.criteria.ToolSearchCriteria;
-import org.tkit.onecx.ai.provider.domain.models.GlobalTool;
+import org.tkit.onecx.ai.provider.domain.mappers.ToolMapper;
 import org.tkit.onecx.ai.provider.domain.models.Tool;
 import org.tkit.quarkus.jpa.daos.AbstractDAO;
 import org.tkit.quarkus.jpa.daos.Page;
@@ -26,6 +25,9 @@ public class ToolDAO extends AbstractDAO<Tool> {
 
     @Inject
     GlobalToolDAO globalToolDAO;
+
+    @Inject
+    ToolMapper toolMapper;
 
     public PageResult<Tool> findToolsByCriteria(ToolSearchCriteria criteria) {
         try {
@@ -59,8 +61,8 @@ public class ToolDAO extends AbstractDAO<Tool> {
             var globalTools = globalToolDAO.findGlobalToolsByCriteria(criteria);
 
             List<Tool> combined = new ArrayList<>();
-            combined.addAll(tenantTools.getStream().collect(Collectors.toList()));
-            combined.addAll(globalTools.getStream().map(this::fromGlobal).collect(Collectors.toList()));
+            combined.addAll(tenantTools.getStream().toList());
+            combined.addAll(globalTools.getStream().map(toolMapper::fromGlobal).toList());
 
             combined.sort(
                     Comparator.comparing(Tool::getCreationDate, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
@@ -72,31 +74,12 @@ public class ToolDAO extends AbstractDAO<Tool> {
             List<Tool> pageContent = combined.stream()
                     .skip(startIndex)
                     .limit(pageSize)
-                    .collect(Collectors.toList());
+                    .toList();
 
             return new PageResult<>(combined.size(), pageContent.stream(), pageNumber, pageSize);
         } catch (Exception ex) {
             throw new DAOException(ErrorKeys.ERROR_FIND_TOOLS_BY_CRITERIA_INCLUDING_GLOBAL, ex);
         }
-    }
-
-    private Tool fromGlobal(GlobalTool globalTool) {
-        Tool tool = new Tool();
-        tool.setId(globalTool.getId());
-        tool.setCreationDate(globalTool.getCreationDate());
-        tool.setCreationUser(globalTool.getCreationUser());
-        tool.setModificationDate(globalTool.getModificationDate());
-        tool.setModificationUser(globalTool.getModificationUser());
-        tool.setModificationCount(globalTool.getModificationCount());
-        tool.setName(globalTool.getName());
-        tool.setDescription(globalTool.getDescription());
-        tool.setType(globalTool.getType());
-        tool.setUrl(globalTool.getUrl());
-        tool.setApiKey(globalTool.getApiKey());
-        tool.setExecutionPolicy(globalTool.getExecutionPolicy());
-        tool.setAuthMode(globalTool.getAuthMode());
-        tool.setSource("GLOBAL");
-        return tool;
     }
 
     public enum ErrorKeys {

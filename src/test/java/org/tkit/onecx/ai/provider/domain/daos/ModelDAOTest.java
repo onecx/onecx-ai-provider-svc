@@ -14,10 +14,9 @@ import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
-class AgentDAOTest {
-
+class ModelDAOTest {
     @Inject
-    AgentDAO dao;
+    ModelDAO dao;
 
     @InjectMock
     EntityManager em;
@@ -29,14 +28,12 @@ class AgentDAOTest {
 
     @Test
     void methodExceptionTests() {
-        methodExceptionTests(() -> dao.findAgentsByCriteria(null), AgentDAO.ErrorKeys.ERROR_FIND_AGENTS_BY_CRITERIA);
-        methodExceptionTests(() -> dao.findAllAgentsByFilterKey(null), AgentDAO.ErrorKeys.ERROR_FIND_AGENTS_BY_FILTER_KEY);
-        methodExceptionTests(() -> dao.findAgentsByGroupId("null"), AgentDAO.ErrorKeys.ERROR_FIND_AGENTS_BY_GROUP_ID);
-
+        methodExceptionTests(() -> dao.findModelsByCriteria(null), ModelDAO.ErrorKeys.ERROR_FIND_MODELS_BY_CRITERIA);
     }
 
     void methodExceptionTests(Executable fn, Enum<?> key) {
         var exc = Assertions.assertThrows(DAOException.class, fn);
         Assertions.assertEquals(key, exc.key);
     }
+
 }

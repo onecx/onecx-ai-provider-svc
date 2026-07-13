@@ -63,10 +63,6 @@ public class AgentDAO extends AbstractDAO<Agent> {
 
     public List<Agent> findAgentsByGroupId(String groupId) {
         try {
-            if (groupId == null || groupId.isBlank()) {
-                return List.of();
-            }
-
             var cb = this.getEntityManager().getCriteriaBuilder();
             var cq = cb.createQuery(Agent.class);
             var root = cq.from(Agent.class);

@@ -107,7 +107,6 @@ public class AgentRestController implements AgentInternalApi {
     }
 
     @Override
-    @Transactional
     public Response updateAgent(String id, UpdateAgentRequestDTO updateAgentRequestDTO) {
         var item = dao.findById(id);
         if (item == null) {
@@ -116,7 +115,7 @@ public class AgentRestController implements AgentInternalApi {
 
         // Resolve tools
         var toolsToAdd = new HashSet<Tool>();
-        if (updateAgentRequestDTO.getTools() != null) {
+        if (!updateAgentRequestDTO.getTools().isEmpty()) {
             updateAgentRequestDTO.getTools().forEach(tool -> {
                 var existing = toolDAO.findById(tool.getId());
                 if (existing == null) {
@@ -130,7 +129,7 @@ public class AgentRestController implements AgentInternalApi {
         Model model = null;
         if (updateAgentRequestDTO.getModel() != null) {
             var modelId = updateAgentRequestDTO.getModel().getId();
-            model = modelId != null ? modelDAO.findById(modelId) : null;
+            model = modelDAO.findById(modelId);
             if (model == null) {
                 model = modelDAO.create(modelMapper.map(updateAgentRequestDTO.getModel()));
             }
@@ -140,7 +139,7 @@ public class AgentRestController implements AgentInternalApi {
         Scaffold scaffold = null;
         if (updateAgentRequestDTO.getScaffold() != null) {
             var scaffoldId = updateAgentRequestDTO.getScaffold().getId();
-            scaffold = scaffoldId != null ? scaffoldDAO.findById(scaffoldId) : null;
+            scaffold = scaffoldDAO.findById(scaffoldId);
             if (scaffold == null) {
                 scaffold = scaffoldDAO.create(scaffoldMapper.map(updateAgentRequestDTO.getScaffold()));
             }
@@ -148,7 +147,7 @@ public class AgentRestController implements AgentInternalApi {
 
         // Resolve groups
         var groupsToAdd = new HashSet<AgentGroup>();
-        if (updateAgentRequestDTO.getGroups() != null) {
+        if (!updateAgentRequestDTO.getGroups().isEmpty()) {
             updateAgentRequestDTO.getGroups().forEach(groupDto -> {
                 var existing = agentGroupDAO.findById(groupDto.getId());
                 if (existing == null) {
