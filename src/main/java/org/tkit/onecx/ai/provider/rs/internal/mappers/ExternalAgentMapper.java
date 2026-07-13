@@ -12,6 +12,7 @@ import org.tkit.quarkus.jpa.daos.PageResult;
 import org.tkit.quarkus.rs.mappers.OffsetDateTimeMapper;
 
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.CreateExternalAgentRequestDTO;
+import gen.org.tkit.onecx.ai.provider.rs.internal.model.ExternalAgentAbstractDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.ExternalAgentDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.ExternalAgentPageResultDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.ExternalAgentSearchCriteriaDTO;
@@ -33,6 +34,8 @@ public interface ExternalAgentMapper {
 
     @Mapping(target = "removeGroupsItem", ignore = true)
     ExternalAgentDTO map(ExternalAgent item);
+
+    ExternalAgentAbstractDTO mapToAbstract(ExternalAgent item);
 
     @Mapping(target = "tenantId", ignore = true)
     @Mapping(target = "persisted", ignore = true)

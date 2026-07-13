@@ -41,9 +41,6 @@ public class ExternalAgentDAO extends AbstractDAO<ExternalAgent> {
 
     public List<ExternalAgent> findExternalAgentsByGroupId(String groupId) {
         try {
-            if (groupId == null || groupId.isBlank()) {
-                return List.of();
-            }
             var cb = this.getEntityManager().getCriteriaBuilder();
             var cq = cb.createQuery(ExternalAgent.class);
             var root = cq.from(ExternalAgent.class);

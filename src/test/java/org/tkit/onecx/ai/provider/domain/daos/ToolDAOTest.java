@@ -30,6 +30,9 @@ class ToolDAOTest {
     @Test
     void methodExceptionTests() {
         methodExceptionTests(() -> dao.findToolsByCriteria(null), ToolDAO.ErrorKeys.ERROR_FIND_TOOLS_BY_CRITERIA);
+        methodExceptionTests(() -> dao.findToolsByCriteriaIncludingGlobal(null),
+                ToolDAO.ErrorKeys.ERROR_FIND_TOOLS_BY_CRITERIA_INCLUDING_GLOBAL);
+
     }
 
     void methodExceptionTests(Executable fn, Enum<?> key) {

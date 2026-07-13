@@ -40,7 +40,7 @@ public class AgentService {
     @Transactional
     public Agent createAgent(Agent agent) {
         // Resolve tools
-        if (agent.getTools() != null && !agent.getTools().isEmpty()) {
+        if (!agent.getTools().isEmpty()) {
             var toolsToAdd = new HashSet<Tool>();
             agent.getTools().forEach(tool -> {
                 var existing = toolDAO.findById(tool.getId());
@@ -55,7 +55,7 @@ public class AgentService {
         // Resolve model
         if (agent.getModel() != null) {
             var modelId = agent.getModel().getId();
-            Model resolved = modelId != null ? modelDAO.findById(modelId) : null;
+            Model resolved = modelDAO.findById(modelId);
             if (resolved == null) {
                 resolved = modelDAO.create(agent.getModel());
             }
@@ -65,7 +65,7 @@ public class AgentService {
         // Resolve scaffold
         if (agent.getScaffold() != null) {
             var scaffoldId = agent.getScaffold().getId();
-            Scaffold resolved = scaffoldId != null ? scaffoldDAO.findById(scaffoldId) : null;
+            Scaffold resolved = scaffoldDAO.findById(scaffoldId);
             if (resolved == null) {
                 resolved = scaffoldDAO.create(agent.getScaffold());
             }
@@ -73,7 +73,7 @@ public class AgentService {
         }
 
         // Resolve groups
-        if (agent.getGroups() != null && !agent.getGroups().isEmpty()) {
+        if (!agent.getGroups().isEmpty()) {
             var groupsToAdd = new HashSet<AgentGroup>();
             agent.getGroups().forEach(group -> {
                 var existing = agentGroupDAO.findById(group.getId());
@@ -86,26 +86,6 @@ public class AgentService {
         }
 
         return agentDAO.create(agent);
-    }
-
-    public Agent updateAgent(Agent agent) {
-        if (agent == null || agent.getId() == null) {
-            return null;
-        }
-
-        if (agent.getTools() != null && !agent.getTools().isEmpty()) {
-            var toolsToAdd = new HashSet<Tool>();
-            agent.getTools().forEach(tool -> {
-                var existing = toolDAO.findById(tool.getId());
-                if (existing == null) {
-                    existing = toolDAO.create(tool);
-                }
-                toolsToAdd.add(existing);
-            });
-            agent.setTools(toolsToAdd);
-        }
-
-        return agentDAO.update(agent);
     }
 
     public Agent findAgentByRequestContext(RequestContextDTOV1 requestContext) {

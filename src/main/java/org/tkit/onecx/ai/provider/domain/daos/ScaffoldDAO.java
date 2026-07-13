@@ -5,7 +5,6 @@ import static org.tkit.quarkus.jpa.utils.QueryCriteriaUtil.addSearchStringPredic
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -13,7 +12,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
 
 import org.tkit.onecx.ai.provider.domain.criteria.ScaffoldSearchCriteria;
-import org.tkit.onecx.ai.provider.domain.models.GlobalScaffold;
+import org.tkit.onecx.ai.provider.domain.mappers.ScaffoldMapper;
 import org.tkit.onecx.ai.provider.domain.models.Scaffold;
 import org.tkit.quarkus.jpa.daos.AbstractDAO;
 import org.tkit.quarkus.jpa.daos.Page;
@@ -26,6 +25,9 @@ public class ScaffoldDAO extends AbstractDAO<Scaffold> {
 
     @Inject
     GlobalScaffoldDAO globalScaffoldDAO;
+
+    @Inject
+    ScaffoldMapper scaffoldMapper;
 
     public PageResult<Scaffold> findScaffoldsByCriteria(ScaffoldSearchCriteria criteria) {
         try {
@@ -55,8 +57,8 @@ public class ScaffoldDAO extends AbstractDAO<Scaffold> {
             var globalScaffolds = globalScaffoldDAO.findGlobalScaffoldsByCriteria(criteria);
 
             List<Scaffold> combined = new ArrayList<>();
-            combined.addAll(tenantScaffolds.getStream().collect(Collectors.toList()));
-            combined.addAll(globalScaffolds.getStream().map(this::fromGlobal).collect(Collectors.toList()));
+            combined.addAll(tenantScaffolds.getStream().toList());
+            combined.addAll(globalScaffolds.getStream().map(scaffoldMapper::fromGlobal).toList());
 
             combined.sort(Comparator.comparing(Scaffold::getCreationDate, Comparator.nullsLast(Comparator.naturalOrder()))
                     .reversed());
@@ -68,28 +70,12 @@ public class ScaffoldDAO extends AbstractDAO<Scaffold> {
             List<Scaffold> pageContent = combined.stream()
                     .skip(startIndex)
                     .limit(pageSize)
-                    .collect(Collectors.toList());
+                    .toList();
 
             return new PageResult<>(combined.size(), pageContent.stream(), pageNumber, pageSize);
         } catch (Exception ex) {
             throw new DAOException(ErrorKeys.ERROR_FIND_SCAFFOLDS_BY_CRITERIA_INCLUDING_GLOBAL, ex);
         }
-    }
-
-    private Scaffold fromGlobal(GlobalScaffold globalScaffold) {
-        Scaffold scaffold = new Scaffold();
-        scaffold.setId(globalScaffold.getId());
-        scaffold.setCreationDate(globalScaffold.getCreationDate());
-        scaffold.setCreationUser(globalScaffold.getCreationUser());
-        scaffold.setModificationDate(globalScaffold.getModificationDate());
-        scaffold.setModificationUser(globalScaffold.getModificationUser());
-        scaffold.setModificationCount(globalScaffold.getModificationCount());
-        scaffold.setName(globalScaffold.getName());
-        scaffold.setSystemPrompt(globalScaffold.getSystemPrompt());
-        scaffold.setSourceProduct(globalScaffold.getSourceProduct());
-        scaffold.setGlobalSkills(globalScaffold.getSkills());
-        scaffold.setSource("GLOBAL");
-        return scaffold;
     }
 
     public enum ErrorKeys {

@@ -5,7 +5,6 @@ import static org.tkit.quarkus.jpa.utils.QueryCriteriaUtil.addSearchStringPredic
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -13,7 +12,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
 
 import org.tkit.onecx.ai.provider.domain.criteria.SkillSearchCriteria;
-import org.tkit.onecx.ai.provider.domain.models.GlobalSkill;
+import org.tkit.onecx.ai.provider.domain.mappers.SkillMapper;
 import org.tkit.onecx.ai.provider.domain.models.Skill;
 import org.tkit.quarkus.jpa.daos.AbstractDAO;
 import org.tkit.quarkus.jpa.daos.Page;
@@ -26,6 +25,9 @@ public class SkillDAO extends AbstractDAO<Skill> {
 
     @Inject
     GlobalSkillDAO globalSkillDAO;
+
+    @Inject
+    SkillMapper skillMapper;
 
     public PageResult<Skill> findSkillsByCriteria(SkillSearchCriteria criteria) {
         try {
@@ -54,8 +56,8 @@ public class SkillDAO extends AbstractDAO<Skill> {
             var globalSkills = globalSkillDAO.findGlobalSkillsByCriteria(criteria);
 
             List<Skill> combined = new ArrayList<>();
-            combined.addAll(tenantSkills.getStream().collect(Collectors.toList()));
-            combined.addAll(globalSkills.getStream().map(this::fromGlobal).collect(Collectors.toList()));
+            combined.addAll(tenantSkills.getStream().toList());
+            combined.addAll(globalSkills.getStream().map(skillMapper::fromGlobal).toList());
 
             combined.sort(
                     Comparator.comparing(Skill::getCreationDate, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
@@ -67,27 +69,12 @@ public class SkillDAO extends AbstractDAO<Skill> {
             List<Skill> pageContent = combined.stream()
                     .skip(startIndex)
                     .limit(pageSize)
-                    .collect(Collectors.toList());
+                    .toList();
 
             return new PageResult<>(combined.size(), pageContent.stream(), pageNumber, pageSize);
         } catch (Exception ex) {
             throw new DAOException(ErrorKeys.ERROR_FIND_SKILLS_BY_CRITERIA_INCLUDING_GLOBAL, ex);
         }
-    }
-
-    private Skill fromGlobal(GlobalSkill globalSkill) {
-        Skill skill = new Skill();
-        skill.setId(globalSkill.getId());
-        skill.setCreationDate(globalSkill.getCreationDate());
-        skill.setCreationUser(globalSkill.getCreationUser());
-        skill.setModificationDate(globalSkill.getModificationDate());
-        skill.setModificationUser(globalSkill.getModificationUser());
-        skill.setModificationCount(globalSkill.getModificationCount());
-        skill.setName(globalSkill.getName());
-        skill.setDescription(globalSkill.getDescription());
-        skill.setInstruction(globalSkill.getInstruction());
-        skill.setSource("GLOBAL");
-        return skill;
     }
 
     public enum ErrorKeys {

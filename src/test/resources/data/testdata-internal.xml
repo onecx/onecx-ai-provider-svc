@@ -1,16 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
 	<!-- Provider -->
-	<PROVIDER guid="provider-11-111" optlock="0" name="provider1" description="provider_description_1" llm_url="http://some.url.org" api_key="api_key_1" auth_mode="API_KEY" tenant_id="default" creationuser="user1"/>
-	<PROVIDER guid="provider-22-222" optlock="0" name="provider2" description="provider_description_2" llm_url="http://some.url.org" api_key="api_key_2" auth_mode="API_KEY" tenant_id="default" creationuser="user1" />
-	<PROVIDER guid="provider-DELETE_1" optlock="0" name="provider3" description="provider_description_3" llm_url="http://some.url.org" api_key="api_key_3" auth_mode="API_KEY" tenant_id="default" creationuser="user2"/>
+	<PROVIDER guid="provider-11-111" optlock="0" name="provider1" type="OPENAI" description="provider_description_1" llm_url="http://some.url.org" api_key="api_key_1" auth_mode="API_KEY" tenant_id="default" creationuser="user1"/>
+	<PROVIDER guid="provider-22-222" optlock="0" name="provider2" type="ANTHROPIC" description="provider_description_2" llm_url="http://some.url.org" api_key="api_key_2" auth_mode="API_KEY" tenant_id="default" creationuser="user1"/>
+	<PROVIDER guid="provider-DELETE_1" optlock="0" name="provider3" type="OPENAI" description="provider_description_3" llm_url="http://some.url.org" api_key="api_key_3" auth_mode="API_KEY" tenant_id="default" creationuser="user2"/>
 
-	<!-- Agent -->
-	<AGENT guid="agent-11-111" optlock="0" name="agent1" description="agent_description_1" additional_prompt="agent_additional_prompt_1" a2a_enabled="false" tenant_id="default" creationuser="user1"/>
-	<AGENT guid="agent-22-222" optlock="0" name="agent2" description="agent_description_2" additional_prompt="agent_additional_prompt_2" a2a_enabled="false" tenant_id="default" creationuser="user1" filter_key="APP_ID" filter_value="onecx-*"/>
+	<!-- Model -->
+	<MODEL guid="model-11-111" optlock="0" provider_id="provider-11-111" name="model1" model_identifier="gpt-4.1-mini" model_config="temperature=0.2" communication_mode="SYNC" tenant_id="default" creationuser="user1"/>
+	<MODEL guid="model-22-222" optlock="0" provider_id="provider-22-222" name="model2" model_identifier="gpt-4o" model_config="temperature=0.6" communication_mode="SYNC" tenant_id="default" creationuser="user1"/>
 
-	<!-- Tool -->
+	<!-- Tenant and global skills -->
+	<SKILL guid="skill-11-111" optlock="0" name="skill1" description="skill_description_1" instruction="extract facts" tenant_id="default" creationuser="user1"/>
+	<SKILL guid="skill-22-222" optlock="0" name="skill2" description="skill_description_2" instruction="summarize response" tenant_id="default" creationuser="user1"/>
+	<GLOBAL_SKILL guid="gskill-11-111" optlock="0" name="global-skill1" description="global_skill_description_1" instruction="apply guardrails" creationuser="user1"/>
+	<GLOBAL_SKILL guid="gskill-22-222" optlock="0" name="global-skill2" description="global_skill_description_2" instruction="enforce format" creationuser="user1"/>
+
+	<!-- Tenant and global scaffolds -->
+	<SCAFFOLD guid="scaffold-11-111" optlock="0" name="scaffold1" system_prompt="tenant scaffold prompt" source_product="onecx" tenant_id="default" creationuser="user1"/>
+	<GLOBAL_SCAFFOLD guid="gscaffold-11-111" optlock="0" name="global-scaffold1" system_prompt="global scaffold prompt" source_product="onecx" creationuser="user1"/>
+
+	<!-- Tools -->
 	<TOOL guid="tool-11-111" optlock="0" name="tool1" description="tool_description_1" type="MCP" url="http://mcp.server.org" api_key="api_key_1" execution_policy="ALWAYS_ASK" auth_mode="API_KEY" tenant_id="default" creationuser="user1"/>
 	<TOOL guid="tool-22-222" optlock="0" name="tool2" description="tool_description_2" type="HTTP" url="http://tool.server.org" api_key="api_key_2" execution_policy="NEVER_ASK" auth_mode="OAUTH" tenant_id="default" creationuser="user1"/>
+	<GLOBAL_TOOL guid="gtool-11-111" optlock="0" name="global-tool1" description="global_tool_description_1" type="HTTP" url="http://global.tool.org" api_key="global_api_key_1" execution_policy="ALWAYS_ASK" auth_mode="API_KEY" creationuser="user1"/>
+
+	<!-- Agent groups and external agents -->
+	<AGENT_GROUP guid="group-11-111" optlock="0" name="group1" description="group_description_1" routing_instructions="delegate by capability" orchestration_mode="LEAD_DELEGATES" response_strategy="LAST" tenant_id="default" creationuser="user1"/>
+	<EXTERNAL_AGENT guid="ext-agent-11-111" optlock="0" name="external-agent1" description="external_agent_description_1" discovery_url="http://external.discovery.org" api_key="external_api_key_1" auth_mode="API_KEY" enabled="true" tenant_id="default" creationuser="user1"/>
+
+	<!-- Agent -->
+	<AGENT guid="agent-11-111" optlock="0" name="agent1" description="agent_description_1" additional_prompt="agent_additional_prompt_1" a2a_enabled="false" status="LIVE" model_id="model-11-111" scaffold_id="scaffold-11-111" tenant_id="default" creationuser="user1"/>
+	<AGENT guid="agent-22-222" optlock="0" name="agent2" description="agent_description_2" additional_prompt="agent_additional_prompt_2" a2a_enabled="true" status="DRAFT" model_id="model-22-222" global_scaffold_id="gscaffold-11-111" tenant_id="default" creationuser="user1" filter_key="APP_ID" filter_value="onecx-*"/>
+	<AGENT guid="agent-33-333" optlock="0" name="agent3" description="agent_no_groups" additional_prompt="" a2a_enabled="false" status="LIVE" model_id="model-11-111" tenant_id="default" creationuser="user1" filter_key="APP_ID" filter_value="no-groups-app"/>
+	<AGENT guid="agent-44-444" optlock="0" name="agent4" description="agent_no_groups" additional_prompt="" a2a_enabled="false" status="LIVE" model_id="model-11-111" tenant_id="default" creationuser="user1" filter_key="APP_ID" filter_value="onecx-test-*"/>
+
+	<!-- Relation tables -->
+	<SCAFFOLD_SKILL_RL scaffold_id="scaffold-11-111" skill_id="skill-11-111"/>
+	<SCAFFOLD_SKILL_RL scaffold_id="scaffold-11-111" skill_id="skill-22-222"/>
+	<SCAFFOLD_GLOBAL_SKILL_RL scaffold_id="scaffold-11-111" global_skill_id="gskill-11-111"/>
+	<GLOBAL_SCAFFOLD_GLOBAL_SKILL_RL global_scaffold_id="gscaffold-11-111" global_skill_id="gskill-11-111"/>
+	<GLOBAL_SCAFFOLD_GLOBAL_SKILL_RL global_scaffold_id="gscaffold-11-111" global_skill_id="gskill-22-222"/>
+	<AGENT_TOOL_RL agent_id="agent-11-111" tool_id="tool-11-111"/>
+	<AGENT_TOOL_RL agent_id="agent-22-222" tool_id="tool-22-222"/>
+	<AGENT_GLOBAL_TOOL_RL agent_id="agent-22-222" global_tool_id="gtool-11-111"/>
+	<AGENT_GROUP_RL agent_id="agent-11-111" group_id="group-11-111"/>
+	<AGENT_GROUP_RL agent_id="agent-22-222" group_id="group-11-111"/>
+	<EXTERNAL_AGENT_GROUP_RL external_agent_id="ext-agent-11-111" group_id="group-11-111"/>
 
 </dataset>

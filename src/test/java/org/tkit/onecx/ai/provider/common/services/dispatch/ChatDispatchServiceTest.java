@@ -2,8 +2,14 @@ package org.tkit.onecx.ai.provider.common.services.dispatch;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
@@ -12,7 +18,10 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.tkit.onecx.ai.provider.common.services.agent.AgentService;
+import org.tkit.onecx.ai.provider.domain.daos.AgentDAO;
+import org.tkit.onecx.ai.provider.domain.daos.ExternalAgentDAO;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
+import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
 import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
@@ -37,6 +46,12 @@ class ChatDispatchServiceTest extends AbstractTest {
     @InjectMock
     @RestClient
     RuntimeInternalApi providerRuntimeClient;
+
+    @InjectMock
+    AgentDAO agentDAO;
+
+    @InjectMock
+    ExternalAgentDAO externalAgentDAO;
 
     @Test
     void chat_noAgentFound_returnsNotFound() {
@@ -79,6 +94,22 @@ class ChatDispatchServiceTest extends AbstractTest {
     }
 
     @Test
+    void chat_nullChatMessage_conversationIdIsNull() {
+        // Covers: conversationId() → request.getChatMessage() != null = false (null chatMessage)
+        var agent = new Agent();
+        when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
+        var request = new ChatRequestDTOV1(); // chatMessage is null - bypasses HTTP @NotNull validation
+        var runtimeResponse = new RuntimeChatResponse();
+        runtimeResponse.setMessage("ok");
+        when(providerRuntimeClient.chat(any()))
+                .thenReturn(Response.ok(runtimeResponse).build());
+
+        try (var response = chatDispatchService.chat(request)) {
+            assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+        }
+    }
+
+    @Test
     void chat_agentRuntimeTimeout_returnsGatewayTimeout() {
         var agent = new Agent();
         when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
@@ -107,6 +138,102 @@ class ChatDispatchServiceTest extends AbstractTest {
         try (var response = chatDispatchService.chat(request)) {
             assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
             assertThat(response.getEntity()).isEqualTo("failed");
+        }
+    }
+
+    @Test
+    void chat_agentRuntimeFailed_nullMessage_returnsAgentInvocationFailed() {
+        // Covers: result != null but result.getMessage() == null → "Agent invocation failed"
+        var agent = new Agent();
+        when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
+        var request = new ChatRequestDTOV1();
+        var runtimeResponse = new RuntimeChatResponse(); // message is null
+        when(providerRuntimeClient.chat(any()))
+                .thenReturn(Response.status(Response.Status.BAD_REQUEST).entity(runtimeResponse).build());
+
+        try (var response = chatDispatchService.chat(request)) {
+            assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+            assertThat(response.getEntity()).isEqualTo("Agent invocation failed");
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void chat_agentRuntimeFailed_nullResult_returnsAgentInvocationFailed() {
+        // Covers: result == null → "Agent invocation failed"
+        var agent = new Agent();
+        when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
+        var request = new ChatRequestDTOV1();
+
+        var mockResponse = mock(Response.class);
+        when(mockResponse.getStatus()).thenReturn(Response.Status.BAD_REQUEST.getStatusCode());
+        when(mockResponse.readEntity(RuntimeChatResponse.class)).thenReturn(null);
+        when(providerRuntimeClient.chat(any())).thenReturn(mockResponse);
+
+        try (var response = chatDispatchService.chat(request)) {
+            assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+            assertThat(response.getEntity()).isEqualTo("Agent invocation failed");
+        }
+    }
+
+    @Test
+    void chat_agentWithEmptyGroups_returnsOk() {
+        // Covers: agent.getGroups() != null but agent.getGroups().isEmpty() → mapGroups returns List.of()
+        var agent = new Agent();
+        agent.setGroups(new HashSet<>()); // empty non-null Set
+        when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
+        var request = new ChatRequestDTOV1();
+        var runtimeResponse = new RuntimeChatResponse();
+        runtimeResponse.setMessage("ok");
+        when(providerRuntimeClient.chat(any()))
+                .thenReturn(Response.ok(runtimeResponse).build());
+
+        try (var response = chatDispatchService.chat(request)) {
+            assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+        }
+    }
+
+    @Test
+    void chat_agentGroup_nullGroupId_coversNullBranch() {
+        // Covers: group.getId() == null → groupId = null (false branch of ternary)
+        var group = new AgentGroup(); // getId() returns null (not persisted)
+        var agent = new Agent();
+        agent.setGroups(Set.of(group));
+        when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
+        when(agentDAO.findAgentsByGroupId(isNull())).thenReturn(List.of());
+        when(externalAgentDAO.findExternalAgentsByGroupId(isNull())).thenReturn(List.of());
+
+        var request = new ChatRequestDTOV1();
+        var runtimeResponse = new RuntimeChatResponse();
+        runtimeResponse.setMessage("ok");
+        when(providerRuntimeClient.chat(any()))
+                .thenReturn(Response.ok(runtimeResponse).build());
+
+        try (var response = chatDispatchService.chat(request)) {
+            assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+        }
+    }
+
+    @Test
+    void chat_agentGroup_agentWithNullId_isFiltered() {
+        // Covers: .filter(agent -> agent.getId() != null) false branch – filters out agents with null ID
+        var group = new AgentGroup(); // getId() returns null
+        var agent = new Agent();
+        agent.setGroups(Set.of(group));
+        when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
+
+        var agentInGroup = new Agent(); // getId() == null → should be filtered out
+        when(agentDAO.findAgentsByGroupId(isNull())).thenReturn(List.of(agentInGroup));
+        when(externalAgentDAO.findExternalAgentsByGroupId(isNull())).thenReturn(List.of());
+
+        var request = new ChatRequestDTOV1();
+        var runtimeResponse = new RuntimeChatResponse();
+        runtimeResponse.setMessage("ok");
+        when(providerRuntimeClient.chat(any()))
+                .thenReturn(Response.ok(runtimeResponse).build());
+
+        try (var response = chatDispatchService.chat(request)) {
+            assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
         }
     }
 }

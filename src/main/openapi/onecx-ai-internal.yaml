@@ -1344,7 +1344,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Model'
-
     Scaffold:
       type: object
       properties:
@@ -1441,7 +1440,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Scaffold'
-
     Skill:
       type: object
       properties:
@@ -1557,6 +1555,23 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AgentGroup'
+    ExternalAgentAbstract:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        discoveryUrl:
+          type: string
+        apiKey:
+          type: string
+        authMode:
+          $ref: '#/components/schemas/AuthMode'
+        enabled:
+          type: boolean
     CreateExternalAgentRequest:
       type: object
       properties:
@@ -1635,7 +1650,7 @@ components:
         stream:
           type: array
           items:
-            $ref: '#/components/schemas/ExternalAgent'
+            $ref: '#/components/schemas/ExternalAgentAbstract'
     AgentGroup:
       type: object
       properties:

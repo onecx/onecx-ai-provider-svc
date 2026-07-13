@@ -19,6 +19,6 @@ class AgentDAOQueryTest {
     @Test
     void findAllAgentsByFilterKey_coversNullAndNonNullBranches() {
         assertThat(dao.findAllAgentsByFilterKey(null)).hasSize(1);
-        assertThat(dao.findAllAgentsByFilterKey("APP_ID")).hasSize(1);
+        assertThat(dao.findAllAgentsByFilterKey("APP_ID")).hasSize(3);
     }
 }
