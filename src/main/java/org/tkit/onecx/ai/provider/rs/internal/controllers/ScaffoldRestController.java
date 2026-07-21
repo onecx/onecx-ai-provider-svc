@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.Response;
 
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
+import org.tkit.onecx.ai.provider.common.services.agent.ScaffoldService;
 import org.tkit.onecx.ai.provider.domain.daos.ScaffoldDAO;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ExceptionMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ScaffoldMapper;
@@ -32,10 +33,13 @@ public class ScaffoldRestController implements ScaffoldInternalApi {
     @Inject
     ScaffoldMapper mapper;
 
+    @Inject
+    ScaffoldService scaffoldService;
+
     @Override
     public Response createScaffold(CreateScaffoldRequestDTO createScaffoldRequestDTO) {
         var item = mapper.create(createScaffoldRequestDTO);
-        item = dao.create(item);
+        item = scaffoldService.createScaffold(item, createScaffoldRequestDTO.getSkills());
         return Response.status(Response.Status.CREATED).entity(mapper.map(item)).build();
     }
 
@@ -68,7 +72,8 @@ public class ScaffoldRestController implements ScaffoldInternalApi {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
         mapper.update(item, updateScaffoldRequestDTO);
-        item = dao.update(item);
+
+        item = scaffoldService.updateScaffold(item, updateScaffoldRequestDTO.getSkills());
         return Response.status(Response.Status.OK).entity(mapper.map(item)).build();
     }
 

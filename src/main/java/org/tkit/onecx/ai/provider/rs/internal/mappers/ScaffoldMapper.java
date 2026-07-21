@@ -14,7 +14,7 @@ import gen.org.tkit.onecx.ai.provider.rs.internal.model.ScaffoldPageResultDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.ScaffoldSearchCriteriaDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.UpdateScaffoldRequestDTO;
 
-@Mapper(uses = { OffsetDateTimeMapper.class })
+@Mapper(uses = { OffsetDateTimeMapper.class, SkillMapper.class })
 public interface ScaffoldMapper {
 
     @Mapping(target = "persisted", ignore = true)
@@ -25,10 +25,10 @@ public interface ScaffoldMapper {
     @Mapping(target = "creationUser", ignore = true)
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
-    @Mapping(target = "skills", ignore = true)
     @Mapping(target = "globalSkills", ignore = true)
     @Mapping(target = "tenantId", ignore = true)
     @Mapping(target = "source", ignore = true)
+    @Mapping(target = "skills", ignore = true)
     Scaffold create(CreateScaffoldRequestDTO dto);
 
     @Mapping(target = "removeSkillsItem", ignore = true)
@@ -42,6 +42,8 @@ public interface ScaffoldMapper {
     @Mapping(target = "source", ignore = true)
     Scaffold map(ScaffoldDTO dto);
 
+    @Mapping(target = "globalSkills", ignore = true)
+    @Mapping(target = "skills", ignore = true)
     @Mapping(target = "persisted", ignore = true)
     @Mapping(target = "modificationUser", ignore = true)
     @Mapping(target = "modificationDate", ignore = true)
@@ -49,8 +51,6 @@ public interface ScaffoldMapper {
     @Mapping(target = "creationUser", ignore = true)
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
-    @Mapping(target = "skills", ignore = true)
-    @Mapping(target = "globalSkills", ignore = true)
     @Mapping(target = "tenantId", ignore = true)
     @Mapping(target = "source", ignore = true)
     void update(@MappingTarget Scaffold scaffold, UpdateScaffoldRequestDTO dto);

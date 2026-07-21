@@ -38,6 +38,13 @@ public interface SkillMapper {
     Skill map(SkillDTO dto);
 
     @Mapping(target = "persisted", ignore = true)
+    @Mapping(target = "controlTraceabilityManual", ignore = true)
+    @Mapping(target = "tenantId", ignore = true)
+    @Mapping(target = "source", ignore = true)
+    @Mapping(target = "id", ignore = true)
+    Skill mapCreate(SkillDTO dto);
+
+    @Mapping(target = "persisted", ignore = true)
     @Mapping(target = "modificationUser", ignore = true)
     @Mapping(target = "modificationDate", ignore = true)
     @Mapping(target = "id", ignore = true)

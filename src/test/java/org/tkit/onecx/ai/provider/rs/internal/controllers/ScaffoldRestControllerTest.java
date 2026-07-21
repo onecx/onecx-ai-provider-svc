@@ -4,8 +4,12 @@ import static io.restassured.RestAssured.given;
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.Response.Status.*;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.assertj.core.api.Assertions.as;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 import org.tkit.quarkus.security.test.GenerateKeycloakClient;
@@ -25,6 +29,7 @@ class ScaffoldRestControllerTest extends AbstractTest {
     void createScaffoldTest() {
         var dto = new CreateScaffoldRequestDTO();
         dto.setName("scaffold-created");
+        dto.setSkills(List.of(new SkillDTO().name("skill1").instruction("test")));
 
         var created = given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
@@ -38,6 +43,73 @@ class ScaffoldRestControllerTest extends AbstractTest {
 
         assertThat(created).isNotNull();
         assertThat(created.getName()).isEqualTo("scaffold-created");
+
+        //create with null skills list
+        dto.setName("scaffold-created-2");
+        dto.setSkills(null);
+
+        given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(dto)
+                .post()
+                .then()
+                .statusCode(CREATED.getStatusCode())
+                .extract()
+                .as(ScaffoldDTO.class);
+    }
+
+    @Test
+    void createScaffoldWithEmptySkillListTest() {
+        var dto = new CreateScaffoldRequestDTO();
+        dto.setName("scaffold-created");
+        dto.setSkills(List.of());
+
+        var created = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(dto)
+                .post()
+                .then()
+                .statusCode(CREATED.getStatusCode())
+                .extract()
+                .as(ScaffoldDTO.class);
+
+        assertThat(created).isNotNull();
+        assertThat(created.getName()).isEqualTo("scaffold-created");
+
+        dto.setName("scaffold-created-2");
+        dto.setSkills(List.of(new SkillDTO().name("skill1").instruction("test1")));
+
+        var created2 = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(dto)
+                .post()
+                .then()
+                .statusCode(CREATED.getStatusCode())
+                .extract()
+                .as(ScaffoldDTO.class);
+
+        assertThat(created2).isNotNull();
+        assertThat(created2.getName()).isEqualTo("scaffold-created-2");
+
+        dto.setName("scaffold-created-3");
+        dto.setSkills(created2.getSkills());
+        dto.addSkillsItem(new SkillDTO().name("skill2").instruction("test2").id("fakeId"));
+
+        var created3 = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(dto)
+                .post()
+                .then()
+                .statusCode(CREATED.getStatusCode())
+                .extract()
+                .as(ScaffoldDTO.class);
+
+        assertThat(created3).isNotNull();
+        assertThat(created3.getName()).isEqualTo("scaffold-created-3");
     }
 
     @Test
@@ -134,7 +206,7 @@ class ScaffoldRestControllerTest extends AbstractTest {
     void updateScaffoldByIdTest() {
         var dto = new UpdateScaffoldRequestDTO();
         dto.setName("scaffold-updated");
-
+        dto.setSkills(List.of(new SkillDTO().name("skill1").instruction("test")));
         given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
@@ -153,13 +225,16 @@ class ScaffoldRestControllerTest extends AbstractTest {
                 .put("/{id}")
                 .then().statusCode(NOT_FOUND.getStatusCode());
 
-        given()
+        var res = given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .body(dto)
                 .pathParam("id", "scaffold-11-111")
                 .put("/{id}")
-                .then().statusCode(OK.getStatusCode());
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(ScaffoldDTO.class);
+
+        Assertions.assertThat(res.getSkills()).hasSize(1);
 
         // optimistic lock
 
@@ -170,6 +245,70 @@ class ScaffoldRestControllerTest extends AbstractTest {
                 .pathParam("id", "scaffold-11-111")
                 .put("/{id}")
                 .then().statusCode(BAD_REQUEST.getStatusCode());
+    }
 
+    @Test
+    void updateScaffoldByIdWithNullSkillListTest() {
+        var dto = new UpdateScaffoldRequestDTO();
+        dto.setName("scaffold-updated");
+        dto.setSkills(null);
+        dto.setModificationCount(0);
+
+        var res = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(dto)
+                .pathParam("id", "scaffold-11-111")
+                .put("/{id}")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(ScaffoldDTO.class);
+
+        Assertions.assertThat(res.getSkills()).hasSize(2);
+    }
+
+    @Test
+    void updateScaffoldWithEmptySkillListByIdTest() {
+        var dto = new UpdateScaffoldRequestDTO();
+        dto.setName("scaffold-updated");
+        dto.setSkills(List.of());
+        dto.setModificationCount(0);
+
+        var res = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(dto)
+                .pathParam("id", "scaffold-11-111")
+                .put("/{id}")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(ScaffoldDTO.class);
+
+        Assertions.assertThat(res.getSkills()).hasSize(2);
+
+        dto.setSkills(res.getSkills());
+        dto.setModificationCount(res.getModificationCount());
+        var res2 = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(dto)
+                .pathParam("id", "scaffold-11-111")
+                .put("/{id}")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(ScaffoldDTO.class);
+
+        Assertions.assertThat(res2.getSkills()).hasSize(2);
+
+        //should ignore skill with non existing id
+        dto.addSkillsItem(new SkillDTO().name("skill3").instruction("test3").id("fakeId"));
+        dto.setModificationCount(res2.getModificationCount());
+        var res3 = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(dto)
+                .pathParam("id", "scaffold-11-111")
+                .put("/{id}")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(ScaffoldDTO.class);
+
+        Assertions.assertThat(res3.getSkills()).hasSize(2);
     }
 }
