@@ -30,33 +30,21 @@ public class ScaffoldService {
 
     @Transactional
     public Scaffold updateScaffold(Scaffold updatedScaffold, List<SkillDTO> skills) {
-        // Update the scaffold
-
-        // Update the skills associated with the scaffold
-        if (skills != null && !skills.isEmpty()) {
-            Set<Skill> skillsToAdd = new HashSet<>();
-            skills.forEach(skillDTO -> {
-                if (skillDTO.getId() == null) {
-                    var newSkill = skillDAO.create(skillMapper.mapCreate(skillDTO));
-                    skillsToAdd.add(newSkill);
-                } else {
-                    // If the skill ID is not null, find the existing skill and associate it with the scaffold
-                    var skill = skillDAO.findById(skillDTO.getId());
-                    if (skill != null) {
-                        skillsToAdd.add(skill);
-                    }
-                }
-            });
-            updatedScaffold.setSkills(skillsToAdd);
-            updatedScaffold = scaffoldDAO.update(updatedScaffold); // Update the scaffold with the new skills
-        }
+        updatedScaffold.setSkills(resolveSkills(skills));
+        updatedScaffold = scaffoldDAO.update(updatedScaffold);
         return updatedScaffold;
     }
 
     @Transactional
     public Scaffold createScaffold(Scaffold createdScaffold, List<SkillDTO> skills) {
+        createdScaffold.setSkills(resolveSkills(skills));
+        createdScaffold = scaffoldDAO.create(createdScaffold);
+        return createdScaffold;
+    }
+
+    Set<Skill> resolveSkills(List<SkillDTO> skills) {
+        Set<Skill> skillsToAdd = new HashSet<>();
         if (skills != null && !skills.isEmpty()) {
-            Set<Skill> skillsToAdd = new HashSet<>();
             skills.forEach(skillDTO -> {
                 if (skillDTO.getId() == null) {
                     var newSkill = skillDAO.create(skillMapper.mapCreate(skillDTO));
@@ -68,9 +56,7 @@ public class ScaffoldService {
                     }
                 }
             });
-            createdScaffold.setSkills(skillsToAdd);
-            createdScaffold = scaffoldDAO.update(createdScaffold);
         }
-        return createdScaffold;
+        return skillsToAdd;
     }
 }

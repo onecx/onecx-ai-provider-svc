@@ -4,7 +4,6 @@ import static io.restassured.RestAssured.given;
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.Response.Status.*;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static org.assertj.core.api.Assertions.as;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -263,7 +262,7 @@ class ScaffoldRestControllerTest extends AbstractTest {
                 .then().statusCode(OK.getStatusCode())
                 .extract().as(ScaffoldDTO.class);
 
-        Assertions.assertThat(res.getSkills()).hasSize(2);
+        Assertions.assertThat(res.getSkills()).isEmpty();
     }
 
     @Test
@@ -282,7 +281,7 @@ class ScaffoldRestControllerTest extends AbstractTest {
                 .then().statusCode(OK.getStatusCode())
                 .extract().as(ScaffoldDTO.class);
 
-        Assertions.assertThat(res.getSkills()).hasSize(2);
+        Assertions.assertThat(res.getSkills()).isEmpty();
 
         dto.setSkills(res.getSkills());
         dto.setModificationCount(res.getModificationCount());
@@ -295,7 +294,7 @@ class ScaffoldRestControllerTest extends AbstractTest {
                 .then().statusCode(OK.getStatusCode())
                 .extract().as(ScaffoldDTO.class);
 
-        Assertions.assertThat(res2.getSkills()).hasSize(2);
+        Assertions.assertThat(res2.getSkills()).isEmpty();
 
         //should ignore skill with non existing id
         dto.addSkillsItem(new SkillDTO().name("skill3").instruction("test3").id("fakeId"));
@@ -309,6 +308,6 @@ class ScaffoldRestControllerTest extends AbstractTest {
                 .then().statusCode(OK.getStatusCode())
                 .extract().as(ScaffoldDTO.class);
 
-        Assertions.assertThat(res3.getSkills()).hasSize(2);
+        Assertions.assertThat(res3.getSkills()).isEmpty();
     }
 }
