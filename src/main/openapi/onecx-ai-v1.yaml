@@ -35,6 +35,34 @@ paths:
        application/json:
         schema:
          $ref: '#/components/schemas/ProblemDetailResponse'
+
+  /v1/agents/search:
+    post:
+      security:
+      - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags:
+      - agent
+      description: Find Agent by Search Criteria
+      operationId: findAgentBySearchCriteria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentSearchCriteria'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentPageResult'
+        "400":
+          description: Bad request
+          content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ProblemDetailResponse'
 components:
  securitySchemes:
   oauth2:
@@ -100,6 +128,68 @@ components:
     conversationType:
      type: string
      enum: [ Q_AND_A ]
+  AgentAbstract:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      description:
+        type: string
+      additionalPrompt:
+        type: string
+      a2aEnabled:
+        type: boolean
+      status:
+        $ref: '#/components/schemas/AgentStatus'
+      filter:
+        $ref: '#/components/schemas/AgentFilter'
+  AgentSearchCriteria:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/AgentStatus'
+        pageNumber:
+          format: int32
+          default: 0
+          type: integer
+        pageSize:
+          format: int32
+          default: 10
+          maximum: 100
+          type: integer
+  AgentPageResult:
+    type: object
+    properties:
+      totalElements:
+        format: int64
+        type: integer
+      number:
+        format: int32
+        type: integer
+      size:
+        format: int32
+        type: integer
+      totalPages:
+        format: int64
+        type: integer
+      stream:
+        type: array
+        items:
+          $ref: '#/components/schemas/AgentAbstract'
+  AgentStatus:
+    type: string
+    enum:
+      - DRAFT
+      - LIVE
+      - DEPRECATED
   ProblemDetailResponse:
    type: object
    properties:
