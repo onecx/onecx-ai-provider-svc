@@ -16,7 +16,7 @@ import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentSearchCriteriaDT
 
 @ApplicationScoped
 @Transactional(value = NOT_SUPPORTED)
-public class AgentRestController implements AgentV1Api {
+public class AgentRestV1Controller implements AgentV1Api {
 
     @Inject
     AgentDAO dao;

@@ -15,10 +15,10 @@ import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
-@TestHTTPEndpoint(AgentRestController.class)
+@TestHTTPEndpoint(AgentRestV1Controller.class)
 @WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, deleteAfterTest = true, rinseAndRepeat = true)
 @GenerateKeycloakClient(clientName = "testClient", scopes = { "ocx-ai:all", "ocx-ai:read" })
-class AgentRestControllerTest extends AbstractTest {
+class AgentRestV1ControllerTest extends AbstractTest {
 
     @Test
     void findAgentBySearchCriteriaTest() {
@@ -38,7 +38,7 @@ class AgentRestControllerTest extends AbstractTest {
         assertThat(data.getStream()).isNotNull().hasSize(4);
 
         criteria.setPageNumber(1);
-        criteria.setPageSize(10);
+        criteria.setPageSize(2);
         data = given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
@@ -49,6 +49,6 @@ class AgentRestControllerTest extends AbstractTest {
                 .extract()
                 .as(AgentPageResultDTOV1.class);
 
-        assertThat(data.getTotalElements()).isEqualTo(1);
+        assertThat(data.getTotalElements()).isEqualTo(2);
     }
 }
