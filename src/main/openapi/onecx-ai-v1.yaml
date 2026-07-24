@@ -137,25 +137,11 @@ components:
         type: string
       description:
         type: string
-      additionalPrompt:
-        type: string
-      a2aEnabled:
-        type: boolean
-      status:
-        $ref: '#/components/schemas/AgentStatus'
       filter:
         $ref: '#/components/schemas/AgentFilter'
   AgentSearchCriteria:
       type: object
       properties:
-        id:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        status:
-          $ref: '#/components/schemas/AgentStatus'
         pageNumber:
           format: int32
           default: 0

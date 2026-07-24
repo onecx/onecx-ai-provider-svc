@@ -13,9 +13,7 @@ import org.tkit.onecx.ai.provider.rs.external.v1.mappers.ExceptionMapper;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.AgentV1Api;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentSearchCriteriaDTOV1;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @ApplicationScoped
 @Transactional(value = NOT_SUPPORTED)
 public class AgentRestController implements AgentV1Api {
