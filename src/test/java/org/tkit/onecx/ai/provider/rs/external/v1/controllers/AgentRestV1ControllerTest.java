@@ -27,15 +27,15 @@ class AgentRestV1ControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .body(criteria)
-                .post("/search")
+                .post()
                 .then()
                 .statusCode(OK.getStatusCode())
                 .extract()
                 .as(AgentPageResultDTOV1.class);
 
         assertThat(data).isNotNull();
-        assertThat(data.getTotalElements()).isEqualTo(4);
-        assertThat(data.getStream()).isNotNull().hasSize(4);
+        assertThat(data.getTotalElements()).isEqualTo(3);
+        assertThat(data.getStream()).isNotNull().hasSize(3);
 
         criteria.setPageNumber(1);
         criteria.setPageSize(2);
@@ -43,12 +43,13 @@ class AgentRestV1ControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .body(criteria)
-                .post("/search")
+                .post()
                 .then()
                 .statusCode(OK.getStatusCode())
                 .extract()
                 .as(AgentPageResultDTOV1.class);
 
-        assertThat(data.getTotalElements()).isEqualTo(2);
+        assertThat(data.getTotalElements()).isEqualTo(3);
+        assertThat(data.getStream()).isNotNull().hasSize(1);
     }
 }
