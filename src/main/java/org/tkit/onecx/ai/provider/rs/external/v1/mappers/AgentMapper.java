@@ -18,7 +18,7 @@ public interface AgentMapper {
 
     @Mapping(target = "name", ignore = true)
     @Mapping(target = "description", ignore = true)
-    @Mapping(target = "status", expression = "java(org.tkit.onecx.ai.provider.domain.models.enums.AgentStatus.LIVE)")
+    @Mapping(target = "status", constant = "LIVE")
     AgentSearchCriteria mapCriteria(AgentSearchCriteriaDTOV1 agentSearchCriteriaDTOV1);
 
     @Mapping(target = "removeStreamItem", ignore = true)
