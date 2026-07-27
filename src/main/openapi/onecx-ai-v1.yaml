@@ -1,48 +1,48 @@
 ---
 openapi: 3.0.3
 info:
- title: onecx-ai-provider external v1 service
- version: 1.0.0
+  title: onecx-ai-provider external v1 service
+  version: 1.0.0
 servers:
- - url: "http://onecx-ai-provider-svc:8080"
+  - url: "http://onecx-ai-provider-svc:8080"
 tags:
- - name: dispatch
- - name: agent
+  - name: dispatch
+  - name: agent
 paths:
   /v1/dispatch/chat:
-   post:
-    security:
-     - oauth2: [ ocx-ai:read ]
-    tags:
-     - dispatch
-    summary: Chat with AI
-    operationId: chat
-    requestBody:
-     required: true
-     content:
-      application/json:
-       schema:
-        $ref: '#/components/schemas/ChatRequest'
-    responses:
-     '200':
-      description: OK
-      content:
-       application/json:
-        schema:
-         $ref: '#/components/schemas/ChatMessage'
-     '400':
-      description: Bad Request
-      content:
-       application/json:
-        schema:
-         $ref: '#/components/schemas/ProblemDetailResponse'
+    post:
+      security:
+        - oauth2: [ ocx-ai:read ]
+      tags:
+        - dispatch
+      summary: Chat with AI
+      operationId: chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetailResponse"
 
   /v1/agents/search:
     post:
       security:
-      - oauth2: [ ocx-ai:all, ocx-ai:read ]
+        - oauth2: [ ocx-ai:read ]
       tags:
-      - agent
+        - agent
       description: Find Agent by Search Criteria
       operationId: findAgentBySearchCriteria
       requestBody:
@@ -50,97 +50,97 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AgentSearchCriteria'
+              $ref: "#/components/schemas/AgentSearchCriteria"
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AgentPageResult'
+                $ref: "#/components/schemas/AgentPageResult"
         "400":
           description: Bad request
           content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/ProblemDetailResponse'
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetailResponse"
 components:
- securitySchemes:
-  oauth2:
-   type: oauth2
-   flows:
-    clientCredentials:
-     tokenUrl: https://oauth.simple.api/token
-     scopes:
-      ocx-ai:read: Grants read access
- schemas:
-  ChatRequest:
-   type: object
-   required:
-    - chatMessage
-   properties:
-    requestContext:
-     $ref: '#/components/schemas/RequestContext'
-    chatMessage:
-     $ref: '#/components/schemas/ChatMessage'
-    conversation:
-     $ref: '#/components/schemas/Conversation'
-  RequestContext:
-   type: object
-   properties:
-    filter:
-     $ref: '#/components/schemas/AgentFilter'
-    aiContext:
-     type: array
-     items:
-      type: string
-  AgentFilter:
-   type: object
-   properties:
-    key:
-     type: string
-     enum:
-      - APP_ID
-    value:
-     type: string
-  ChatMessage:
-   type: object
-   properties:
-    conversationId:
-     type: string
-    message:
-     type: string
-     maxLength: 10000
-    type:
-     type: string
-     enum: [ ASSISTANT, SYSTEM, USER, ACTION ]
-    creationDate:
-     type: integer
-     format: int64
-  Conversation:
-   type: object
-   properties:
-    conversationId:
-     type: string
-    history:
-     type: array
-     items:
-      $ref: '#/components/schemas/ChatMessage'
-    conversationType:
-     type: string
-     enum: [ Q_AND_A ]
-  AgentAbstract:
-    type: object
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-      description:
-        type: string
-      filter:
-        $ref: '#/components/schemas/AgentFilter'
-  AgentSearchCriteria:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://oauth.simple.api/token
+          scopes:
+            ocx-ai:read: Grants read access
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - chatMessage
+      properties:
+        requestContext:
+          $ref: "#/components/schemas/RequestContext"
+        chatMessage:
+          $ref: "#/components/schemas/ChatMessage"
+        conversation:
+          $ref: "#/components/schemas/Conversation"
+    RequestContext:
+      type: object
+      properties:
+        filter:
+          $ref: "#/components/schemas/AgentFilter"
+        aiContext:
+          type: array
+          items:
+            type: string
+    AgentFilter:
+      type: object
+      properties:
+        key:
+          type: string
+          enum:
+            - APP_ID
+        value:
+          type: string
+    ChatMessage:
+      type: object
+      properties:
+        conversationId:
+          type: string
+        message:
+          type: string
+          maxLength: 10000
+        type:
+          type: string
+          enum: [ ASSISTANT, SYSTEM, USER, ACTION ]
+        creationDate:
+          type: integer
+          format: int64
+    Conversation:
+      type: object
+      properties:
+        conversationId:
+          type: string
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        conversationType:
+          type: string
+          enum: [ Q_AND_A ]
+    AgentAbstract:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        filter:
+          $ref: "#/components/schemas/AgentFilter"
+    AgentSearchCriteria:
       type: object
       properties:
         pageNumber:
@@ -152,57 +152,51 @@ components:
           default: 10
           maximum: 100
           type: integer
-  AgentPageResult:
-    type: object
-    properties:
-      totalElements:
-        format: int64
-        type: integer
-      number:
-        format: int32
-        type: integer
-      size:
-        format: int32
-        type: integer
-      totalPages:
-        format: int64
-        type: integer
-      stream:
-        type: array
-        items:
-          $ref: '#/components/schemas/AgentAbstract'
-  AgentStatus:
-    type: string
-    enum:
-      - DRAFT
-      - LIVE
-      - DEPRECATED
-  ProblemDetailResponse:
-   type: object
-   properties:
-    errorCode:
-     type: string
-    detail:
-     type: string
-    params:
-     type: array
-     items:
-      $ref: '#/components/schemas/ProblemDetailParam'
-    invalidParams:
-     type: array
-     items:
-      $ref: '#/components/schemas/ProblemDetailInvalidParam'
-  ProblemDetailParam:
-   type: object
-   properties:
-    key:
-     type: string
-    value:
-     type: string
-  ProblemDetailInvalidParam:
-   type: object
-   properties:
-    name:
-     type: string
-    message:
-     type: string
+    AgentPageResult:
+      type: object
+      properties:
+        totalElements:
+          format: int64
+          type: integer
+        number:
+          format: int32
+          type: integer
+        size:
+          format: int32
+          type: integer
+        totalPages:
+          format: int64
+          type: integer
+        stream:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentAbstract"
+    ProblemDetailResponse:
+      type: object
+      properties:
+        errorCode:
+          type: string
+        detail:
+          type: string
+        params:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProblemDetailParam"
+        invalidParams:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProblemDetailInvalidParam"
+    ProblemDetailParam:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+    ProblemDetailInvalidParam:
+      type: object
+      properties:
+        name:
+          type: string
+        message:
+          type: string
