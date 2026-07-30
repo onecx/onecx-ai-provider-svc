@@ -188,7 +188,7 @@ class AgentRestControllerTest extends AbstractTest {
                 .body(dto)
                 .pathParam("id", "does-not-exists")
                 .put("/{id}")
-                .then().statusCode(BAD_REQUEST.getStatusCode());
+                .then().statusCode(NOT_FOUND.getStatusCode());
 
         dto.setModificationCount(0);
         dto.setStatus(AgentStatusDTO.LIVE);
@@ -232,16 +232,7 @@ class AgentRestControllerTest extends AbstractTest {
         assertThat(updated.getName()).isEqualTo("agent-updated");
         assertThat(updated.getTools()).isNotNull().isNotEmpty();
         assertThat(updated.getGroups()).isNotNull().isNotEmpty();
-        assertThat(updated.getModificationCount()).isNotEqualTo(dto.getModificationCount());
-
-        dto.setModificationCount(0);
-        given()
-                .auth().oauth2(getKeycloakClientToken("testClient"))
-                .contentType(APPLICATION_JSON)
-                .body(dto)
-                .pathParam("id", "agent-11-111")
-                .put("/{id}")
-                .then().statusCode(BAD_REQUEST.getStatusCode());
+        assertThat(updated.getModificationCount()).isGreaterThan(dto.getModificationCount());
     }
 
     @Test
@@ -255,7 +246,7 @@ class AgentRestControllerTest extends AbstractTest {
                 .body(dto)
                 .pathParam("id", "does-not-exists")
                 .put("/{id}")
-                .then().statusCode(BAD_REQUEST.getStatusCode());
+                .then().statusCode(NOT_FOUND.getStatusCode());
 
         dto.setModificationCount(0);
         dto.setStatus(AgentStatusDTO.LIVE);
@@ -291,7 +282,7 @@ class AgentRestControllerTest extends AbstractTest {
         assertThat(updated.getName()).isEqualTo("agent-updated");
         assertThat(updated.getTools()).isNotNull().isNotEmpty();
         assertThat(updated.getGroups()).isNotNull().isNotEmpty();
-        assertThat(updated.getModificationCount()).isNotEqualTo(dto.getModificationCount());
+        assertThat(updated.getModificationCount()).isGreaterThan(dto.getModificationCount());
 
     }
 
@@ -306,7 +297,7 @@ class AgentRestControllerTest extends AbstractTest {
                 .body(dto)
                 .pathParam("id", "does-not-exists")
                 .put("/{id}")
-                .then().statusCode(BAD_REQUEST.getStatusCode());
+                .then().statusCode(NOT_FOUND.getStatusCode());
 
         dto.setModificationCount(0);
         dto.setStatus(AgentStatusDTO.LIVE);
@@ -325,7 +316,7 @@ class AgentRestControllerTest extends AbstractTest {
         assertThat(updated.getName()).isEqualTo("agent-updated");
         assertThat(updated.getTools()).isNotNull().isEmpty();
         assertThat(updated.getGroups()).isNotNull().isEmpty();
-        assertThat(updated.getModificationCount()).isNotEqualTo(dto.getModificationCount());
+        assertThat(updated.getModificationCount()).isGreaterThan(dto.getModificationCount());
 
     }
 }

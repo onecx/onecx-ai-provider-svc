@@ -55,7 +55,7 @@ public interface AgentMapper {
     @Mapping(target = "globalTools", ignore = true)
     Agent mapCreate(CreateAgentRequestDTO createAgentRequestDTO);
 
-    @Mapping(target = "modificationCount", source = "updateDTO.modificationCount")
+    @Mapping(target = "modificationCount", ignore = true)
     @Mapping(target = "name", source = "updateDTO.name")
     @Mapping(target = "description", source = "updateDTO.description")
     @Mapping(target = "additionalPrompt", source = "updateDTO.additionalPrompt")

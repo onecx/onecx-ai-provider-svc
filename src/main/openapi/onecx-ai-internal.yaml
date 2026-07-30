@@ -1067,7 +1067,6 @@ components:
             $ref: '#/components/schemas/AgentGroup'
     UpdateAgentRequest:
       type: object
-      required: [ modificationCount ]
       properties:
         modificationCount:
           format: int32
