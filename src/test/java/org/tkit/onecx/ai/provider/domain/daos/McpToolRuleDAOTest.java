@@ -39,10 +39,6 @@ class McpToolRuleDAOTest {
                 McpToolRuleDAO.ErrorKeys.ERROR_FIND_RULES_BY_TOOL_IDS);
         methodExceptionTests(() -> dao.findByGlobalToolIds(List.of("g1")),
                 McpToolRuleDAO.ErrorKeys.ERROR_FIND_RULES_BY_GLOBAL_TOOL_IDS);
-        methodExceptionTests(() -> dao.findByToolIdAndToolName("t1", "x"),
-                McpToolRuleDAO.ErrorKeys.ERROR_FIND_RULE_BY_TOOL_AND_NAME);
-        methodExceptionTests(() -> dao.findByGlobalToolIdAndToolName("g1", "x"),
-                McpToolRuleDAO.ErrorKeys.ERROR_FIND_RULE_BY_GLOBAL_TOOL_AND_NAME);
         methodExceptionTests(() -> dao.deleteByToolId("t1"),
                 McpToolRuleDAO.ErrorKeys.ERROR_DELETE_RULES_BY_TOOL_ID);
         methodExceptionTests(() -> dao.deleteByGlobalToolId("g1"),
