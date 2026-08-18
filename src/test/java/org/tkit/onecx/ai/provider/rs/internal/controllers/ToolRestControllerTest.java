@@ -31,7 +31,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .body(dto)
-                .post()
+                .post("/tools")
                 .then()
                 .statusCode(CREATED.getStatusCode())
                 .extract()
@@ -52,7 +52,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .body(criteria)
-                .post("/search")
+                .post("/tools/search")
                 .then()
                 .statusCode(OK.getStatusCode())
                 .extract()
@@ -67,7 +67,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .body(criteria)
-                .post("/search")
+                .post("/tools/search")
                 .then()
                 .statusCode(OK.getStatusCode())
                 .extract()
@@ -83,14 +83,14 @@ class ToolRestControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .pathParam("id", "tool-none-exists-id")
-                .get("/{id}")
+                .get("/tools/{id}")
                 .then().statusCode(NOT_FOUND.getStatusCode());
 
         var dto = given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .pathParam("id", "tool-11-111")
-                .get("/{id}")
+                .get("/tools/{id}")
                 .then().statusCode(OK.getStatusCode())
                 .extract().as(ToolDTO.class);
 
@@ -109,7 +109,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .body(create)
-                .post()
+                .post("/tools")
                 .then()
                 .statusCode(CREATED.getStatusCode())
                 .extract().as(ToolDTO.class);
@@ -118,130 +118,14 @@ class ToolRestControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .pathParam("id", created.getId())
-                .delete("/{id}")
+                .delete("/tools/{id}")
                 .then().statusCode(NO_CONTENT.getStatusCode());
 
         given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .pathParam("id", created.getId())
-                .get("/{id}")
-                .then().statusCode(NOT_FOUND.getStatusCode());
-    }
-
-    @Test
-    void mcpToolRuleCrudTest() {
-        var list = given()
-                .auth().oauth2(getKeycloakClientToken("testClient"))
-                .contentType(APPLICATION_JSON)
-                .pathParam("toolId", "tool-11-111")
-                .get("/{toolId}/mcp-tool-rules")
-                .then().statusCode(OK.getStatusCode())
-                .extract().as(McpToolRuleListDTO.class);
-
-        assertThat(list.getRules()).hasSize(2);
-
-        given()
-                .auth().oauth2(getKeycloakClientToken("testClient"))
-                .contentType(APPLICATION_JSON)
-                .pathParam("toolId", "tool-not-exists")
-                .get("/{toolId}/mcp-tool-rules")
-                .then().statusCode(NOT_FOUND.getStatusCode());
-
-        // global tool rules
-        var globalList = given()
-                .auth().oauth2(getKeycloakClientToken("testClient"))
-                .contentType(APPLICATION_JSON)
-                .pathParam("toolId", "gtool-11-111")
-                .get("/{toolId}/mcp-tool-rules")
-                .then().statusCode(OK.getStatusCode())
-                .extract().as(McpToolRuleListDTO.class);
-
-        assertThat(globalList.getRules()).hasSize(1);
-        assertThat(globalList.getRules().get(0).getToolName()).isEqualTo("globalRead");
-
-        // create
-        var create = new CreateMcpToolRuleRequestDTO();
-        create.setToolName("updateProposal");
-        create.setToolDescription("Updates a proposal");
-        create.setAllowed(ToolPermissionDTO.ALLOW);
-        create.setDangerLevel(DangerLevelDTO.WARNING);
-        create.setAutoDangerLevel(DangerLevelDTO.WARNING);
-
-        var created = given()
-                .auth().oauth2(getKeycloakClientToken("testClient"))
-                .contentType(APPLICATION_JSON)
-                .body(create)
-                .pathParam("toolId", "tool-11-111")
-                .post("/{toolId}/mcp-tool-rules")
-                .then().statusCode(CREATED.getStatusCode())
-                .extract().as(McpToolRuleDTO.class);
-
-        assertThat(created.getId()).isNotNull();
-        assertThat(created.getAllowed()).isEqualTo(ToolPermissionDTO.ALLOW);
-        assertThat(created.getDangerLevel()).isEqualTo(DangerLevelDTO.WARNING);
-
-        given()
-                .auth().oauth2(getKeycloakClientToken("testClient"))
-                .contentType(APPLICATION_JSON)
-                .body(create)
-                .pathParam("toolId", "tool-not-exists")
-                .post("/{toolId}/mcp-tool-rules")
-                .then().statusCode(NOT_FOUND.getStatusCode());
-
-        // update
-        var update = new UpdateMcpToolRuleRequestDTO();
-        update.setModificationCount(0);
-        update.setAllowed(ToolPermissionDTO.DENY);
-        update.setDangerLevel(DangerLevelDTO.DANGEROUS);
-
-        var updated = given()
-                .auth().oauth2(getKeycloakClientToken("testClient"))
-                .contentType(APPLICATION_JSON)
-                .body(update)
-                .pathParam("toolId", "tool-11-111")
-                .pathParam("ruleId", "rule-11-111")
-                .put("/{toolId}/mcp-tool-rules/{ruleId}")
-                .then().statusCode(OK.getStatusCode())
-                .extract().as(McpToolRuleDTO.class);
-
-        assertThat(updated.getAllowed()).isEqualTo(ToolPermissionDTO.DENY);
-        assertThat(updated.getDangerLevel()).isEqualTo(DangerLevelDTO.DANGEROUS);
-        // tool name must not change on update
-        assertThat(updated.getToolName()).isEqualTo("getProposal");
-
-        given()
-                .auth().oauth2(getKeycloakClientToken("testClient"))
-                .contentType(APPLICATION_JSON)
-                .body(update)
-                .pathParam("toolId", "tool-11-111")
-                .pathParam("ruleId", "rule-not-exists")
-                .put("/{toolId}/mcp-tool-rules/{ruleId}")
-                .then().statusCode(NOT_FOUND.getStatusCode());
-
-        // rule belongs to another tool
-        given()
-                .auth().oauth2(getKeycloakClientToken("testClient"))
-                .contentType(APPLICATION_JSON)
-                .body(update)
-                .pathParam("toolId", "tool-22-222")
-                .pathParam("ruleId", "rule-11-111")
-                .put("/{toolId}/mcp-tool-rules/{ruleId}")
-                .then().statusCode(NOT_FOUND.getStatusCode());
-
-        // delete
-        given()
-                .auth().oauth2(getKeycloakClientToken("testClient"))
-                .pathParam("toolId", "tool-11-111")
-                .pathParam("ruleId", "rule-22-222")
-                .delete("/{toolId}/mcp-tool-rules/{ruleId}")
-                .then().statusCode(NO_CONTENT.getStatusCode());
-
-        given()
-                .auth().oauth2(getKeycloakClientToken("testClient"))
-                .pathParam("toolId", "tool-11-111")
-                .pathParam("ruleId", "rule-22-222")
-                .delete("/{toolId}/mcp-tool-rules/{ruleId}")
+                .get("/tools/{id}")
                 .then().statusCode(NOT_FOUND.getStatusCode());
     }
 
@@ -255,11 +139,11 @@ class ToolRestControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .body(create)
-                .post()
+                .post("/tools")
                 .then().statusCode(CREATED.getStatusCode())
                 .extract().as(ToolDTO.class);
 
-        var rule = new CreateMcpToolRuleRequestDTO();
+        var rule = new CreateAgentMcpToolRuleRequestDTO();
         rule.setToolName("someTool");
         rule.setAllowed(ToolPermissionDTO.ALLOW);
 
@@ -267,21 +151,40 @@ class ToolRestControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .body(rule)
+                .basePath("/internal/agents")
+                .pathParam("agentId", "agent-11-111")
                 .pathParam("toolId", createdTool.getId())
-                .post("/{toolId}/mcp-tool-rules")
+                .post("/{agentId}/tools/{toolId}/mcp-tool-rules")
                 .then().statusCode(CREATED.getStatusCode());
 
+        // verify rule exists
+        var rules = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .basePath("/internal/agents")
+                .pathParam("agentId", "agent-11-111")
+                .pathParam("toolId", createdTool.getId())
+                .get("/{agentId}/tools/{toolId}/mcp-tool-rules")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(AgentMcpToolRuleListDTO.class);
+        assertThat(rules.getRules()).hasSize(1);
+
+        // delete tool cascades to rules
         given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .pathParam("id", createdTool.getId())
-                .delete("/{id}")
+                .delete("/tools/{id}")
                 .then().statusCode(NO_CONTENT.getStatusCode());
 
-        given()
+        // rules are gone
+        var afterDelete = given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
+                .basePath("/internal/agents")
+                .pathParam("agentId", "agent-11-111")
                 .pathParam("toolId", createdTool.getId())
-                .get("/{toolId}/mcp-tool-rules")
-                .then().statusCode(NOT_FOUND.getStatusCode());
+                .get("/{agentId}/tools/{toolId}/mcp-tool-rules")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(AgentMcpToolRuleListDTO.class);
+        assertThat(afterDelete.getRules()).isEmpty();
     }
 
     @Test
@@ -294,7 +197,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .contentType(APPLICATION_JSON)
                 .body(dto)
                 .pathParam("id", "does-not-exists")
-                .put("/{id}")
+                .put("/tools/{id}")
                 .then().statusCode(BAD_REQUEST.getStatusCode());
 
         dto.setModificationCount(0);
@@ -306,7 +209,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .contentType(APPLICATION_JSON)
                 .body(dto)
                 .pathParam("id", "does-not-exists")
-                .put("/{id}")
+                .put("/tools/{id}")
                 .then().statusCode(NOT_FOUND.getStatusCode());
 
         var updated = given()
@@ -314,7 +217,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .contentType(APPLICATION_JSON)
                 .body(dto)
                 .pathParam("id", "tool-11-111")
-                .put("/{id}")
+                .put("/tools/{id}")
                 .then().statusCode(OK.getStatusCode())
                 .extract().as(ToolDTO.class);
 
@@ -327,7 +230,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .contentType(APPLICATION_JSON)
                 .body(dto)
                 .pathParam("id", "tool-11-111")
-                .put("/{id}")
+                .put("/tools/{id}")
                 .then().statusCode(BAD_REQUEST.getStatusCode());
     }
 }

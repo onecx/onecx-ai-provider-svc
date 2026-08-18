@@ -24,11 +24,6 @@
 	<TOOL guid="tool-22-222" optlock="0" name="tool2" description="tool_description_2" type="HTTP" url="http://tool.server.org" api_key="api_key_2" execution_policy="NEVER_ASK" auth_mode="OAUTH" tenant_id="default" creationuser="user1"/>
 	<GLOBAL_TOOL guid="gtool-11-111" optlock="0" name="global-tool1" description="global_tool_description_1" type="HTTP" url="http://global.tool.org" api_key="global_api_key_1" execution_policy="ALWAYS_ASK" auth_mode="API_KEY" creationuser="user1"/>
 
-	<!-- MCP tool rules -->
-	<MCP_TOOL_RULE guid="rule-11-111" optlock="0" tool_id="tool-11-111" tool_name="getProposal" tool_description="Reads a proposal" allowed="ALLOW" danger_level="SAFE" auto_danger_level="SAFE" tenant_id="default" creationuser="user1"/>
-	<MCP_TOOL_RULE guid="rule-22-222" optlock="0" tool_id="tool-11-111" tool_name="deleteProposal" tool_description="Deletes a proposal" allowed="DENY" danger_level="DANGEROUS" auto_danger_level="DANGEROUS" tenant_id="default" creationuser="user1"/>
-	<MCP_TOOL_RULE guid="rule-33-333" optlock="0" global_tool_id="gtool-11-111" tool_name="globalRead" tool_description="Global read tool" allowed="ALLOW" tenant_id="default" creationuser="user1"/>
-
 	<!-- Agent groups and external agents -->
 	<AGENT_GROUP guid="group-11-111" optlock="0" name="group1" description="group_description_1" routing_instructions="delegate by capability" orchestration_mode="LEAD_DELEGATES" response_strategy="LAST" tenant_id="default" creationuser="user1"/>
 	<EXTERNAL_AGENT guid="ext-agent-11-111" optlock="0" name="external-agent1" description="external_agent_description_1" discovery_url="http://external.discovery.org" api_key="external_api_key_1" auth_mode="API_KEY" enabled="true" tenant_id="default" creationuser="user1"/>
@@ -38,6 +33,11 @@
 	<AGENT guid="agent-22-222" optlock="0" name="agent2" description="agent_description_2" additional_prompt="agent_additional_prompt_2" a2a_enabled="true" status="DRAFT" model_id="model-22-222" global_scaffold_id="gscaffold-11-111" tenant_id="default" creationuser="user1" filter_key="APP_ID" filter_value="onecx-*"/>
 	<AGENT guid="agent-33-333" optlock="0" name="agent3" description="agent_no_groups" additional_prompt="" a2a_enabled="false" status="LIVE" model_id="model-11-111" tenant_id="default" creationuser="user1" filter_key="APP_ID" filter_value="no-groups-app"/>
 	<AGENT guid="agent-44-444" optlock="0" name="agent4" description="agent_no_groups" additional_prompt="" a2a_enabled="false" status="LIVE" model_id="model-11-111" tenant_id="default" creationuser="user1" filter_key="APP_ID" filter_value="onecx-test-*"/>
+
+	<!-- Agent MCP tool rules -->
+	<AGENT_MCP_TOOL_RULE guid="rule-11-111" optlock="0" agent_id="agent-11-111" tool_id="tool-11-111" tool_name="getProposal" tool_description="Reads a proposal" allowed="ALLOW" tenant_id="default" creationuser="user1"/>
+	<AGENT_MCP_TOOL_RULE guid="rule-22-222" optlock="0" agent_id="agent-11-111" tool_id="tool-11-111" tool_name="deleteProposal" tool_description="Deletes a proposal" allowed="DENY" tenant_id="default" creationuser="user1"/>
+	<AGENT_MCP_TOOL_RULE guid="rule-33-333" optlock="0" agent_id="agent-22-222" global_tool_id="gtool-11-111" tool_name="globalRead" tool_description="Global read tool" allowed="ALLOW" tenant_id="default" creationuser="user1"/>
 
 	<!-- Relation tables -->
 	<SCAFFOLD_SKILL_RL scaffold_id="scaffold-11-111" skill_id="skill-11-111"/>

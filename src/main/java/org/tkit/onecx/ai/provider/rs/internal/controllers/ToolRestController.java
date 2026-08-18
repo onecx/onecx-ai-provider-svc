@@ -15,29 +15,24 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 import org.tkit.onecx.ai.provider.common.services.DangerClassificationService;
+import org.tkit.onecx.ai.provider.domain.daos.AgentMcpToolRuleDAO;
 import org.tkit.onecx.ai.provider.domain.daos.GlobalToolDAO;
-import org.tkit.onecx.ai.provider.domain.daos.McpToolRuleDAO;
 import org.tkit.onecx.ai.provider.domain.daos.ToolDAO;
 import org.tkit.onecx.ai.provider.domain.models.AbstractTool;
-import org.tkit.onecx.ai.provider.domain.models.GlobalTool;
-import org.tkit.onecx.ai.provider.domain.models.McpToolRule;
-import org.tkit.onecx.ai.provider.domain.models.Tool;
+import org.tkit.onecx.ai.provider.domain.models.AgentMcpToolRule;
 import org.tkit.onecx.ai.provider.domain.models.enums.DangerLevel;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ExceptionMapper;
-import org.tkit.onecx.ai.provider.rs.internal.mappers.McpToolRuleMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ToolMapper;
 
 import gen.org.tkit.onecx.ai.provider.rs.internal.ToolInternalApi;
-import gen.org.tkit.onecx.ai.provider.rs.internal.model.CreateMcpToolRuleRequestDTO;
+import gen.org.tkit.onecx.ai.provider.rs.internal.model.AgentMcpToolRuleDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.CreateToolRequestDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.DangerLevelDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.DiscoveredToolAnnotationsDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.DiscoveredToolInfoDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.DiscoveredToolInfoListDTO;
-import gen.org.tkit.onecx.ai.provider.rs.internal.model.McpToolRuleListDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.ProblemDetailResponseDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.ToolSearchCriteriaDTO;
-import gen.org.tkit.onecx.ai.provider.rs.internal.model.UpdateMcpToolRuleRequestDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.UpdateToolRequestDTO;
 import gen.org.tkit.onecx.ai.provider.runtime.client.api.RuntimeInternalApi;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.DiscoveredTool;
@@ -59,13 +54,10 @@ public class ToolRestController implements ToolInternalApi {
     GlobalToolDAO globalToolDAO;
 
     @Inject
-    McpToolRuleDAO mcpToolRuleDAO;
+    AgentMcpToolRuleDAO agentMcpToolRuleDAO;
 
     @Inject
     DangerClassificationService dangerClassificationService;
-
-    @Inject
-    McpToolRuleMapper ruleMapper;
 
     @Inject
     @RestClient
@@ -83,19 +75,17 @@ public class ToolRestController implements ToolInternalApi {
 
     @Override
     public Response deleteToolById(String id) {
-        mcpToolRuleDAO.deleteByToolId(id);
-        mcpToolRuleDAO.deleteByGlobalToolId(id);
+        agentMcpToolRuleDAO.deleteByToolId(id);
+        agentMcpToolRuleDAO.deleteByGlobalToolId(id);
         toolDAO.deleteQueryById(id);
         return Response.status(Response.Status.NO_CONTENT).build();
     }
 
     @Override
-    public Response getDiscoveredTools(String toolId) {
+    public Response getDiscoveredTools(String toolId, String agentId) {
         AbstractTool tool = toolDAO.findById(toolId);
-        boolean global = false;
         if (tool == null) {
             tool = globalToolDAO.findById(toolId);
-            global = tool != null;
         }
         if (tool == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
@@ -111,48 +101,33 @@ public class ToolRestController implements ToolInternalApi {
             discovered = body != null && body.getTools() != null ? body.getTools() : List.of();
         }
 
-        List<McpToolRule> existingRules = global
-                ? mcpToolRuleDAO.findByGlobalToolId(toolId)
-                : mcpToolRuleDAO.findByToolId(toolId);
-        Map<String, McpToolRule> rulesByName = existingRules.stream()
-                .collect(Collectors.toMap(McpToolRule::getToolName, r -> r, (a, b) -> a));
+        var result = new DiscoveredToolInfoListDTO();
+        List<DiscoveredToolInfoDTO> infos = new java.util.ArrayList<>();
+
+        List<AgentMcpToolRule> existingRules = agentId != null && !agentId.isBlank()
+                ? agentMcpToolRuleDAO.findByAgentAndToolId(agentId, toolId)
+                : List.of();
+        Map<String, AgentMcpToolRule> rulesByName = existingRules.stream()
+                .collect(Collectors.toMap(AgentMcpToolRule::getToolName, r -> r, (a, b) -> a));
         Set<String> discoveredNames = discovered.stream()
                 .map(DiscoveredTool::getName)
                 .collect(Collectors.toSet());
 
-        var result = new DiscoveredToolInfoListDTO();
-        List<DiscoveredToolInfoDTO> infos = new java.util.ArrayList<>();
         for (var dt : discovered) {
-            var info = new DiscoveredToolInfoDTO();
-            info.setName(dt.getName());
-            info.setDescription(dt.getDescription());
-            if (dt.getAnnotations() != null) {
-                var annotations = new DiscoveredToolAnnotationsDTO();
-                annotations.setReadOnlyHint(dt.getAnnotations().getReadOnlyHint());
-                annotations.setDestructiveHint(dt.getAnnotations().getDestructiveHint());
-                annotations.setIdempotentHint(dt.getAnnotations().getIdempotentHint());
-                annotations.setOpenWorldHint(dt.getAnnotations().getOpenWorldHint());
-                info.setAnnotations(annotations);
-            }
-            DangerLevel auto = dangerClassificationService.classify(dt.getName(), dt.getDescription(),
-                    dt.getAnnotations() != null ? dt.getAnnotations().getReadOnlyHint() : null,
-                    dt.getAnnotations() != null ? dt.getAnnotations().getDestructiveHint() : null,
-                    dt.getAnnotations() != null ? dt.getAnnotations().getIdempotentHint() : null,
-                    dt.getAnnotations() != null ? dt.getAnnotations().getOpenWorldHint() : null);
-            info.setAutoDangerLevel(DangerLevelDTO.fromValue(auto.name()));
-            McpToolRule rule = rulesByName.get(dt.getName());
+            var info = buildDiscoveredToolInfo(dt);
+            AgentMcpToolRule rule = rulesByName.get(dt.getName());
             if (rule != null) {
-                info.setExistingRule(ruleMapper.map(rule));
+                info.setExistingRule(agentRuleToDTO(rule));
             }
             info.setOrphaned(false);
             infos.add(info);
         }
-        for (McpToolRule rule : existingRules) {
+        for (AgentMcpToolRule rule : existingRules) {
             if (!discoveredNames.contains(rule.getToolName())) {
                 var info = new DiscoveredToolInfoDTO();
                 info.setName(rule.getToolName());
                 info.setDescription(rule.getToolDescription());
-                info.setExistingRule(ruleMapper.map(rule));
+                info.setExistingRule(agentRuleToDTO(rule));
                 info.setOrphaned(true);
                 infos.add(info);
             }
@@ -161,71 +136,36 @@ public class ToolRestController implements ToolInternalApi {
         return Response.ok(result).build();
     }
 
-    @Override
-    public Response getMcpToolRules(String toolId) {
-        List<McpToolRule> rules = findRules(toolId);
-        if (rules == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
+    private DiscoveredToolInfoDTO buildDiscoveredToolInfo(DiscoveredTool dt) {
+        var info = new DiscoveredToolInfoDTO();
+        info.setName(dt.getName());
+        info.setDescription(dt.getDescription());
+        if (dt.getAnnotations() != null) {
+            var annotations = new DiscoveredToolAnnotationsDTO();
+            annotations.setReadOnlyHint(dt.getAnnotations().getReadOnlyHint());
+            annotations.setDestructiveHint(dt.getAnnotations().getDestructiveHint());
+            annotations.setIdempotentHint(dt.getAnnotations().getIdempotentHint());
+            annotations.setOpenWorldHint(dt.getAnnotations().getOpenWorldHint());
+            info.setAnnotations(annotations);
         }
-        var result = new McpToolRuleListDTO();
-        result.setRules(ruleMapper.map(rules));
-        return Response.ok(result).build();
+        DangerLevel auto = dangerClassificationService.classify(dt.getName(), dt.getDescription(),
+                dt.getAnnotations() != null ? dt.getAnnotations().getReadOnlyHint() : null,
+                dt.getAnnotations() != null ? dt.getAnnotations().getDestructiveHint() : null,
+                dt.getAnnotations() != null ? dt.getAnnotations().getIdempotentHint() : null,
+                dt.getAnnotations() != null ? dt.getAnnotations().getOpenWorldHint() : null);
+        info.setAutoDangerLevel(DangerLevelDTO.fromValue(auto.name()));
+        return info;
     }
 
-    @Override
-    public Response createMcpToolRule(String toolId, CreateMcpToolRuleRequestDTO createMcpToolRuleRequestDTO) {
-        Tool tool = toolDAO.findById(toolId);
-        GlobalTool globalTool = null;
-        if (tool == null) {
-            globalTool = globalToolDAO.findById(toolId);
-            if (globalTool == null) {
-                return Response.status(Response.Status.NOT_FOUND).build();
-            }
-        }
-        var rule = ruleMapper.create(createMcpToolRuleRequestDTO);
-        rule.setTool(tool);
-        rule.setGlobalTool(globalTool);
-        rule = mcpToolRuleDAO.create(rule);
-        return Response.status(Response.Status.CREATED).entity(ruleMapper.map(rule)).build();
-    }
-
-    @Override
-    public Response updateMcpToolRule(String toolId, String ruleId,
-            UpdateMcpToolRuleRequestDTO updateMcpToolRuleRequestDTO) {
-        var rule = mcpToolRuleDAO.findById(ruleId);
-        if (rule == null || !belongsToTool(rule, toolId)) {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        ruleMapper.update(rule, updateMcpToolRuleRequestDTO);
-        rule = mcpToolRuleDAO.update(rule);
-        return Response.ok(ruleMapper.map(rule)).build();
-    }
-
-    @Override
-    public Response deleteMcpToolRule(String toolId, String ruleId) {
-        var rule = mcpToolRuleDAO.findById(ruleId);
-        if (rule == null || !belongsToTool(rule, toolId)) {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        mcpToolRuleDAO.deleteQueryById(ruleId);
-        return Response.status(Response.Status.NO_CONTENT).build();
-    }
-
-    private List<McpToolRule> findRules(String toolId) {
-        if (toolDAO.findById(toolId) != null) {
-            return mcpToolRuleDAO.findByToolId(toolId);
-        }
-        if (globalToolDAO.findById(toolId) != null) {
-            return mcpToolRuleDAO.findByGlobalToolId(toolId);
-        }
-        return null;
-    }
-
-    private boolean belongsToTool(McpToolRule rule, String toolId) {
-        if (rule.getTool() != null && toolId.equals(rule.getTool().getId())) {
-            return true;
-        }
-        return rule.getGlobalTool() != null && toolId.equals(rule.getGlobalTool().getId());
+    private AgentMcpToolRuleDTO agentRuleToDTO(AgentMcpToolRule rule) {
+        var dto = new AgentMcpToolRuleDTO();
+        dto.setId(rule.getId());
+        dto.setModificationCount(rule.getModificationCount());
+        dto.setToolName(rule.getToolName());
+        dto.setToolDescription(rule.getToolDescription());
+        dto.setAllowed(gen.org.tkit.onecx.ai.provider.rs.internal.model.ToolPermissionDTO.fromValue(
+                rule.getAllowed().name()));
+        return dto;
     }
 
     @Override

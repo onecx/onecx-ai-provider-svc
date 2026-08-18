@@ -270,6 +270,12 @@ paths:
           required: true
           schema:
             type: string
+        - name: agentId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: When provided, existingRule in the response references AgentMcpToolRule for this agent
       responses:
         "200":
           description: OK
@@ -280,15 +286,20 @@ paths:
         "404":
           description: Tool not found
 
-  /internal/tools/{toolId}/mcp-tool-rules:
+  /internal/agents/{agentId}/tools/{toolId}/mcp-tool-rules:
     get:
       security:
         - oauth2: [ ocx-ai:all, ocx-ai:read ]
       tags:
-        - toolInternal
-      description: Get MCP tool rules for a Tool
-      operationId: getMcpToolRules
+        - agentInternal
+      description: Get MCP tool rules for an Agent and Tool
+      operationId: getAgentMcpToolRules
       parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
         - name: toolId
           in: path
           required: true
@@ -300,15 +311,22 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/McpToolRuleList'
+                $ref: '#/components/schemas/AgentMcpToolRuleList'
+        "404":
+          description: Agent or Tool not found
     post:
       security:
         - oauth2: [ ocx-ai:all, ocx-ai:write ]
       tags:
-        - toolInternal
-      description: Create an MCP tool rule for a Tool
-      operationId: createMcpToolRule
+        - agentInternal
+      description: Create an MCP tool rule for an Agent and Tool
+      operationId: createAgentMcpToolRule
       parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
         - name: toolId
           in: path
           required: true
@@ -319,24 +337,31 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateMcpToolRuleRequest'
+              $ref: '#/components/schemas/CreateAgentMcpToolRuleRequest'
       responses:
         "201":
           description: Rule created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/McpToolRule'
+                $ref: '#/components/schemas/AgentMcpToolRule'
+        "404":
+          description: Agent or Tool not found
 
-  /internal/tools/{toolId}/mcp-tool-rules/{ruleId}:
+  /internal/agents/{agentId}/tools/{toolId}/mcp-tool-rules/{ruleId}:
     put:
       security:
         - oauth2: [ ocx-ai:all, ocx-ai:write ]
       tags:
-        - toolInternal
-      description: Update an MCP tool rule
-      operationId: updateMcpToolRule
+        - agentInternal
+      description: Update an MCP tool rule for an Agent and Tool
+      operationId: updateAgentMcpToolRule
       parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
         - name: toolId
           in: path
           required: true
@@ -352,24 +377,29 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateMcpToolRuleRequest'
+              $ref: '#/components/schemas/UpdateAgentMcpToolRuleRequest'
       responses:
         "200":
           description: Rule updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/McpToolRule'
+                $ref: '#/components/schemas/AgentMcpToolRule'
         "404":
           description: Rule not found
     delete:
       security:
         - oauth2: [ ocx-ai:all, ocx-ai:delete ]
       tags:
-        - toolInternal
-      description: Delete an MCP tool rule
-      operationId: deleteMcpToolRule
+        - agentInternal
+      description: Delete an MCP tool rule for an Agent and Tool
+      operationId: deleteAgentMcpToolRule
       parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
         - name: toolId
           in: path
           required: true
@@ -2089,13 +2119,14 @@ components:
       enum:
         - ALLOW
         - DENY
+        - ALWAYS_ASK
     DangerLevel:
       type: string
       enum:
         - SAFE
         - WARNING
         - DANGEROUS
-    McpToolRule:
+    AgentMcpToolRule:
       type: object
       properties:
         id:
@@ -2108,18 +2139,14 @@ components:
           type: string
         allowed:
           $ref: '#/components/schemas/ToolPermission'
-        dangerLevel:
-          $ref: '#/components/schemas/DangerLevel'
-        autoDangerLevel:
-          $ref: '#/components/schemas/DangerLevel'
-    McpToolRuleList:
+    AgentMcpToolRuleList:
       type: object
       properties:
         rules:
           type: array
           items:
-            $ref: '#/components/schemas/McpToolRule'
-    CreateMcpToolRuleRequest:
+            $ref: '#/components/schemas/AgentMcpToolRule'
+    CreateAgentMcpToolRuleRequest:
       type: object
       required:
         - toolName
@@ -2131,11 +2158,7 @@ components:
           type: string
         allowed:
           $ref: '#/components/schemas/ToolPermission'
-        dangerLevel:
-          $ref: '#/components/schemas/DangerLevel'
-        autoDangerLevel:
-          $ref: '#/components/schemas/DangerLevel'
-    UpdateMcpToolRuleRequest:
+    UpdateAgentMcpToolRuleRequest:
       type: object
       required:
         - modificationCount
@@ -2144,8 +2167,6 @@ components:
           type: integer
         allowed:
           $ref: '#/components/schemas/ToolPermission'
-        dangerLevel:
-          $ref: '#/components/schemas/DangerLevel'
     DangerPattern:
       type: object
       properties:
@@ -2214,7 +2235,7 @@ components:
         autoDangerLevel:
           $ref: '#/components/schemas/DangerLevel'
         existingRule:
-          $ref: '#/components/schemas/McpToolRule'
+          $ref: '#/components/schemas/AgentMcpToolRule'
         orphaned:
           type: boolean
     DiscoveredToolInfoList:

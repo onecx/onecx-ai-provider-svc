@@ -8,15 +8,15 @@ import java.util.stream.Collectors;
 import jakarta.inject.Inject;
 
 import org.mapstruct.Mapper;
-import org.tkit.onecx.ai.provider.domain.daos.McpToolRuleDAO;
+import org.tkit.onecx.ai.provider.domain.daos.AgentMcpToolRuleDAO;
 import org.tkit.onecx.ai.provider.domain.models.AbstractTool;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
+import org.tkit.onecx.ai.provider.domain.models.AgentMcpToolRule;
 import org.tkit.onecx.ai.provider.domain.models.ExternalAgent;
 import org.tkit.onecx.ai.provider.domain.models.GlobalScaffold;
 import org.tkit.onecx.ai.provider.domain.models.GlobalSkill;
 import org.tkit.onecx.ai.provider.domain.models.GlobalTool;
-import org.tkit.onecx.ai.provider.domain.models.McpToolRule;
 import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
 import org.tkit.onecx.ai.provider.domain.models.Scaffold;
@@ -45,7 +45,7 @@ import gen.org.tkit.onecx.ai.provider.runtime.client.model.ToolSnapshot;
 public abstract class RuntimeSnapshotMapper {
 
     @Inject
-    McpToolRuleDAO mcpToolRuleDAO;
+    AgentMcpToolRuleDAO agentMcpToolRuleDAO;
 
     public RuntimeChatRequest toRuntimeRequest(Agent agent, ChatRequestDTOV1 chatRequestDTO,
             List<AgentGroupSnapshot> groups) {
@@ -238,8 +238,8 @@ public abstract class RuntimeSnapshotMapper {
 
     public List<ToolSnapshot> mapTools(Agent agent) {
         var tools = new ArrayList<ToolSnapshot>();
-        Map<String, List<McpToolRule>> rulesByToolId = rulesByToolId(agent);
-        Map<String, List<McpToolRule>> rulesByGlobalToolId = rulesByGlobalToolId(agent);
+        Map<String, List<AgentMcpToolRule>> rulesByToolId = agentRulesByToolId(agent);
+        Map<String, List<AgentMcpToolRule>> rulesByGlobalToolId = agentRulesByGlobalToolId(agent);
         if (agent.getTools() != null) {
             tools.addAll(agent.getTools().stream()
                     .map(tool -> mapTool(tool, rulesByToolId.getOrDefault(tool.getId(), List.of())))
@@ -253,33 +253,35 @@ public abstract class RuntimeSnapshotMapper {
         return tools;
     }
 
-    private Map<String, List<McpToolRule>> rulesByToolId(Agent agent) {
+    private Map<String, List<AgentMcpToolRule>> agentRulesByToolId(Agent agent) {
         if (agent.getTools() == null || agent.getTools().isEmpty()) {
             return Map.of();
         }
         var ids = agent.getTools().stream().map(Tool::getId).toList();
-        return mcpToolRuleDAO.findByToolIds(ids).stream()
+        return agentMcpToolRuleDAO.findByAgentAndToolIds(agent.getId(), ids).stream()
+                .filter(rule -> rule.getTool() != null)
                 .collect(Collectors.groupingBy(rule -> rule.getTool().getId()));
     }
 
-    private Map<String, List<McpToolRule>> rulesByGlobalToolId(Agent agent) {
+    private Map<String, List<AgentMcpToolRule>> agentRulesByGlobalToolId(Agent agent) {
         if (agent.getGlobalTools() == null || agent.getGlobalTools().isEmpty()) {
             return Map.of();
         }
         var ids = agent.getGlobalTools().stream().map(GlobalTool::getId).toList();
-        return mcpToolRuleDAO.findByGlobalToolIds(ids).stream()
+        return agentMcpToolRuleDAO.findByAgentAndGlobalToolIds(agent.getId(), ids).stream()
+                .filter(rule -> rule.getGlobalTool() != null)
                 .collect(Collectors.groupingBy(rule -> rule.getGlobalTool().getId()));
     }
 
-    public ToolSnapshot mapTool(Tool tool, List<McpToolRule> rules) {
+    public ToolSnapshot mapTool(Tool tool, List<AgentMcpToolRule> rules) {
         return buildToolSnapshot(tool, rules);
     }
 
-    public ToolSnapshot mapGlobalTool(GlobalTool tool, List<McpToolRule> rules) {
+    public ToolSnapshot mapGlobalTool(GlobalTool tool, List<AgentMcpToolRule> rules) {
         return buildToolSnapshot(tool, rules);
     }
 
-    private ToolSnapshot buildToolSnapshot(AbstractTool tool, List<McpToolRule> rules) {
+    private ToolSnapshot buildToolSnapshot(AbstractTool tool, List<AgentMcpToolRule> rules) {
         var snapshot = new ToolSnapshot();
         snapshot.setName(tool.getName());
         snapshot.setDescription(tool.getDescription());
@@ -294,7 +296,7 @@ public abstract class RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    private List<ToolRuleSnapshot> mapRules(List<McpToolRule> rules) {
+    private List<ToolRuleSnapshot> mapRules(List<AgentMcpToolRule> rules) {
         if (rules == null || rules.isEmpty()) {
             return List.of();
         }
@@ -303,9 +305,6 @@ public abstract class RuntimeSnapshotMapper {
             snapshot.setToolName(rule.getToolName());
             snapshot.setAllowed(rule.getAllowed() != null
                     ? ToolRuleSnapshot.AllowedEnum.fromString(rule.getAllowed().name())
-                    : null);
-            snapshot.setDangerLevel(rule.getDangerLevel() != null
-                    ? ToolRuleSnapshot.DangerLevelEnum.fromString(rule.getDangerLevel().name())
                     : null);
             return snapshot;
         }).toList();

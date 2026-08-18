@@ -5,20 +5,20 @@ import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
-import org.tkit.onecx.ai.provider.domain.models.McpToolRule;
+import org.tkit.onecx.ai.provider.domain.models.AgentMcpToolRule;
 import org.tkit.quarkus.rs.mappers.OffsetDateTimeMapper;
 
-import gen.org.tkit.onecx.ai.provider.rs.internal.model.CreateMcpToolRuleRequestDTO;
-import gen.org.tkit.onecx.ai.provider.rs.internal.model.McpToolRuleDTO;
-import gen.org.tkit.onecx.ai.provider.rs.internal.model.UpdateMcpToolRuleRequestDTO;
+import gen.org.tkit.onecx.ai.provider.rs.internal.model.AgentMcpToolRuleDTO;
+import gen.org.tkit.onecx.ai.provider.rs.internal.model.CreateAgentMcpToolRuleRequestDTO;
+import gen.org.tkit.onecx.ai.provider.rs.internal.model.UpdateAgentMcpToolRuleRequestDTO;
 
 @Mapper(uses = { OffsetDateTimeMapper.class })
-public interface McpToolRuleMapper {
+public interface AgentMcpToolRuleMapper {
 
     @Mapping(target = "id", source = "id")
-    McpToolRuleDTO map(McpToolRule rule);
+    AgentMcpToolRuleDTO map(AgentMcpToolRule rule);
 
-    List<McpToolRuleDTO> map(List<McpToolRule> rules);
+    List<AgentMcpToolRuleDTO> map(List<AgentMcpToolRule> rules);
 
     @Mapping(target = "persisted", ignore = true)
     @Mapping(target = "modificationUser", ignore = true)
@@ -29,9 +29,10 @@ public interface McpToolRuleMapper {
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     @Mapping(target = "tenantId", ignore = true)
+    @Mapping(target = "agent", ignore = true)
     @Mapping(target = "tool", ignore = true)
     @Mapping(target = "globalTool", ignore = true)
-    McpToolRule create(CreateMcpToolRuleRequestDTO dto);
+    AgentMcpToolRule create(CreateAgentMcpToolRuleRequestDTO dto);
 
     @Mapping(target = "persisted", ignore = true)
     @Mapping(target = "modificationUser", ignore = true)
@@ -41,10 +42,10 @@ public interface McpToolRuleMapper {
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     @Mapping(target = "tenantId", ignore = true)
+    @Mapping(target = "agent", ignore = true)
     @Mapping(target = "tool", ignore = true)
     @Mapping(target = "globalTool", ignore = true)
     @Mapping(target = "toolName", ignore = true)
     @Mapping(target = "toolDescription", ignore = true)
-    @Mapping(target = "autoDangerLevel", ignore = true)
-    void update(@MappingTarget McpToolRule rule, UpdateMcpToolRuleRequestDTO dto);
+    void update(@MappingTarget AgentMcpToolRule rule, UpdateAgentMcpToolRuleRequestDTO dto);
 }

@@ -10,7 +10,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import org.hibernate.annotations.TenantId;
-import org.tkit.onecx.ai.provider.domain.models.enums.DangerLevel;
 import org.tkit.onecx.ai.provider.domain.models.enums.ToolPermission;
 import org.tkit.quarkus.jpa.models.TraceableEntity;
 
@@ -20,15 +19,20 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "MCP_TOOL_RULE", indexes = {
-        @Index(name = "idx_mcp_tool_rule_tool", columnList = "tool_id"),
-        @Index(name = "idx_mcp_tool_rule_global_tool", columnList = "global_tool_id")
+@Table(name = "AGENT_MCP_TOOL_RULE", indexes = {
+        @Index(name = "idx_agent_mcp_tool_rule_agent", columnList = "agent_id"),
+        @Index(name = "idx_agent_mcp_tool_rule_tool", columnList = "tool_id"),
+        @Index(name = "idx_agent_mcp_tool_rule_global_tool", columnList = "global_tool_id")
 })
-public class McpToolRule extends TraceableEntity {
+public class AgentMcpToolRule extends TraceableEntity {
 
     @TenantId
     @Column(name = "TENANT_ID", nullable = false)
     private String tenantId;
+
+    @ManyToOne
+    @JoinColumn(name = "AGENT_ID", nullable = false)
+    private Agent agent;
 
     @ManyToOne
     @JoinColumn(name = "TOOL_ID")
@@ -47,12 +51,4 @@ public class McpToolRule extends TraceableEntity {
     @Column(name = "ALLOWED", nullable = false)
     @Enumerated(EnumType.STRING)
     private ToolPermission allowed;
-
-    @Column(name = "DANGER_LEVEL")
-    @Enumerated(EnumType.STRING)
-    private DangerLevel dangerLevel;
-
-    @Column(name = "AUTO_DANGER_LEVEL")
-    @Enumerated(EnumType.STRING)
-    private DangerLevel autoDangerLevel;
 }
