@@ -97,6 +97,11 @@ public class ToolRestController implements ToolInternalApi {
 
         List<DiscoveredTool> discovered;
         try (Response response = providerRuntimeClient.discoverTools(request)) {
+            if (response.getStatus() != Response.Status.OK.getStatusCode()) {
+                log.warn("Runtime tool discovery failed for tool '{}': runtime returned status {}",
+                        toolId, response.getStatus());
+                return Response.status(Response.Status.BAD_GATEWAY).build();
+            }
             var body = response.readEntity(ToolDiscoveryResponse.class);
             discovered = body != null && body.getTools() != null ? body.getTools() : List.of();
         }
