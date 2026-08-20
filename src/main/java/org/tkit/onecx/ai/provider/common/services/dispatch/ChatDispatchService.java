@@ -42,7 +42,12 @@ public class ChatDispatchService {
 
     public Response chat(ChatRequestDTOV1 chatRequestDTO) {
         log.info("Received chat request: {}", chatRequestDTO);
-        var agent = agentService.findAgentByRequestContext(chatRequestDTO.getRequestContext());
+        Agent agent;
+        if (chatRequestDTO.getRequestContext() != null && chatRequestDTO.getRequestContext().getAgentId() != null) {
+            agent = agentDAO.findById(chatRequestDTO.getRequestContext().getAgentId());
+        } else {
+            agent = agentService.findAgentByRequestContext(chatRequestDTO.getRequestContext());
+        }
         if (agent == null) {
             log.error("No agent found for request context: {}", chatRequestDTO.getRequestContext());
             return Response.status(Response.Status.NOT_FOUND)

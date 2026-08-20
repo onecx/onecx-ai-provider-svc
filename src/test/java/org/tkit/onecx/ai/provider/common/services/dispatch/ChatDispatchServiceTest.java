@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,6 +29,7 @@ import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.RequestContextDTOV1;
 import gen.org.tkit.onecx.ai.provider.runtime.client.api.RuntimeInternalApi;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeChatRequest;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeChatResponse;
@@ -235,5 +237,36 @@ class ChatDispatchServiceTest extends AbstractTest {
         try (var response = chatDispatchService.chat(request)) {
             assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
         }
+    }
+
+    @Test
+    void chat_agentIdInRequestContext_usesAgentDaoLookup() {
+        var provider = new Provider();
+        provider.setType(ProviderType.OLLAMA);
+        var model = new Model();
+        model.setProvider(provider);
+        model.setModelIdentifier("mistral");
+        var agent = new Agent();
+        agent.setModel(model);
+
+        var requestContext = new RequestContextDTOV1();
+        requestContext.setAgentId("agent-1");
+
+        var request = new ChatRequestDTOV1();
+        request.setRequestContext(requestContext);
+
+        var runtimeResponse = new RuntimeChatResponse();
+        runtimeResponse.setMessage("reply");
+
+        when(agentDAO.findById("agent-1")).thenReturn(agent);
+        when(providerRuntimeClient.chat(any()))
+                .thenReturn(Response.ok(runtimeResponse).build());
+
+        try (var response = chatDispatchService.chat(request)) {
+            assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+        }
+
+        verify(agentDAO).findById("agent-1");
+        verify(agentService, never()).findAgentByRequestContext(any());
     }
 }
