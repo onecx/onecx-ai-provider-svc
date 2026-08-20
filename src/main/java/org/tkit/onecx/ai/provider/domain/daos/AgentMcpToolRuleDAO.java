@@ -31,7 +31,9 @@ public class AgentMcpToolRuleDAO extends AbstractDAO<AgentMcpToolRule> {
             var root = cq.from(AgentMcpToolRule.class);
             cq.where(cb.and(
                     cb.equal(root.get("agent").get("id"), agentId),
-                    cb.equal(root.get("tool").get("id"), toolId)));
+                    cb.or(
+                            cb.equal(root.get("tool").get("id"), toolId),
+                            cb.equal(root.get("globalTool").get("id"), toolId))));
             return this.getEntityManager().createQuery(cq).getResultList();
         } catch (Exception ex) {
             throw new DAOException(ErrorKeys.ERROR_FIND_RULES_BY_AGENT_AND_TOOL_ID, ex);

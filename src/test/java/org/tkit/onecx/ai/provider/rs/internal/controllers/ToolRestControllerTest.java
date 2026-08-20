@@ -31,7 +31,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .body(dto)
-                .post("/tools")
+                .post()
                 .then()
                 .statusCode(CREATED.getStatusCode())
                 .extract()
@@ -52,7 +52,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .body(criteria)
-                .post("/tools/search")
+                .post("/search")
                 .then()
                 .statusCode(OK.getStatusCode())
                 .extract()
@@ -67,7 +67,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .body(criteria)
-                .post("/tools/search")
+                .post("/search")
                 .then()
                 .statusCode(OK.getStatusCode())
                 .extract()
@@ -83,14 +83,14 @@ class ToolRestControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .pathParam("id", "tool-none-exists-id")
-                .get("/tools/{id}")
+                .get("/{id}")
                 .then().statusCode(NOT_FOUND.getStatusCode());
 
         var dto = given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .pathParam("id", "tool-11-111")
-                .get("/tools/{id}")
+                .get("/{id}")
                 .then().statusCode(OK.getStatusCode())
                 .extract().as(ToolDTO.class);
 
@@ -109,7 +109,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .body(create)
-                .post("/tools")
+                .post()
                 .then()
                 .statusCode(CREATED.getStatusCode())
                 .extract().as(ToolDTO.class);
@@ -118,14 +118,14 @@ class ToolRestControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .pathParam("id", created.getId())
-                .delete("/tools/{id}")
+                .delete("/{id}")
                 .then().statusCode(NO_CONTENT.getStatusCode());
 
         given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .pathParam("id", created.getId())
-                .get("/tools/{id}")
+                .get("/{id}")
                 .then().statusCode(NOT_FOUND.getStatusCode());
     }
 
@@ -139,7 +139,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .contentType(APPLICATION_JSON)
                 .body(create)
-                .post("/tools")
+                .post()
                 .then().statusCode(CREATED.getStatusCode())
                 .extract().as(ToolDTO.class);
 
@@ -172,7 +172,7 @@ class ToolRestControllerTest extends AbstractTest {
         given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .pathParam("id", createdTool.getId())
-                .delete("/tools/{id}")
+                .delete("/{id}")
                 .then().statusCode(NO_CONTENT.getStatusCode());
 
         // rules are gone
@@ -197,7 +197,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .contentType(APPLICATION_JSON)
                 .body(dto)
                 .pathParam("id", "does-not-exists")
-                .put("/tools/{id}")
+                .put("/{id}")
                 .then().statusCode(BAD_REQUEST.getStatusCode());
 
         dto.setModificationCount(0);
@@ -209,7 +209,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .contentType(APPLICATION_JSON)
                 .body(dto)
                 .pathParam("id", "does-not-exists")
-                .put("/tools/{id}")
+                .put("/{id}")
                 .then().statusCode(NOT_FOUND.getStatusCode());
 
         var updated = given()
@@ -217,7 +217,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .contentType(APPLICATION_JSON)
                 .body(dto)
                 .pathParam("id", "tool-11-111")
-                .put("/tools/{id}")
+                .put("/{id}")
                 .then().statusCode(OK.getStatusCode())
                 .extract().as(ToolDTO.class);
 
@@ -230,7 +230,7 @@ class ToolRestControllerTest extends AbstractTest {
                 .contentType(APPLICATION_JSON)
                 .body(dto)
                 .pathParam("id", "tool-11-111")
-                .put("/tools/{id}")
+                .put("/{id}")
                 .then().statusCode(BAD_REQUEST.getStatusCode());
     }
 }
