@@ -14,7 +14,36 @@ tags:
   - name: skillInternal
   - name: agentGroupInternal
   - name: externalAgentInternal
+  - name: dispatchInternal
 paths:
+  /internal/dispatch/chat:
+    post:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags:
+        - dispatchInternal
+      summary: Chat with AI
+      operationId: chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessage'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+
   /internal/agents:
     post:
       security:
@@ -980,6 +1009,54 @@ components:
           enum: [ APP_ID ]
         value:
           type: string
+    ChatRequest:
+      type: object
+      required:
+        - chatMessage
+      properties:
+        requestContext:
+          $ref: '#/components/schemas/RequestContext'
+        chatMessage:
+          $ref: '#/components/schemas/ChatMessage'
+        conversation:
+          $ref: '#/components/schemas/Conversation'
+    RequestContext:
+      type: object
+      properties:
+        filter:
+          $ref: '#/components/schemas/AgentFilter'
+        agentId:
+          type: string
+        aiContext:
+          type: array
+          items:
+            type: string
+    ChatMessage:
+      type: object
+      properties:
+        conversationId:
+          type: string
+        message:
+          type: string
+          maxLength: 10000
+        type:
+          type: string
+          enum: [ ASSISTANT, SYSTEM, USER, ACTION ]
+        creationDate:
+          type: integer
+          format: int64
+    Conversation:
+      type: object
+      properties:
+        conversationId:
+          type: string
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+        conversationType:
+          type: string
+          enum: [ Q_AND_A ]
     AgentAbstract:
       type: object
       properties:
