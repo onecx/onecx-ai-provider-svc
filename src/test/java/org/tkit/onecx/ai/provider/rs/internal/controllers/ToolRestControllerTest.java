@@ -336,6 +336,26 @@ class ToolRestControllerTest extends AbstractTest {
     }
 
     @Test
+    void getDiscoveredTools_nullBody_returnsEmptyList() {
+        // covers line 115 branch: body == null → else → List.of()
+        mockServerClient.when(request().withPath("/ai/internal/runtime/tools/discover").withMethod(HttpMethod.POST))
+                .withId(MOCK_ID)
+                .respond(httpRequest -> response().withStatusCode(OK.getStatusCode())
+                        .withContentType(MediaType.APPLICATION_JSON));
+
+        var result = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .pathParam("toolId", "tool-11-111")
+                .post("/{toolId}/discovered-tools")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(DiscoveredToolInfoListDTO.class);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getTools()).isNotNull().isEmpty();
+    }
+
+    @Test
     void getDiscoveredTools_runtimeError_returnsBadGateway() {
         // covers BAD_GATEWAY branch: runtime returns non-200 (204 No Content
         // avoids ClientWebApplicationException which is thrown for 4xx/5xx
