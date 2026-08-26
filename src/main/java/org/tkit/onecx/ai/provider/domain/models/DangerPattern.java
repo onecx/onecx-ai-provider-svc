@@ -27,4 +27,14 @@ public class DangerPattern extends TraceableEntity {
 
     @Column(name = "DESCRIPTION", length = 1024)
     private String description;
+
+    @Override
+    public boolean equals(Object o) {
+        return super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
 }

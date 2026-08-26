@@ -47,10 +47,9 @@ public class DangerClassificationService {
             if (pattern.getPattern() == null || pattern.getDangerLevel() == null) {
                 continue;
             }
-            if (matches(pattern.getPattern(), toolName) || matches(pattern.getPattern(), toolDescription)) {
-                if (result == null || pattern.getDangerLevel().ordinal() > result.ordinal()) {
-                    result = pattern.getDangerLevel();
-                }
+            if ((matches(pattern.getPattern(), toolName) || matches(pattern.getPattern(), toolDescription))
+                    && (result == null || pattern.getDangerLevel().ordinal() > result.ordinal())) {
+                result = pattern.getDangerLevel();
             }
         }
         return result;

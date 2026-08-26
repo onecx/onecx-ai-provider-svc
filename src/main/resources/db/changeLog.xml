@@ -7,4 +7,5 @@
     <include relativeToChangelogFile="true" file="v1/2026-08-07-mcp-tool-rules.xml"/>
     <include relativeToChangelogFile="true" file="v1/2026-08-18-agent-mcp-tool-rules.xml"/>
     <include relativeToChangelogFile="true" file="v1/2026-08-19-drop-mcp-tool-rules.xml"/>
+    <include relativeToChangelogFile="true" file="v1/2026-08-25-agent-mcp-tool-rule-agent-nullable.xml"/>
 </databaseChangeLog>

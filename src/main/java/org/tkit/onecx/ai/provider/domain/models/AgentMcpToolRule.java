@@ -31,7 +31,7 @@ public class AgentMcpToolRule extends TraceableEntity {
     private String tenantId;
 
     @ManyToOne
-    @JoinColumn(name = "AGENT_ID", nullable = false)
+    @JoinColumn(name = "AGENT_ID")
     private Agent agent;
 
     @ManyToOne
@@ -51,4 +51,14 @@ public class AgentMcpToolRule extends TraceableEntity {
     @Column(name = "ALLOWED", nullable = false)
     @Enumerated(EnumType.STRING)
     private ToolPermission allowed;
+
+    @Override
+    public boolean equals(Object o) {
+        return super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
 }

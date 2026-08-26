@@ -24,7 +24,7 @@ class ToolDAOQueryTest {
         criteria.setPageNumber(0);
         criteria.setPageSize(10);
 
-        assertThat(dao.findToolsByCriteria(criteria).getStream()).hasSize(2);
+        assertThat(dao.findToolsByCriteria(criteria).getStream()).hasSize(3);
 
         criteria.setType(ToolType.MCP);
         assertThat(dao.findToolsByCriteria(criteria).getStream()).hasSize(1);

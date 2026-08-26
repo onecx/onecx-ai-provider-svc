@@ -95,15 +95,27 @@ public class ToolRestController implements ToolInternalApi {
         request.setApiKey(tool.getApiKey());
         request.setAuthMode(tool.getAuthMode() != null ? tool.getAuthMode().name() : null);
 
-        List<DiscoveredTool> discovered;
+        Response.ResponseBuilder responseBuilder = null;
         try (Response response = providerRuntimeClient.discoverTools(request)) {
             if (response.getStatus() != Response.Status.OK.getStatusCode()) {
                 log.warn("Runtime tool discovery failed for tool '{}': runtime returned status {}",
                         toolId, response.getStatus());
-                return Response.status(Response.Status.BAD_GATEWAY).build();
+                responseBuilder = Response.status(Response.Status.BAD_GATEWAY);
+            } else {
+                var body = response.readEntity(ToolDiscoveryResponse.class);
+                responseBuilder = Response.ok(buildDiscoveredToolInfoList(body, agentId, toolId));
             }
-            var body = response.readEntity(ToolDiscoveryResponse.class);
-            discovered = body != null && body.getTools() != null ? body.getTools() : List.of();
+            return responseBuilder.build();
+        }
+    }
+
+    private DiscoveredToolInfoListDTO buildDiscoveredToolInfoList(
+            ToolDiscoveryResponse body, String agentId, String toolId) {
+        List<DiscoveredTool> discovered;
+        if (body != null && body.getTools() != null) {
+            discovered = body.getTools();
+        } else {
+            discovered = List.of();
         }
 
         var result = new DiscoveredToolInfoListDTO();
@@ -138,7 +150,7 @@ public class ToolRestController implements ToolInternalApi {
             }
         }
         result.setTools(infos);
-        return Response.ok(result).build();
+        return result;
     }
 
     private DiscoveredToolInfoDTO buildDiscoveredToolInfo(DiscoveredTool dt) {

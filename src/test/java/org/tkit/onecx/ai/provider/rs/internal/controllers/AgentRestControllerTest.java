@@ -464,4 +464,128 @@ class AgentRestControllerTest extends AbstractTest {
                 .delete("/{agentId}/tools/{toolId}/mcp-tool-rules/{ruleId}")
                 .then().statusCode(NOT_FOUND.getStatusCode());
     }
+
+    @Test
+    void globalToolRuleCrudTest() {
+        // create rule for a global tool (toolId not in ToolDAO → falls back to GlobalToolDAO)
+        var create = new CreateAgentMcpToolRuleRequestDTO();
+        create.setToolName("globalWrite");
+        create.setToolDescription("Global write tool");
+        create.setAllowed(ToolPermissionDTO.DENY);
+
+        var created = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(create)
+                .pathParam("agentId", "agent-22-222")
+                .pathParam("toolId", "gtool-11-111")
+                .post("/{agentId}/tools/{toolId}/mcp-tool-rules")
+                .then().statusCode(CREATED.getStatusCode())
+                .extract().as(AgentMcpToolRuleDTO.class);
+
+        assertThat(created.getId()).isNotNull();
+        assertThat(created.getToolName()).isEqualTo("globalWrite");
+
+        // update the global tool rule — covers agentRuleBelongsToAgentAndTool globalTool branch
+        var update = new UpdateAgentMcpToolRuleRequestDTO();
+        update.setModificationCount(0);
+        update.setAllowed(ToolPermissionDTO.ALLOW);
+
+        var updated = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(update)
+                .pathParam("agentId", "agent-22-222")
+                .pathParam("toolId", "gtool-11-111")
+                .pathParam("ruleId", created.getId())
+                .put("/{agentId}/tools/{toolId}/mcp-tool-rules/{ruleId}")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(AgentMcpToolRuleDTO.class);
+
+        assertThat(updated.getAllowed()).isEqualTo(ToolPermissionDTO.ALLOW);
+
+        // update with wrong agent — rule does not belong to this agent
+        given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(update)
+                .pathParam("agentId", "agent-11-111")
+                .pathParam("toolId", "gtool-11-111")
+                .pathParam("ruleId", created.getId())
+                .put("/{agentId}/tools/{toolId}/mcp-tool-rules/{ruleId}")
+                .then().statusCode(NOT_FOUND.getStatusCode());
+
+        // delete the global tool rule
+        given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .pathParam("agentId", "agent-22-222")
+                .pathParam("toolId", "gtool-11-111")
+                .pathParam("ruleId", created.getId())
+                .delete("/{agentId}/tools/{toolId}/mcp-tool-rules/{ruleId}")
+                .then().statusCode(NO_CONTENT.getStatusCode());
+    }
+
+    @Test
+    void deleteAgentMcpToolRule_returnsNotFound_whenToolIdDoesNotMatchAndNoGlobalTool() {
+        // rule-11-111 belongs to agent-11-111 with tool_id=tool-11-111 and no global_tool_id
+        // requesting delete with a different toolId → agentRuleBelongsToAgentAndTool returns false
+        given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .pathParam("agentId", "agent-11-111")
+                .pathParam("toolId", "tool-22-222")
+                .pathParam("ruleId", "rule-11-111")
+                .delete("/{agentId}/tools/{toolId}/mcp-tool-rules/{ruleId}")
+                .then().statusCode(NOT_FOUND.getStatusCode());
+    }
+
+    @Test
+    void deleteAgentMcpToolRule_returnsNotFound_whenRuleHasNoAgent() {
+        // rule-44-444 has no agent_id → agentRuleBelongsToAgentAndTool returns false at line 240
+        given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .pathParam("agentId", "agent-11-111")
+                .pathParam("toolId", "tool-11-111")
+                .pathParam("ruleId", "rule-44-444")
+                .delete("/{agentId}/tools/{toolId}/mcp-tool-rules/{ruleId}")
+                .then().statusCode(NOT_FOUND.getStatusCode());
+    }
+
+    @Test
+    void deleteAgentMcpToolRule_returnsNotFound_whenGlobalToolIdDoesNotMatch() {
+        // rule-33-333 belongs to agent-22-222 with global_tool_id=gtool-11-111, no tool_id
+        // requesting delete with correct agent but wrong toolId → globalTool != null but toolId doesn't match
+        given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .pathParam("agentId", "agent-22-222")
+                .pathParam("toolId", "tool-11-111")
+                .pathParam("ruleId", "rule-33-333")
+                .delete("/{agentId}/tools/{toolId}/mcp-tool-rules/{ruleId}")
+                .then().statusCode(NOT_FOUND.getStatusCode());
+    }
+
+    @Test
+    void deleteAgentMcpToolRule_returnsNoContent_whenGlobalToolMatches() {
+        // rule-33-333 belongs to agent-22-222 with global_tool_id=gtool-11-111, no tool_id
+        // requesting delete with correct agent and matching globalToolId → line 246 returns true → 204
+        given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .pathParam("agentId", "agent-22-222")
+                .pathParam("toolId", "gtool-11-111")
+                .pathParam("ruleId", "rule-33-333")
+                .delete("/{agentId}/tools/{toolId}/mcp-tool-rules/{ruleId}")
+                .then().statusCode(NO_CONTENT.getStatusCode());
+    }
+
+    @Test
+    void deleteAgentMcpToolRule_returnsNotFound_whenAgentIdDoesNotMatch() {
+        // rule-11-111 belongs to agent-11-111, requesting with agent-22-222
+        // → !agentId.equals(rule.getAgent().getId()) → line 240 returns false → NOT_FOUND
+        given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .pathParam("agentId", "agent-22-222")
+                .pathParam("toolId", "tool-11-111")
+                .pathParam("ruleId", "rule-11-111")
+                .delete("/{agentId}/tools/{toolId}/mcp-tool-rules/{ruleId}")
+                .then().statusCode(NOT_FOUND.getStatusCode());
+    }
 }

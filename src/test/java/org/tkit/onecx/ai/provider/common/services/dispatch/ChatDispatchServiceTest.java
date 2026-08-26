@@ -20,12 +20,16 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.tkit.onecx.ai.provider.common.services.agent.AgentService;
 import org.tkit.onecx.ai.provider.domain.daos.AgentDAO;
+import org.tkit.onecx.ai.provider.domain.daos.AgentMcpToolRuleDAO;
 import org.tkit.onecx.ai.provider.domain.daos.ExternalAgentDAO;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
+import org.tkit.onecx.ai.provider.domain.models.AgentMcpToolRule;
 import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
+import org.tkit.onecx.ai.provider.domain.models.Tool;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
+import org.tkit.onecx.ai.provider.domain.models.enums.ToolPermission;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
@@ -54,6 +58,9 @@ class ChatDispatchServiceTest extends AbstractTest {
 
     @InjectMock
     ExternalAgentDAO externalAgentDAO;
+
+    @InjectMock
+    AgentMcpToolRuleDAO agentMcpToolRuleDAO;
 
     @Test
     void chat_noAgentFound_returnsNotFound() {
@@ -268,5 +275,53 @@ class ChatDispatchServiceTest extends AbstractTest {
 
         verify(agentDAO).findById("agent-1");
         verify(agentService, never()).findAgentByRequestContext(any());
+    }
+
+    @Test
+    void chat_agentWithTools_mapsToolRulesFromDao() {
+        // Covers: RuntimeSnapshotMapper.agentRulesByToolId non-empty branch + mapRules non-empty branch
+        var provider = new Provider();
+        provider.setType(ProviderType.OLLAMA);
+        provider.setLlmUrl("http://ollama.local");
+        var model = new Model();
+        model.setProvider(provider);
+        model.setModelIdentifier("mistral");
+
+        var tool = new Tool();
+        tool.setId("tool-1");
+        tool.setName("searchTool");
+        tool.setType(org.tkit.onecx.ai.provider.domain.models.enums.ToolType.MCP);
+        tool.setUrl("http://mcp.local");
+
+        var agent = new Agent();
+        agent.setId("agent-1");
+        agent.setModel(model);
+        agent.setTools(Set.of(tool));
+
+        var rule = new AgentMcpToolRule();
+        rule.setTool(tool);
+        rule.setToolName("searchTool");
+        rule.setAllowed(ToolPermission.ALLOW);
+
+        when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
+        when(agentMcpToolRuleDAO.findByAgentAndToolIds("agent-1", java.util.List.of("tool-1")))
+                .thenReturn(java.util.List.of(rule));
+
+        var request = new ChatRequestDTOV1();
+        var runtimeResponse = new RuntimeChatResponse();
+        runtimeResponse.setMessage("ok");
+        when(providerRuntimeClient.chat(any()))
+                .thenReturn(Response.ok(runtimeResponse).build());
+
+        try (var response = chatDispatchService.chat(request)) {
+            assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+        }
+
+        var requestCaptor = ArgumentCaptor.forClass(RuntimeChatRequest.class);
+        verify(providerRuntimeClient).chat(requestCaptor.capture());
+        var snapshot = requestCaptor.getValue().getRootAgent();
+        assertThat(snapshot.getTools()).hasSize(1);
+        assertThat(snapshot.getTools().get(0).getToolRules()).hasSize(1);
+        assertThat(snapshot.getTools().get(0).getToolRules().get(0).getToolName()).isEqualTo("searchTool");
     }
 }

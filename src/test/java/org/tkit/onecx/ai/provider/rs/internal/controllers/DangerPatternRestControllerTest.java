@@ -5,6 +5,8 @@ import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.Response.Status.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import jakarta.ws.rs.core.Response.Status;
+
 import org.junit.jupiter.api.Test;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 import org.tkit.quarkus.security.test.GenerateKeycloakClient;
@@ -84,5 +86,57 @@ class DangerPatternRestControllerTest extends AbstractTest {
                 .pathParam("id", created.getId())
                 .delete("/{id}")
                 .then().statusCode(NOT_FOUND.getStatusCode());
+    }
+
+    @Test
+    void createDangerPattern_returnsBadRequest_whenPatternIsNull() {
+        var create = new CreateDangerPatternRequestDTO();
+        create.setPattern(null);
+        create.setDangerLevel(DangerLevelDTO.DANGEROUS);
+
+        given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(create)
+                .post()
+                .then().statusCode(Status.BAD_REQUEST.getStatusCode());
+    }
+
+    @Test
+    void updateDangerPattern_returnsConflict_whenModificationCountStale() {
+        var create = new CreateDangerPatternRequestDTO();
+        create.setPattern("purge2");
+        create.setDangerLevel(DangerLevelDTO.DANGEROUS);
+
+        var created = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(create)
+                .post()
+                .then().statusCode(CREATED.getStatusCode())
+                .extract().as(DangerPatternDTO.class);
+
+        // first update succeeds and increments modificationCount
+        var update = new UpdateDangerPatternRequestDTO();
+        update.setModificationCount(created.getModificationCount());
+        update.setPattern("purge2");
+        update.setDangerLevel(DangerLevelDTO.WARNING);
+
+        given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(update)
+                .pathParam("id", created.getId())
+                .put("/{id}")
+                .then().statusCode(OK.getStatusCode());
+
+        // second update with stale modificationCount → OptimisticLockException → 400
+        given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(update)
+                .pathParam("id", created.getId())
+                .put("/{id}")
+                .then().statusCode(BAD_REQUEST.getStatusCode());
     }
 }
