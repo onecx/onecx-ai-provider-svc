@@ -338,10 +338,12 @@ class ToolRestControllerTest extends AbstractTest {
     @Test
     void getDiscoveredTools_nullBody_returnsEmptyList() {
         // covers line 115 branch: body == null → else → List.of()
+        // JSON literal "null" deserializes to null (empty body would throw)
         mockServerClient.when(request().withPath("/ai/internal/runtime/tools/discover").withMethod(HttpMethod.POST))
                 .withId(MOCK_ID)
                 .respond(httpRequest -> response().withStatusCode(OK.getStatusCode())
-                        .withContentType(MediaType.APPLICATION_JSON));
+                        .withContentType(MediaType.APPLICATION_JSON)
+                        .withBody("null"));
 
         var result = given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
