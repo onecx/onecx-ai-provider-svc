@@ -16,6 +16,7 @@ import org.tkit.quarkus.jpa.models.TraceableEntity;
 import lombok.Getter;
 import lombok.Setter;
 
+@SuppressWarnings("squid:S2160")
 @Getter
 @Setter
 @Entity
