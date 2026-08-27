@@ -20,15 +20,12 @@ import org.tkit.onecx.ai.provider.domain.daos.GlobalToolDAO;
 import org.tkit.onecx.ai.provider.domain.daos.ToolDAO;
 import org.tkit.onecx.ai.provider.domain.models.AbstractTool;
 import org.tkit.onecx.ai.provider.domain.models.AgentMcpToolRule;
-import org.tkit.onecx.ai.provider.domain.models.enums.DangerLevel;
+import org.tkit.onecx.ai.provider.rs.internal.mappers.AgentMcpToolRuleMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ExceptionMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ToolMapper;
 
 import gen.org.tkit.onecx.ai.provider.rs.internal.ToolInternalApi;
-import gen.org.tkit.onecx.ai.provider.rs.internal.model.AgentMcpToolRuleDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.CreateToolRequestDTO;
-import gen.org.tkit.onecx.ai.provider.rs.internal.model.DangerLevelDTO;
-import gen.org.tkit.onecx.ai.provider.rs.internal.model.DiscoveredToolAnnotationsDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.DiscoveredToolInfoDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.DiscoveredToolInfoListDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.ProblemDetailResponseDTO;
@@ -36,7 +33,6 @@ import gen.org.tkit.onecx.ai.provider.rs.internal.model.ToolSearchCriteriaDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.UpdateToolRequestDTO;
 import gen.org.tkit.onecx.ai.provider.runtime.client.api.RuntimeInternalApi;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.DiscoveredTool;
-import gen.org.tkit.onecx.ai.provider.runtime.client.model.ToolDiscoveryRequest;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.ToolDiscoveryResponse;
 import lombok.extern.slf4j.Slf4j;
 
@@ -66,6 +62,9 @@ public class ToolRestController implements ToolInternalApi {
     @Inject
     ToolMapper mapper;
 
+    @Inject
+    AgentMcpToolRuleMapper agentRuleMapper;
+
     @Override
     public Response createTool(CreateToolRequestDTO createToolRequestDTO) {
         var tool = mapper.create(createToolRequestDTO);
@@ -90,10 +89,7 @@ public class ToolRestController implements ToolInternalApi {
         if (tool == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
-        var request = new ToolDiscoveryRequest();
-        request.setUrl(tool.getUrl());
-        request.setApiKey(tool.getApiKey());
-        request.setAuthMode(tool.getAuthMode() != null ? tool.getAuthMode().name() : null);
+        var request = mapper.mapDiscoveryRequest(tool);
 
         Response.ResponseBuilder responseBuilder = null;
         try (Response response = providerRuntimeClient.discoverTools(request)) {
@@ -131,10 +127,10 @@ public class ToolRestController implements ToolInternalApi {
                 .collect(Collectors.toSet());
 
         for (var dt : discovered) {
-            var info = buildDiscoveredToolInfo(dt);
+            var info = mapper.mapDiscoveredTool(dt, dangerClassificationService);
             AgentMcpToolRule rule = rulesByName.get(dt.getName());
             if (rule != null) {
-                info.setExistingRule(agentRuleToDTO(rule));
+                info.setExistingRule(agentRuleMapper.map(rule));
             }
             info.setOrphaned(false);
             infos.add(info);
@@ -144,45 +140,13 @@ public class ToolRestController implements ToolInternalApi {
                 var info = new DiscoveredToolInfoDTO();
                 info.setName(rule.getToolName());
                 info.setDescription(rule.getToolDescription());
-                info.setExistingRule(agentRuleToDTO(rule));
+                info.setExistingRule(agentRuleMapper.map(rule));
                 info.setOrphaned(true);
                 infos.add(info);
             }
         }
         result.setTools(infos);
         return result;
-    }
-
-    private DiscoveredToolInfoDTO buildDiscoveredToolInfo(DiscoveredTool dt) {
-        var info = new DiscoveredToolInfoDTO();
-        info.setName(dt.getName());
-        info.setDescription(dt.getDescription());
-        if (dt.getAnnotations() != null) {
-            var annotations = new DiscoveredToolAnnotationsDTO();
-            annotations.setReadOnlyHint(dt.getAnnotations().getReadOnlyHint());
-            annotations.setDestructiveHint(dt.getAnnotations().getDestructiveHint());
-            annotations.setIdempotentHint(dt.getAnnotations().getIdempotentHint());
-            annotations.setOpenWorldHint(dt.getAnnotations().getOpenWorldHint());
-            info.setAnnotations(annotations);
-        }
-        DangerLevel auto = dangerClassificationService.classify(dt.getName(), dt.getDescription(),
-                dt.getAnnotations() != null ? dt.getAnnotations().getReadOnlyHint() : null,
-                dt.getAnnotations() != null ? dt.getAnnotations().getDestructiveHint() : null,
-                dt.getAnnotations() != null ? dt.getAnnotations().getIdempotentHint() : null,
-                dt.getAnnotations() != null ? dt.getAnnotations().getOpenWorldHint() : null);
-        info.setAutoDangerLevel(DangerLevelDTO.fromValue(auto.name()));
-        return info;
-    }
-
-    private AgentMcpToolRuleDTO agentRuleToDTO(AgentMcpToolRule rule) {
-        var dto = new AgentMcpToolRuleDTO();
-        dto.setId(rule.getId());
-        dto.setModificationCount(rule.getModificationCount());
-        dto.setToolName(rule.getToolName());
-        dto.setToolDescription(rule.getToolDescription());
-        dto.setAllowed(gen.org.tkit.onecx.ai.provider.rs.internal.model.ToolPermissionDTO.fromValue(
-                rule.getAllowed().name()));
-        return dto;
     }
 
     @Override
