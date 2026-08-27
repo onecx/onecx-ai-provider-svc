@@ -51,14 +51,4 @@ public class AgentMcpToolRule extends TraceableEntity {
     @Column(name = "ALLOWED", nullable = false)
     @Enumerated(EnumType.STRING)
     private ToolPermission allowed;
-
-    @Override
-    public boolean equals(Object o) {
-        return super.equals(o);
-    }
-
-    @Override
-    public int hashCode() {
-        return super.hashCode();
-    }
 }

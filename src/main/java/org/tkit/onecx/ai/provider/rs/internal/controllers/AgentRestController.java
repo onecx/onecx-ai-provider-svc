@@ -206,10 +206,7 @@ public class AgentRestController implements AgentInternalApi {
                 return Response.status(Response.Status.NOT_FOUND).build();
             }
         }
-        var rule = agentRuleMapper.create(createAgentMcpToolRuleRequestDTO);
-        rule.setAgent(agent);
-        rule.setTool(tool);
-        rule.setGlobalTool(globalTool);
+        var rule = agentRuleMapper.create(createAgentMcpToolRuleRequestDTO, agent, tool, globalTool);
         rule = agentMcpToolRuleDAO.create(rule);
         return Response.status(Response.Status.CREATED).entity(agentRuleMapper.map(rule)).build();
     }

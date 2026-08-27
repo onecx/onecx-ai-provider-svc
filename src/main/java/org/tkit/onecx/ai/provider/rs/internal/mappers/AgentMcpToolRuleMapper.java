@@ -5,7 +5,10 @@ import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
+import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.AgentMcpToolRule;
+import org.tkit.onecx.ai.provider.domain.models.GlobalTool;
+import org.tkit.onecx.ai.provider.domain.models.Tool;
 import org.tkit.quarkus.rs.mappers.OffsetDateTimeMapper;
 
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.AgentMcpToolRuleDTO;
@@ -33,6 +36,24 @@ public interface AgentMcpToolRuleMapper {
     @Mapping(target = "tool", ignore = true)
     @Mapping(target = "globalTool", ignore = true)
     AgentMcpToolRule create(CreateAgentMcpToolRuleRequestDTO dto);
+
+    @Mapping(target = "persisted", ignore = true)
+    @Mapping(target = "modificationUser", ignore = true)
+    @Mapping(target = "modificationDate", ignore = true)
+    @Mapping(target = "modificationCount", ignore = true)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "creationUser", ignore = true)
+    @Mapping(target = "creationDate", ignore = true)
+    @Mapping(target = "controlTraceabilityManual", ignore = true)
+    @Mapping(target = "tenantId", ignore = true)
+    default AgentMcpToolRule create(CreateAgentMcpToolRuleRequestDTO dto, Agent agent, Tool tool,
+            GlobalTool globalTool) {
+        var rule = create(dto);
+        rule.setAgent(agent);
+        rule.setTool(tool);
+        rule.setGlobalTool(globalTool);
+        return rule;
+    }
 
     @Mapping(target = "persisted", ignore = true)
     @Mapping(target = "modificationUser", ignore = true)
