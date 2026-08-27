@@ -2,10 +2,17 @@ package org.tkit.onecx.ai.provider.rs.external.v1.mappers;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import jakarta.inject.Inject;
 
 import org.mapstruct.Mapper;
+import org.tkit.onecx.ai.provider.domain.daos.AgentMcpToolRuleDAO;
+import org.tkit.onecx.ai.provider.domain.models.AbstractTool;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
+import org.tkit.onecx.ai.provider.domain.models.AgentMcpToolRule;
 import org.tkit.onecx.ai.provider.domain.models.ExternalAgent;
 import org.tkit.onecx.ai.provider.domain.models.GlobalScaffold;
 import org.tkit.onecx.ai.provider.domain.models.GlobalSkill;
@@ -31,12 +38,16 @@ import gen.org.tkit.onecx.ai.provider.runtime.client.model.RequestContext;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeChatRequest;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.ScaffoldSnapshot;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.SkillSnapshot;
+import gen.org.tkit.onecx.ai.provider.runtime.client.model.ToolRuleSnapshot;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.ToolSnapshot;
 
 @Mapper(uses = OffsetDateTimeMapper.class)
-public interface RuntimeSnapshotMapper {
+public abstract class RuntimeSnapshotMapper {
 
-    default RuntimeChatRequest toRuntimeRequest(Agent agent, ChatRequestDTOV1 chatRequestDTO,
+    @Inject
+    AgentMcpToolRuleDAO agentMcpToolRuleDAO;
+
+    public RuntimeChatRequest toRuntimeRequest(Agent agent, ChatRequestDTOV1 chatRequestDTO,
             List<AgentGroupSnapshot> groups) {
         var request = new RuntimeChatRequest();
         request.setChatRequest(mapChatRequest(chatRequestDTO));
@@ -44,11 +55,11 @@ public interface RuntimeSnapshotMapper {
         return request;
     }
 
-    default AgentSnapshot mapAgent(Agent agent) {
+    public AgentSnapshot mapAgent(Agent agent) {
         return mapAgent(agent, List.of());
     }
 
-    default AgentSnapshot mapAgent(Agent agent, List<AgentGroupSnapshot> groups) {
+    public AgentSnapshot mapAgent(Agent agent, List<AgentGroupSnapshot> groups) {
         if (agent == null) {
             return null;
         }
@@ -65,7 +76,7 @@ public interface RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    default AgentGroupSnapshot mapGroup(AgentGroup group, List<AgentSnapshot> agents,
+    public AgentGroupSnapshot mapGroup(AgentGroup group, List<AgentSnapshot> agents,
             List<ExternalAgentSnapshot> externalAgents) {
         if (group == null) {
             return null;
@@ -81,7 +92,7 @@ public interface RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    default ExternalAgentSnapshot mapExternalAgent(ExternalAgent agent) {
+    public ExternalAgentSnapshot mapExternalAgent(ExternalAgent agent) {
         if (agent == null) {
             return null;
         }
@@ -95,7 +106,7 @@ public interface RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    default ChatMessageDTOV1 mapRuntimeChatMessage(String message, String conversationId) {
+    public ChatMessageDTOV1 mapRuntimeChatMessage(String message, String conversationId) {
         var chatMessage = new ChatMessageDTOV1();
         chatMessage.setMessage(message != null ? message : "");
         chatMessage.setType(ChatMessageDTOV1.TypeEnum.ASSISTANT);
@@ -104,7 +115,7 @@ public interface RuntimeSnapshotMapper {
         return chatMessage;
     }
 
-    default ChatRequest mapChatRequest(ChatRequestDTOV1 request) {
+    public ChatRequest mapChatRequest(ChatRequestDTOV1 request) {
         if (request == null) {
             return null;
         }
@@ -115,7 +126,7 @@ public interface RuntimeSnapshotMapper {
         return runtimeChatRequest;
     }
 
-    default RequestContext mapRequestContext(ChatRequestDTOV1 request) {
+    public RequestContext mapRequestContext(ChatRequestDTOV1 request) {
         if (request.getRequestContext() == null) {
             return null;
         }
@@ -124,7 +135,7 @@ public interface RuntimeSnapshotMapper {
         return requestContext;
     }
 
-    default Conversation mapConversation(ChatRequestDTOV1 request) {
+    public Conversation mapConversation(ChatRequestDTOV1 request) {
         if (request.getConversation() == null) {
             return null;
         }
@@ -139,7 +150,7 @@ public interface RuntimeSnapshotMapper {
         return conversation;
     }
 
-    default ChatMessage mapChatMessage(ChatMessageDTOV1 message) {
+    public ChatMessage mapChatMessage(ChatMessageDTOV1 message) {
         if (message == null) {
             return null;
         }
@@ -151,7 +162,7 @@ public interface RuntimeSnapshotMapper {
         return runtimeMessage;
     }
 
-    default ModelSnapshot mapModel(Model model) {
+    public ModelSnapshot mapModel(Model model) {
         if (model == null) {
             return null;
         }
@@ -164,7 +175,7 @@ public interface RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    default ProviderSnapshot mapProvider(Provider provider) {
+    public ProviderSnapshot mapProvider(Provider provider) {
         if (provider == null) {
             return null;
         }
@@ -178,7 +189,7 @@ public interface RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    default ScaffoldSnapshot mapScaffold(Scaffold scaffold) {
+    public ScaffoldSnapshot mapScaffold(Scaffold scaffold) {
         if (scaffold == null) {
             return null;
         }
@@ -196,7 +207,7 @@ public interface RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    default ScaffoldSnapshot mapGlobalScaffold(GlobalScaffold scaffold) {
+    public ScaffoldSnapshot mapGlobalScaffold(GlobalScaffold scaffold) {
         if (scaffold == null) {
             return null;
         }
@@ -209,7 +220,7 @@ public interface RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    default SkillSnapshot mapSkill(Skill skill) {
+    public SkillSnapshot mapSkill(Skill skill) {
         var snapshot = new SkillSnapshot();
         snapshot.setName(skill.getName());
         snapshot.setDescription(skill.getDescription());
@@ -217,7 +228,7 @@ public interface RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    default SkillSnapshot mapGlobalSkill(GlobalSkill skill) {
+    public SkillSnapshot mapGlobalSkill(GlobalSkill skill) {
         var snapshot = new SkillSnapshot();
         snapshot.setName(skill.getName());
         snapshot.setDescription(skill.getDescription());
@@ -225,18 +236,52 @@ public interface RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    default List<ToolSnapshot> mapTools(Agent agent) {
+    public List<ToolSnapshot> mapTools(Agent agent) {
         var tools = new ArrayList<ToolSnapshot>();
+        Map<String, List<AgentMcpToolRule>> rulesByToolId = agentRulesByToolId(agent);
+        Map<String, List<AgentMcpToolRule>> rulesByGlobalToolId = agentRulesByGlobalToolId(agent);
         if (agent.getTools() != null) {
-            tools.addAll(agent.getTools().stream().map(this::mapTool).toList());
+            tools.addAll(agent.getTools().stream()
+                    .map(tool -> mapTool(tool, rulesByToolId.getOrDefault(tool.getId(), List.of())))
+                    .toList());
         }
         if (agent.getGlobalTools() != null) {
-            tools.addAll(agent.getGlobalTools().stream().map(this::mapGlobalTool).toList());
+            tools.addAll(agent.getGlobalTools().stream()
+                    .map(tool -> mapGlobalTool(tool, rulesByGlobalToolId.getOrDefault(tool.getId(), List.of())))
+                    .toList());
         }
         return tools;
     }
 
-    default ToolSnapshot mapTool(Tool tool) {
+    private Map<String, List<AgentMcpToolRule>> agentRulesByToolId(Agent agent) {
+        if (agent.getTools() == null || agent.getTools().isEmpty()) {
+            return Map.of();
+        }
+        var ids = agent.getTools().stream().map(Tool::getId).toList();
+        return agentMcpToolRuleDAO.findByAgentAndToolIds(agent.getId(), ids).stream()
+                .filter(rule -> rule.getTool() != null)
+                .collect(Collectors.groupingBy(rule -> rule.getTool().getId()));
+    }
+
+    private Map<String, List<AgentMcpToolRule>> agentRulesByGlobalToolId(Agent agent) {
+        if (agent.getGlobalTools() == null || agent.getGlobalTools().isEmpty()) {
+            return Map.of();
+        }
+        var ids = agent.getGlobalTools().stream().map(GlobalTool::getId).toList();
+        return agentMcpToolRuleDAO.findByAgentAndGlobalToolIds(agent.getId(), ids).stream()
+                .filter(rule -> rule.getGlobalTool() != null)
+                .collect(Collectors.groupingBy(rule -> rule.getGlobalTool().getId()));
+    }
+
+    public ToolSnapshot mapTool(Tool tool, List<AgentMcpToolRule> rules) {
+        return buildToolSnapshot(tool, rules);
+    }
+
+    public ToolSnapshot mapGlobalTool(GlobalTool tool, List<AgentMcpToolRule> rules) {
+        return buildToolSnapshot(tool, rules);
+    }
+
+    private ToolSnapshot buildToolSnapshot(AbstractTool tool, List<AgentMcpToolRule> rules) {
         var snapshot = new ToolSnapshot();
         snapshot.setName(tool.getName());
         snapshot.setDescription(tool.getDescription());
@@ -244,17 +289,24 @@ public interface RuntimeSnapshotMapper {
         snapshot.setUrl(tool.getUrl());
         snapshot.setApiKey(tool.getApiKey());
         snapshot.setAuthMode(tool.getAuthMode() != null ? tool.getAuthMode().name() : null);
+        snapshot.setExecutionPolicy(tool.getExecutionPolicy() != null
+                ? ToolSnapshot.ExecutionPolicyEnum.fromString(tool.getExecutionPolicy().name())
+                : null);
+        snapshot.setToolRules(mapRules(rules));
         return snapshot;
     }
 
-    default ToolSnapshot mapGlobalTool(GlobalTool tool) {
-        var snapshot = new ToolSnapshot();
-        snapshot.setName(tool.getName());
-        snapshot.setDescription(tool.getDescription());
-        snapshot.setType(tool.getType() != null ? tool.getType().name() : null);
-        snapshot.setUrl(tool.getUrl());
-        snapshot.setApiKey(tool.getApiKey());
-        snapshot.setAuthMode(tool.getAuthMode() != null ? tool.getAuthMode().name() : null);
-        return snapshot;
+    private List<ToolRuleSnapshot> mapRules(List<AgentMcpToolRule> rules) {
+        if (rules == null || rules.isEmpty()) {
+            return List.of();
+        }
+        return rules.stream().map(rule -> {
+            var snapshot = new ToolRuleSnapshot();
+            snapshot.setToolName(rule.getToolName());
+            snapshot.setAllowed(rule.getAllowed() != null
+                    ? ToolRuleSnapshot.AllowedEnum.fromString(rule.getAllowed().name())
+                    : null);
+            return snapshot;
+        }).toList();
     }
 }

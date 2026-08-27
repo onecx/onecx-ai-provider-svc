@@ -1,0 +1,119 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+    <changeSet author="dev" id="20260807-1">
+        <createTable tableName="mcp_tool_rule">
+            <column name="optlock" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="guid" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="mcp_tool_rule_pkey"/>
+            </column>
+            <column name="tenant_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tool_id" type="VARCHAR(255)"/>
+            <column name="global_tool_id" type="VARCHAR(255)"/>
+            <column name="tool_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tool_description" type="VARCHAR(1024)"/>
+            <column name="allowed" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="danger_level" type="VARCHAR(255)"/>
+            <column name="auto_danger_level" type="VARCHAR(255)"/>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="mcp_tool_rule" baseColumnNames="tool_id"
+                                 referencedTableName="tool" referencedColumnNames="guid"
+                                 constraintName="fk_mcp_tool_rule_tool"/>
+        <addForeignKeyConstraint baseTableName="mcp_tool_rule" baseColumnNames="global_tool_id"
+                                 referencedTableName="global_tool" referencedColumnNames="guid"
+                                 constraintName="fk_mcp_tool_rule_global_tool"/>
+        <createIndex tableName="mcp_tool_rule" indexName="idx_mcp_tool_rule_tool">
+            <column name="tool_id"/>
+        </createIndex>
+        <createIndex tableName="mcp_tool_rule" indexName="idx_mcp_tool_rule_global_tool">
+            <column name="global_tool_id"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="dev" id="20260807-2">
+        <createTable tableName="danger_pattern">
+            <column name="optlock" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="creationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="modificationdate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="guid" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="danger_pattern_pkey"/>
+            </column>
+            <column name="pattern" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="danger_level" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(1024)"/>
+            <column name="creationuser" type="VARCHAR(255)"/>
+            <column name="modificationuser" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="dev" id="20260807-3">
+        <insert tableName="danger_pattern">
+            <column name="guid" value="dp-seed-delete"/>
+            <column name="pattern" value="delete"/>
+            <column name="danger_level" value="DANGEROUS"/>
+            <column name="description" value="Deletes data irreversibly"/>
+            <column name="optlock" valueNumeric="0"/>
+        </insert>
+        <insert tableName="danger_pattern">
+            <column name="guid" value="dp-seed-drop"/>
+            <column name="pattern" value="drop"/>
+            <column name="danger_level" value="DANGEROUS"/>
+            <column name="description" value="Drops structures or data irreversibly"/>
+            <column name="optlock" valueNumeric="0"/>
+        </insert>
+        <insert tableName="danger_pattern">
+            <column name="guid" value="dp-seed-remove"/>
+            <column name="pattern" value="remove"/>
+            <column name="danger_level" value="DANGEROUS"/>
+            <column name="description" value="Removes data irreversibly"/>
+            <column name="optlock" valueNumeric="0"/>
+        </insert>
+        <insert tableName="danger_pattern">
+            <column name="guid" value="dp-seed-import"/>
+            <column name="pattern" value="import"/>
+            <column name="danger_level" value="WARNING"/>
+            <column name="description" value="Imports data, may overwrite existing content"/>
+            <column name="optlock" valueNumeric="0"/>
+        </insert>
+        <insert tableName="danger_pattern">
+            <column name="guid" value="dp-seed-update"/>
+            <column name="pattern" value="update"/>
+            <column name="danger_level" value="WARNING"/>
+            <column name="description" value="Modifies existing data"/>
+            <column name="optlock" valueNumeric="0"/>
+        </insert>
+        <insert tableName="danger_pattern">
+            <column name="guid" value="dp-seed-replace"/>
+            <column name="pattern" value="replace"/>
+            <column name="danger_level" value="WARNING"/>
+            <column name="description" value="Replaces existing data"/>
+            <column name="optlock" valueNumeric="0"/>
+        </insert>
+        <insert tableName="danger_pattern">
+            <column name="guid" value="dp-seed-create"/>
+            <column name="pattern" value="create"/>
+            <column name="danger_level" value="WARNING"/>
+            <column name="description" value="Creates new data"/>
+            <column name="optlock" valueNumeric="0"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>
