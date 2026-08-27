@@ -46,14 +46,11 @@ public interface AgentMcpToolRuleMapper {
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
     @Mapping(target = "tenantId", ignore = true)
-    default AgentMcpToolRule create(CreateAgentMcpToolRuleRequestDTO dto, Agent agent, Tool tool,
-            GlobalTool globalTool) {
-        var rule = create(dto);
-        rule.setAgent(agent);
-        rule.setTool(tool);
-        rule.setGlobalTool(globalTool);
-        return rule;
-    }
+    @Mapping(target = "agent", source = "agent")
+    @Mapping(target = "tool", source = "tool")
+    @Mapping(target = "globalTool", source = "globalTool")
+    AgentMcpToolRule create(CreateAgentMcpToolRuleRequestDTO dto, Agent agent, Tool tool,
+            GlobalTool globalTool);
 
     @Mapping(target = "persisted", ignore = true)
     @Mapping(target = "modificationUser", ignore = true)
