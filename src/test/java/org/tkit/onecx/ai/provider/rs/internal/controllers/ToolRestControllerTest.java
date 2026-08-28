@@ -358,13 +358,28 @@ class ToolRestControllerTest extends AbstractTest {
     }
 
     @Test
-    void getDiscoveredTools_runtimeError_returnsBadGateway() {
-        // covers BAD_GATEWAY branch: runtime returns non-200 (204 No Content
-        // avoids ClientWebApplicationException which is thrown for 4xx/5xx
-        // when return-response=true)
+    void getDiscoveredTools_runtimeReturnsNon200_returnsBadGateway() {
+        // covers if branch: status != OK → BAD_GATEWAY (204 doesn't throw
+        // ClientWebApplicationException so the if branch is reached)
         mockServerClient.when(request().withPath("/ai/internal/runtime/tools/discover").withMethod(HttpMethod.POST))
                 .withId(MOCK_ID)
                 .respond(httpRequest -> response().withStatusCode(NO_CONTENT.getStatusCode()));
+
+        given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .pathParam("toolId", "tool-11-111")
+                .post("/{toolId}/discovered-tools")
+                .then().statusCode(BAD_GATEWAY.getStatusCode());
+    }
+
+    @Test
+    void getDiscoveredTools_runtimeThrows500_returnsBadGateway() {
+        // covers catch branch: runtime returns 500 → ClientWebApplicationException
+        // is thrown (return-response=true) → caught → BAD_GATEWAY
+        mockServerClient.when(request().withPath("/ai/internal/runtime/tools/discover").withMethod(HttpMethod.POST))
+                .withId(MOCK_ID)
+                .respond(httpRequest -> response().withStatusCode(INTERNAL_SERVER_ERROR.getStatusCode()));
 
         given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))

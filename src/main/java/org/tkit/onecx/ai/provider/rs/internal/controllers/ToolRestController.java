@@ -12,6 +12,7 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.ws.rs.core.Response;
 
 import org.eclipse.microprofile.rest.client.inject.RestClient;
+import org.jboss.resteasy.reactive.ClientWebApplicationException;
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 import org.tkit.onecx.ai.provider.common.services.DangerClassificationService;
@@ -102,6 +103,9 @@ public class ToolRestController implements ToolInternalApi {
                 responseBuilder = Response.ok(buildDiscoveredToolInfoList(body, agentId, toolId));
             }
             return responseBuilder.build();
+        } catch (ClientWebApplicationException ex) {
+            log.warn("Runtime tool discovery failed for tool '{}': {}", toolId, ex.getMessage());
+            return Response.status(Response.Status.BAD_GATEWAY).build();
         }
     }
 
