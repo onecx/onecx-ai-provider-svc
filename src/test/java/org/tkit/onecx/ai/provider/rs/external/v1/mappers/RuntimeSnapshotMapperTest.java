@@ -1,6 +1,9 @@
 package org.tkit.onecx.ai.provider.rs.external.v1.mappers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -26,6 +29,7 @@ import org.tkit.onecx.ai.provider.domain.models.Tool;
 import org.tkit.onecx.ai.provider.domain.models.enums.AgentGroupOrchestrationMode;
 import org.tkit.onecx.ai.provider.domain.models.enums.AgentGroupResponseStrategy;
 import org.tkit.onecx.ai.provider.domain.models.enums.AuthMode;
+import org.tkit.onecx.ai.provider.domain.models.enums.CommunicationMode;
 import org.tkit.onecx.ai.provider.domain.models.enums.ExecutionPolicy;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 import org.tkit.onecx.ai.provider.domain.models.enums.ToolPermission;
@@ -35,9 +39,10 @@ import org.tkit.onecx.ai.provider.test.AbstractTest;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ConversationDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.RequestContextDTOV1;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.AgentGroupSnapshot;
-import gen.org.tkit.onecx.ai.provider.runtime.client.model.ToolRuleSnapshot.AllowedEnum;
-import gen.org.tkit.onecx.ai.provider.runtime.client.model.ToolSnapshot;
+import gen.org.tkit.onecx.ai.provider.runtime.client.model.AgentSnapshot;
+import gen.org.tkit.onecx.ai.provider.runtime.client.model.ExternalAgentSnapshot;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -52,10 +57,8 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
 
     @BeforeEach
     void setUp() {
-        when(agentMcpToolRuleDAO.findByAgentAndToolIds(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
-                .thenReturn(List.of());
-        when(agentMcpToolRuleDAO.findByAgentAndGlobalToolIds(org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any())).thenReturn(List.of());
+        when(agentMcpToolRuleDAO.findByAgentAndToolIds(any(), any())).thenReturn(List.of());
+        when(agentMcpToolRuleDAO.findByAgentAndGlobalToolIds(any(), any())).thenReturn(List.of());
     }
 
     @Test
@@ -65,36 +68,46 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
     }
 
     @Test
-    void mapAgent_withGlobalScaffold_preferredOverScaffold() {
+    void mapAgent_mapsMainFields_prefersGlobalScaffold_andIncludesGroups() {
+        var tenantScaffold = new Scaffold();
+        tenantScaffold.setName("tenant");
+        tenantScaffold.setSystemPrompt("tenant prompt");
+        tenantScaffold.setSkills(Set.of(skill("tenant-skill")));
+
+        var globalScaffold = new GlobalScaffold();
+        globalScaffold.setName("global");
+        globalScaffold.setSystemPrompt("global prompt");
+        globalScaffold.setSkills(Set.of(globalSkill("global-skill")));
+
+        var model = model();
+        var tool = tool("tool-1", ExecutionPolicy.ALWAYS_ASK, AuthMode.API_KEY);
+        var globalTool = globalTool("gtool-1", ExecutionPolicy.ALWAYS_ALLOW);
+
         var agent = new Agent();
-        agent.setName("agent-1");
-        agent.setGlobalScaffold(globalScaffold("global-scaffold"));
-        agent.setScaffold(scaffold("local-scaffold"));
+        agent.setId("agent-1");
+        agent.setName("Agent");
+        agent.setDescription("desc");
+        agent.setAdditionalPrompt("prompt");
+        agent.setA2aEnabled(true);
+        agent.setModel(model);
+        agent.setScaffold(tenantScaffold);
+        agent.setGlobalScaffold(globalScaffold);
+        agent.setTools(Set.of(tool));
+        agent.setGlobalTools(Set.of(globalTool));
 
-        var snapshot = mapper.mapAgent(agent);
-        assertThat(snapshot.getScaffold().getName()).isEqualTo("global-scaffold");
-    }
+        var group = new AgentGroupSnapshot();
+        group.setName("group-1");
 
-    @Test
-    void mapAgent_withLocalScaffold_whenNoGlobalScaffold() {
-        var agent = new Agent();
-        agent.setName("agent-1");
-        agent.setScaffold(scaffold("local-scaffold"));
+        var snapshot = mapper.mapAgent(agent, List.of(group));
 
-        var snapshot = mapper.mapAgent(agent);
-        assertThat(snapshot.getScaffold().getName()).isEqualTo("local-scaffold");
-    }
-
-    @Test
-    void mapAgent_withGroups_setsGroups() {
-        var agent = new Agent();
-        agent.setName("agent-1");
-        var groupSnapshot = new AgentGroupSnapshot();
-        groupSnapshot.setName("group-1");
-
-        var snapshot = mapper.mapAgent(agent, List.of(groupSnapshot));
+        assertThat(snapshot.getName()).isEqualTo("Agent");
+        assertThat(snapshot.getDescription()).isEqualTo("desc");
+        assertThat(snapshot.getAdditionalPrompt()).isEqualTo("prompt");
+        assertThat(snapshot.getA2aEnabled()).isTrue();
         assertThat(snapshot.getGroups()).hasSize(1);
-        assertThat(snapshot.getGroups().get(0).getName()).isEqualTo("group-1");
+        assertThat(snapshot.getScaffold().getName()).isEqualTo("global");
+        assertThat(snapshot.getScaffold().getSkills()).extracting("name").containsExactly("global-skill");
+        assertThat(snapshot.getTools()).extracting("name").containsExactlyInAnyOrder("tool-1", "gtool-1");
     }
 
     @Test
@@ -103,30 +116,23 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
     }
 
     @Test
-    void mapGroup_withNullAgentsAndExternalAgents_defaultsToEmptyLists() {
+    void mapGroup_mapsEnumsAndDefaultsNullCollectionsToEmpty() {
         var group = new AgentGroup();
-        group.setName("group-1");
-        group.setOrchestrationMode(AgentGroupOrchestrationMode.SUPERVISOR_ROUTED);
-        group.setResponseStrategy(AgentGroupResponseStrategy.SCORED);
+        group.setName("ops");
+        group.setDescription("Operations");
+        group.setRoutingInstructions("route");
+        group.setOrchestrationMode(AgentGroupOrchestrationMode.PARALLEL);
+        group.setResponseStrategy(AgentGroupResponseStrategy.SUMMARY);
 
-        var snapshot = mapper.mapGroup(group, null, null);
-        assertThat(snapshot.getName()).isEqualTo("group-1");
-        assertThat(snapshot.getOrchestrationMode()).isEqualTo("SUPERVISOR_ROUTED");
-        assertThat(snapshot.getResponseStrategy()).isEqualTo("SCORED");
-        assertThat(snapshot.getAgents()).isEmpty();
-        assertThat(snapshot.getExternalAgents()).isEmpty();
-    }
+        var mapped = mapper.mapGroup(group, null, null);
 
-    @Test
-    void mapGroup_withNullOrchestrationModeAndResponseStrategy_setsNull() {
-        var group = new AgentGroup();
-        group.setName("group-1");
-        group.setOrchestrationMode(null);
-        group.setResponseStrategy(null);
-
-        var snapshot = mapper.mapGroup(group, List.of(), List.of());
-        assertThat(snapshot.getOrchestrationMode()).isNull();
-        assertThat(snapshot.getResponseStrategy()).isNull();
+        assertThat(mapped.getName()).isEqualTo("ops");
+        assertThat(mapped.getDescription()).isEqualTo("Operations");
+        assertThat(mapped.getRoutingInstructions()).isEqualTo("route");
+        assertThat(mapped.getOrchestrationMode()).isEqualTo("PARALLEL");
+        assertThat(mapped.getResponseStrategy()).isEqualTo("SUMMARY");
+        assertThat(mapped.getAgents()).isEmpty();
+        assertThat(mapped.getExternalAgents()).isEmpty();
     }
 
     @Test
@@ -135,23 +141,23 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
     }
 
     @Test
-    void mapExternalAgent_withNullAuthMode_setsNull() {
-        var agent = new ExternalAgent();
-        agent.setName("ext-1");
-        agent.setAuthMode(null);
+    void mapExternalAgent_mapsAllFields() {
+        var externalAgent = new ExternalAgent();
+        externalAgent.setName("travel");
+        externalAgent.setDescription("desc");
+        externalAgent.setDiscoveryUrl("http://discover");
+        externalAgent.setApiKey("secret");
+        externalAgent.setAuthMode(AuthMode.OAUTH);
+        externalAgent.setEnabled(true);
 
-        var snapshot = mapper.mapExternalAgent(agent);
-        assertThat(snapshot.getAuthMode()).isNull();
-    }
+        var mapped = mapper.mapExternalAgent(externalAgent);
 
-    @Test
-    void mapExternalAgent_withAuthMode_setsName() {
-        var agent = new ExternalAgent();
-        agent.setName("ext-1");
-        agent.setAuthMode(AuthMode.API_KEY);
-
-        var snapshot = mapper.mapExternalAgent(agent);
-        assertThat(snapshot.getAuthMode()).isEqualTo("API_KEY");
+        assertThat(mapped.getName()).isEqualTo("travel");
+        assertThat(mapped.getDescription()).isEqualTo("desc");
+        assertThat(mapped.getDiscoveryUrl()).isEqualTo("http://discover");
+        assertThat(mapped.getApiKey()).isEqualTo("secret");
+        assertThat(mapped.getAuthMode()).isEqualTo("OAUTH");
+        assertThat(mapped.getEnabled()).isTrue();
     }
 
     @Test
@@ -160,6 +166,7 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
         assertThat(msg.getMessage()).isEmpty();
         assertThat(msg.getType()).isEqualTo(ChatMessageDTOV1.TypeEnum.ASSISTANT);
         assertThat(msg.getConversationId()).isEqualTo("conv-1");
+        assertThat(msg.getCreationDate()).isNotNull();
     }
 
     @Test
@@ -168,374 +175,301 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
     }
 
     @Test
-    void mapChatRequest_withNullChatMessage_setsNullChatMessage() {
+    void mapChatRequest_mapsMessageContextAndConversation() {
         var request = new ChatRequestDTOV1();
-        var result = mapper.mapChatRequest(request);
-        assertThat(result.getChatMessage()).isNull();
+        request.setChatMessage(chatMessage("user message", ChatMessageDTOV1.TypeEnum.USER, "conv-1", 123L));
+
+        var requestContext = new RequestContextDTOV1();
+        requestContext.setAiContext(List.of("ctx-a", "ctx-b"));
+        request.setRequestContext(requestContext);
+
+        var conversation = new ConversationDTOV1();
+        conversation.setConversationId("conv-1");
+        conversation.setConversationType(ConversationDTOV1.ConversationTypeEnum.Q_AND_A);
+        conversation.setHistory(List.of(
+                chatMessage("h1", ChatMessageDTOV1.TypeEnum.USER, "conv-1", 1L),
+                chatMessage("h2", ChatMessageDTOV1.TypeEnum.ASSISTANT, "conv-1", 2L)));
+        request.setConversation(conversation);
+
+        var mapped = mapper.mapChatRequest(request);
+
+        assertThat(mapped.getChatMessage().getMessage()).isEqualTo("user message");
+        assertThat(mapped.getChatMessage().getType()).isEqualTo("USER");
+        assertThat(mapped.getRequestContext().getAiContext()).containsExactly("ctx-a", "ctx-b");
+        assertThat(mapped.getConversation().getConversationId()).isEqualTo("conv-1");
+        assertThat(mapped.getConversation().getConversationType()).isEqualTo("Q_AND_A");
+        assertThat(mapped.getConversation().getHistory()).hasSize(2);
+        assertThat(mapped.getConversation().getHistory().get(1).getType()).isEqualTo("ASSISTANT");
     }
 
     @Test
-    void mapChatRequest_withNullRequestContext_setsNullRequestContext() {
+    void mapRequestContext_withoutContext_returnsNull() {
         var request = new ChatRequestDTOV1();
-        var result = mapper.mapChatRequest(request);
-        assertThat(result.getRequestContext()).isNull();
+        assertThat(mapper.mapRequestContext(request)).isNull();
     }
 
     @Test
-    void mapChatRequest_withRequestContext_mapsAiContext() {
+    void mapConversation_withoutConversation_returnsNull() {
         var request = new ChatRequestDTOV1();
-        var rc = new gen.org.tkit.onecx.ai.provider.rs.external.v1.model.RequestContextDTOV1();
-        rc.setAiContext(java.util.List.of("context-item"));
-        request.setRequestContext(rc);
-
-        var result = mapper.mapChatRequest(request);
-        assertThat(result.getRequestContext()).isNotNull();
-        assertThat(result.getRequestContext().getAiContext()).containsExactly("context-item");
+        assertThat(mapper.mapConversation(request)).isNull();
     }
 
     @Test
-    void mapChatRequest_withNullConversation_setsNullConversation() {
+    void mapConversation_nullHistory_returnsEmptyList() {
         var request = new ChatRequestDTOV1();
-        var result = mapper.mapChatRequest(request);
-        assertThat(result.getConversation()).isNull();
-    }
+        var conversation = new ConversationDTOV1();
+        conversation.setConversationId("conv-2");
+        request.setConversation(conversation);
 
-    @Test
-    void mapChatRequest_withConversation_nullConversationType_setsNull() {
-        var request = new ChatRequestDTOV1();
-        var conv = new ConversationDTOV1();
-        conv.setConversationId("conv-1");
-        conv.setConversationType(null);
-        request.setConversation(conv);
+        var mapped = mapper.mapConversation(request);
 
-        var result = mapper.mapChatRequest(request);
-        assertThat(result.getConversation()).isNotNull();
-        assertThat(result.getConversation().getConversationType()).isNull();
-    }
-
-    @Test
-    void mapChatRequest_withConversation_nullHistory_defaultsToEmptyList() {
-        var request = new ChatRequestDTOV1();
-        var conv = new ConversationDTOV1();
-        conv.setConversationId("conv-1");
-        conv.setConversationType(ConversationDTOV1.ConversationTypeEnum.Q_AND_A);
-        conv.setHistory(null);
-        request.setConversation(conv);
-
-        var result = mapper.mapChatRequest(request);
-        assertThat(result.getConversation().getHistory()).isEmpty();
-        assertThat(result.getConversation().getConversationType()).isEqualTo("Q_AND_A");
-    }
-
-    @Test
-    void mapChatRequest_withConversation_andHistory_mapsMessages() {
-        var request = new ChatRequestDTOV1();
-        var conv = new ConversationDTOV1();
-        conv.setConversationId("conv-1");
-        var historyMsg = new ChatMessageDTOV1();
-        historyMsg.setType(ChatMessageDTOV1.TypeEnum.USER);
-        historyMsg.setMessage("hello");
-        historyMsg.setConversationId("conv-1");
-        conv.setHistory(List.of(historyMsg));
-        request.setConversation(conv);
-
-        var result = mapper.mapChatRequest(request);
-        assertThat(result.getConversation().getHistory()).hasSize(1);
-        assertThat(result.getConversation().getHistory().get(0).getMessage()).isEqualTo("hello");
+        assertThat(mapped.getConversationId()).isEqualTo("conv-2");
+        assertThat(mapped.getHistory()).isEmpty();
     }
 
     @Test
     void mapChatMessage_null_returnsNull() {
-        assertThat(mapper.mapChatMessage((ChatMessageDTOV1) null)).isNull();
+        assertThat(mapper.mapChatMessage(null)).isNull();
     }
 
     @Test
-    void mapChatMessage_withNullType_setsNull() {
-        var msg = new ChatMessageDTOV1();
-        msg.setMessage("hello");
-        msg.setType(null);
-
-        var result = mapper.mapChatMessage(msg);
-        assertThat(result.getType()).isNull();
-        assertThat(result.getMessage()).isEqualTo("hello");
-    }
-
-    @Test
-    void mapModel_null_returnsNull() {
+    void mapModel_andProvider_null_returnNull() {
         assertThat(mapper.mapModel(null)).isNull();
-    }
-
-    @Test
-    void mapModel_withNullCommunicationMode_setsNull() {
-        var model = new Model();
-        model.setName("model-1");
-        model.setCommunicationMode(null);
-
-        var snapshot = mapper.mapModel(model);
-        assertThat(snapshot.getCommunicationMode()).isNull();
-    }
-
-    @Test
-    void mapModel_withNullProvider_setsNullProvider() {
-        var model = new Model();
-        model.setName("model-1");
-        model.setProvider(null);
-
-        var snapshot = mapper.mapModel(model);
-        assertThat(snapshot.getProvider()).isNull();
-    }
-
-    @Test
-    void mapProvider_null_returnsNull() {
         assertThat(mapper.mapProvider(null)).isNull();
     }
 
     @Test
-    void mapProvider_withNullType_setsNull() {
-        var provider = new Provider();
-        provider.setName("p-1");
-        provider.setType(null);
+    void mapModel_mapsProviderDetails() {
+        var mapped = mapper.mapModel(model());
 
-        var snapshot = mapper.mapProvider(provider);
-        assertThat(snapshot.getType()).isNull();
+        assertThat(mapped.getName()).isEqualTo("model-1");
+        assertThat(mapped.getModelIdentifier()).isEqualTo("mistral");
+        assertThat(mapped.getModelConfig()).isEqualTo("temp=0.2");
+        assertThat(mapped.getCommunicationMode()).isEqualTo("SYNC");
+        assertThat(mapped.getProvider().getType()).isEqualTo("OLLAMA");
+        assertThat(mapped.getProvider().getAuthMode()).isEqualTo("API_KEY");
     }
 
     @Test
-    void mapProvider_withNullAuthMode_setsNull() {
-        var provider = new Provider();
-        provider.setName("p-1");
-        provider.setAuthMode(null);
-
-        var snapshot = mapper.mapProvider(provider);
-        assertThat(snapshot.getAuthMode()).isNull();
-    }
-
-    @Test
-    void mapScaffold_null_returnsNull() {
-        assertThat(mapper.mapScaffold(null)).isNull();
-    }
-
-    @Test
-    void mapScaffold_withNullSkills_returnsEmptySkills() {
+    void mapScaffold_mergesTenantAndGlobalSkills() {
         var scaffold = new Scaffold();
-        scaffold.setName("s-1");
-        scaffold.setSkills(null);
-        scaffold.setGlobalSkills(null);
+        scaffold.setName("tenant");
+        scaffold.setSystemPrompt("prompt");
+        scaffold.setSkills(Set.of(skill("tenant-1"), skill("tenant-2")));
+        scaffold.setGlobalSkills(Set.of(globalSkill("global-1")));
 
-        var snapshot = mapper.mapScaffold(scaffold);
-        assertThat(snapshot.getSkills()).isEmpty();
+        var mapped = mapper.mapScaffold(scaffold);
+
+        assertThat(mapped.getName()).isEqualTo("tenant");
+        assertThat(mapped.getSystemPrompt()).isEqualTo("prompt");
+        assertThat(mapped.getSkills()).extracting("name")
+                .containsExactlyInAnyOrder("tenant-1", "tenant-2", "global-1");
     }
 
     @Test
-    void mapScaffold_withSkillsAndGlobalSkills_mergesBoth() {
-        var scaffold = new Scaffold();
-        scaffold.setName("s-1");
-        scaffold.setSkills(Set.of(skill("local-skill")));
-        scaffold.setGlobalSkills(Set.of(globalSkill("global-skill")));
-
-        var snapshot = mapper.mapScaffold(scaffold);
-        assertThat(snapshot.getSkills()).hasSize(2);
-    }
-
-    @Test
-    void mapGlobalScaffold_null_returnsNull() {
-        assertThat(mapper.mapGlobalScaffold(null)).isNull();
-    }
-
-    @Test
-    void mapGlobalScaffold_withNullSkills_returnsEmptySkills() {
+    void mapGlobalScaffold_mapsOnlyGlobalSkills_andEmptyWhenNull() {
         var scaffold = new GlobalScaffold();
-        scaffold.setName("gs-1");
-        scaffold.setSkills(null);
+        scaffold.setName("global");
+        scaffold.setSystemPrompt("global-prompt");
+        scaffold.setSkills(Set.of(globalSkill("global-a")));
 
-        var snapshot = mapper.mapGlobalScaffold(scaffold);
-        assertThat(snapshot.getSkills()).isEmpty();
+        var mapped = mapper.mapGlobalScaffold(scaffold);
+
+        assertThat(mapped.getName()).isEqualTo("global");
+        assertThat(mapped.getSystemPrompt()).isEqualTo("global-prompt");
+        assertThat(mapped.getSkills()).extracting("name").containsExactly("global-a");
+
+        var empty = new GlobalScaffold();
+        empty.setName("empty");
+        assertThat(mapper.mapGlobalScaffold(empty).getSkills()).isEmpty();
     }
 
     @Test
-    void mapGlobalScaffold_withSkills_mapsSkills() {
-        var scaffold = new GlobalScaffold();
-        scaffold.setName("gs-1");
-        scaffold.setSkills(Set.of(globalSkill("g-skill")));
+    void mapTools_groupsRulesByToolAndGlobalTool() {
+        var tool = tool("tool-1", ExecutionPolicy.ALWAYS_ASK, AuthMode.API_KEY);
+        var globalTool = globalTool("gtool-1", ExecutionPolicy.ALWAYS_ALLOW);
 
-        var snapshot = mapper.mapGlobalScaffold(scaffold);
-        assertThat(snapshot.getSkills()).hasSize(1);
-        assertThat(snapshot.getSkills().get(0).getName()).isEqualTo("g-skill");
-    }
+        var ruleTenant = new AgentMcpToolRule();
+        ruleTenant.setTool(tool);
+        ruleTenant.setToolName("search");
+        ruleTenant.setAllowed(ToolPermission.ALLOW);
 
-    @Test
-    void mapTools_agentWithNullToolsAndNullGlobalTools_returnsEmptyList() {
-        var agent = new Agent();
-        agent.setId("agent-1");
+        var ruleGlobal = new AgentMcpToolRule();
+        ruleGlobal.setGlobalTool(globalTool);
+        ruleGlobal.setToolName("summarize");
+        ruleGlobal.setAllowed(ToolPermission.DENY);
 
-        var tools = mapper.mapTools(agent);
-        assertThat(tools).isEmpty();
-    }
+        var ignored = new AgentMcpToolRule();
+        ignored.setToolName("ignored");
 
-    @Test
-    void mapTools_agentWithTools_mapsToolRules() {
-        var tool = new Tool();
-        tool.setId("tool-1");
-        tool.setName("searchTool");
-        tool.setType(ToolType.MCP);
-        tool.setUrl("http://mcp.local");
-        tool.setAuthMode(AuthMode.API_KEY);
-        tool.setExecutionPolicy(ExecutionPolicy.ALWAYS_ASK);
+        when(agentMcpToolRuleDAO.findByAgentAndToolIds("agent-1", List.of("tool-1")))
+                .thenReturn(List.of(ruleTenant, ignored));
+        when(agentMcpToolRuleDAO.findByAgentAndGlobalToolIds("agent-1", List.of("gtool-1")))
+                .thenReturn(List.of(ruleGlobal, ignored));
 
         var agent = new Agent();
         agent.setId("agent-1");
         agent.setTools(Set.of(tool));
-
-        var rule = new AgentMcpToolRule();
-        rule.setTool(tool);
-        rule.setToolName("searchTool");
-        rule.setAllowed(ToolPermission.ALLOW);
-
-        when(agentMcpToolRuleDAO.findByAgentAndToolIds("agent-1", List.of("tool-1")))
-                .thenReturn(List.of(rule));
-
-        var tools = mapper.mapTools(agent);
-        assertThat(tools).hasSize(1);
-        assertThat(tools.get(0).getName()).isEqualTo("searchTool");
-        assertThat(tools.get(0).getType()).isEqualTo("MCP");
-        assertThat(tools.get(0).getAuthMode()).isEqualTo("API_KEY");
-        assertThat(tools.get(0).getExecutionPolicy()).isEqualTo(ToolSnapshot.ExecutionPolicyEnum.ALWAYS_ASK);
-        assertThat(tools.get(0).getToolRules()).hasSize(1);
-        assertThat(tools.get(0).getToolRules().get(0).getAllowed()).isEqualTo(
-                gen.org.tkit.onecx.ai.provider.runtime.client.model.ToolRuleSnapshot.AllowedEnum.ALLOW);
-    }
-
-    @Test
-    void mapTools_agentWithLegacyAllowPolicies_mapsRuntimeCompatibilityValues() {
-        var tool = new Tool();
-        tool.setId("tool-1");
-        tool.setName("searchTool");
-        tool.setType(ToolType.MCP);
-        tool.setUrl("http://mcp.local");
-        tool.setAuthMode(AuthMode.API_KEY);
-        tool.setExecutionPolicy(ExecutionPolicy.NEVER_ASK);
-
-        var agent = new Agent();
-        agent.setId("agent-1");
-        agent.setTools(Set.of(tool));
-
-        var rule = new AgentMcpToolRule();
-        rule.setTool(tool);
-        rule.setToolName("searchTool");
-        rule.setAllowed(ToolPermission.NEVER_ASK);
-
-        when(agentMcpToolRuleDAO.findByAgentAndToolIds("agent-1", List.of("tool-1")))
-                .thenReturn(List.of(rule));
-
-        var tools = mapper.mapTools(agent);
-        assertThat(tools).hasSize(1);
-        assertThat(tools.get(0).getExecutionPolicy()).isEqualTo(ToolSnapshot.ExecutionPolicyEnum.NEVER_ASK);
-        assertThat(tools.get(0).getToolRules()).hasSize(1);
-        assertThat(tools.get(0).getToolRules().get(0).getAllowed()).isEqualTo(
-                AllowedEnum.ALLOW);
-    }
-
-    @Test
-    void mapTools_agentWithGlobalTools_mapsGlobalToolRules() {
-        var globalTool = new GlobalTool();
-        globalTool.setId("gtool-1");
-        globalTool.setName("globalRead");
-        globalTool.setType(ToolType.MCP);
-        globalTool.setUrl("http://mcp.global");
-        globalTool.setAuthMode(null);
-        globalTool.setExecutionPolicy(null);
-
-        var agent = new Agent();
-        agent.setId("agent-1");
         agent.setGlobalTools(Set.of(globalTool));
 
-        var rule = new AgentMcpToolRule();
-        rule.setGlobalTool(globalTool);
-        rule.setToolName("globalRead");
-        rule.setAllowed(null);
+        var mapped = mapper.mapTools(agent);
 
-        when(agentMcpToolRuleDAO.findByAgentAndGlobalToolIds("agent-1", List.of("gtool-1")))
-                .thenReturn(List.of(rule));
+        assertThat(mapped).extracting("name").containsExactlyInAnyOrder("tool-1", "gtool-1");
 
-        var tools = mapper.mapTools(agent);
-        assertThat(tools).hasSize(1);
-        assertThat(tools.get(0).getName()).isEqualTo("globalRead");
-        assertThat(tools.get(0).getAuthMode()).isNull();
-        assertThat(tools.get(0).getExecutionPolicy()).isEqualTo(ToolSnapshot.ExecutionPolicyEnum.ALWAYS_ASK);
-        assertThat(tools.get(0).getToolRules()).hasSize(1);
-        assertThat(tools.get(0).getToolRules().get(0).getAllowed()).isEqualTo(
-                AllowedEnum.ALWAYS_ASK);
+        var mappedTool = mapped.stream().filter(t -> "tool-1".equals(t.getName())).findFirst().orElseThrow();
+        assertThat(mappedTool.getExecutionPolicy().name()).isEqualTo("ALWAYS_ASK");
+        assertThat(mappedTool.getToolRules()).hasSize(1);
+        assertThat(mappedTool.getToolRules().get(0).getToolName()).isEqualTo("search");
+        assertThat(mappedTool.getToolRules().get(0).getAllowed().name()).isEqualTo("ALLOW");
+
+        var mappedGlobal = mapped.stream().filter(t -> "gtool-1".equals(t.getName())).findFirst().orElseThrow();
+        assertThat(mappedGlobal.getExecutionPolicy().name()).isEqualTo("NEVER_ASK");
+        assertThat(mappedGlobal.getToolRules()).hasSize(1);
+        assertThat(mappedGlobal.getToolRules().get(0).getAllowed().name()).isEqualTo("DENY");
+
+        verify(agentMcpToolRuleDAO).findByAgentAndToolIds("agent-1", List.of("tool-1"));
+        verify(agentMcpToolRuleDAO).findByAgentAndGlobalToolIds("agent-1", List.of("gtool-1"));
     }
 
     @Test
-    void mapTools_agentWithNullToolType_setsNullType() {
-        var tool = new Tool();
-        tool.setId("tool-1");
-        tool.setName("toolNoType");
-        tool.setType(null);
-
+    void mapTools_emptyAssignments_returnEmpty_withoutDaoCalls() {
         var agent = new Agent();
         agent.setId("agent-1");
-        agent.setTools(Set.of(tool));
 
-        var tools = mapper.mapTools(agent);
-        assertThat(tools.get(0).getType()).isNull();
+        var mapped = mapper.mapTools(agent);
+
+        assertThat(mapped).isEmpty();
+        verifyNoInteractions(agentMcpToolRuleDAO);
     }
 
     @Test
-    void toRuntimeRequest_mapsFullRequest() {
-        var provider = new Provider();
-        provider.setType(ProviderType.OLLAMA);
-        provider.setLlmUrl("http://ollama.local");
+    void mapTool_andGlobalTool_canonicalizePolicyAliases() {
+        var localTool = tool("tool-2", ExecutionPolicy.ALLOW, AuthMode.OAUTH);
 
-        var model = new Model();
-        model.setProvider(provider);
-        model.setModelIdentifier("mistral");
+        var ruleAllowAlias = new AgentMcpToolRule();
+        ruleAllowAlias.setToolName("approve");
+        ruleAllowAlias.setAllowed(ToolPermission.NEVER_ASK);
 
+        var ruleDefault = new AgentMcpToolRule();
+        ruleDefault.setToolName("confirm");
+        ruleDefault.setAllowed(null);
+
+        var mappedLocal = mapper.mapTool(localTool, List.of(ruleAllowAlias, ruleDefault));
+        assertThat(mappedLocal.getExecutionPolicy().name()).isEqualTo("NEVER_ASK");
+        assertThat(mappedLocal.getToolRules()).extracting("allowed")
+                .extracting(Object::toString)
+                .containsExactly("ALLOW", "ALWAYS_ASK");
+
+        var mappedGlobal = mapper.mapGlobalTool(globalTool("gtool-2", ExecutionPolicy.NEVER_ASK), List.of(ruleAllowAlias));
+        assertThat(mappedGlobal.getExecutionPolicy().name()).isEqualTo("NEVER_ASK");
+        assertThat(mappedGlobal.getToolRules()).hasSize(1);
+        assertThat(mappedGlobal.getToolRules().get(0).getAllowed().name()).isEqualTo("ALLOW");
+    }
+
+    @Test
+    void toRuntimeRequest_mapsModelAndProvider() {
         var agent = new Agent();
         agent.setName("agent-1");
-        agent.setModel(model);
+        agent.setModel(model());
 
         var request = new ChatRequestDTOV1();
-        var msg = new ChatMessageDTOV1();
-        msg.setType(ChatMessageDTOV1.TypeEnum.USER);
-        msg.setMessage("hello");
-        msg.setConversationId("conv-1");
-        request.setChatMessage(msg);
+        request.setChatMessage(chatMessage("hello", ChatMessageDTOV1.TypeEnum.USER, "conv-1", 17L));
 
-        var result = mapper.toRuntimeRequest(agent, request, List.of());
+        var groupSnapshot = new AgentGroupSnapshot();
+        groupSnapshot.setName("default-group");
+
+        var result = mapper.toRuntimeRequest(agent, request, List.of(groupSnapshot));
         assertThat(result.getRootAgent().getName()).isEqualTo("agent-1");
         assertThat(result.getRootAgent().getModel().getModelIdentifier()).isEqualTo("mistral");
+        assertThat(result.getRootAgent().getModel().getProvider().getType()).isEqualTo("OLLAMA");
+        assertThat(result.getRootAgent().getGroups()).extracting(AgentGroupSnapshot::getName)
+                .containsExactly("default-group");
         assertThat(result.getChatRequest().getChatMessage().getMessage()).isEqualTo("hello");
     }
 
-    private Scaffold scaffold(String name) {
-        var s = new Scaffold();
-        s.setName(name);
-        s.setSystemPrompt("prompt");
-        return s;
+    @Test
+    void mapGroup_keepsProvidedAgentAndExternalAgentLists() {
+        var group = new AgentGroup();
+        group.setName("routing");
+
+        var agentSnapshot = new AgentSnapshot();
+        agentSnapshot.setName("worker-a");
+        var externalSnapshot = new ExternalAgentSnapshot();
+        externalSnapshot.setName("partner-x");
+
+        var mapped = mapper.mapGroup(group, List.of(agentSnapshot), List.of(externalSnapshot));
+
+        assertThat(mapped.getAgents()).extracting(AgentSnapshot::getName).containsExactly("worker-a");
+        assertThat(mapped.getExternalAgents()).extracting(ExternalAgentSnapshot::getName).containsExactly("partner-x");
     }
 
-    private GlobalScaffold globalScaffold(String name) {
-        var s = new GlobalScaffold();
-        s.setName(name);
-        s.setSystemPrompt("prompt");
-        return s;
+    private static Model model() {
+        var provider = new Provider();
+        provider.setName("provider-1");
+        provider.setType(ProviderType.OLLAMA);
+        provider.setDescription("Provider");
+        provider.setLlmUrl("http://ollama.local");
+        provider.setApiKey("api-key");
+        provider.setAuthMode(AuthMode.API_KEY);
+
+        var model = new Model();
+        model.setName("model-1");
+        model.setModelIdentifier("mistral");
+        model.setModelConfig("temp=0.2");
+        model.setCommunicationMode(CommunicationMode.SYNC);
+        model.setProvider(provider);
+        return model;
     }
 
-    private Skill skill(String name) {
-        var s = new Skill();
-        s.setName(name);
-        s.setDescription("desc");
-        s.setInstruction("instruction");
-        return s;
+    private static Tool tool(String name, ExecutionPolicy executionPolicy, AuthMode authMode) {
+        var tool = new Tool();
+        tool.setId(name);
+        tool.setName(name);
+        tool.setDescription(name + " description");
+        tool.setType(ToolType.MCP);
+        tool.setUrl("http://" + name);
+        tool.setApiKey("secret-" + name);
+        tool.setAuthMode(authMode);
+        tool.setExecutionPolicy(executionPolicy);
+        return tool;
     }
 
-    private GlobalSkill globalSkill(String name) {
-        var s = new GlobalSkill();
-        s.setName(name);
-        s.setDescription("desc");
-        s.setInstruction("instruction");
-        return s;
+    private static GlobalTool globalTool(String name, ExecutionPolicy executionPolicy) {
+        var tool = new GlobalTool();
+        tool.setId(name);
+        tool.setName(name);
+        tool.setDescription(name + " description");
+        tool.setType(ToolType.MCP);
+        tool.setUrl("http://" + name);
+        tool.setApiKey("secret-" + name);
+        tool.setAuthMode(AuthMode.API_KEY);
+        tool.setExecutionPolicy(executionPolicy);
+        return tool;
+    }
+
+    private static Skill skill(String name) {
+        var skill = new Skill();
+        skill.setName(name);
+        skill.setDescription(name + " desc");
+        skill.setInstruction(name + " instruction");
+        return skill;
+    }
+
+    private static GlobalSkill globalSkill(String name) {
+        var skill = new GlobalSkill();
+        skill.setName(name);
+        skill.setDescription(name + " desc");
+        skill.setInstruction(name + " instruction");
+        return skill;
+    }
+
+    private static ChatMessageDTOV1 chatMessage(String text, ChatMessageDTOV1.TypeEnum type, String conversationId,
+            Long creationDate) {
+        var message = new ChatMessageDTOV1();
+        message.setMessage(text);
+        message.setType(type);
+        message.setConversationId(conversationId);
+        message.setCreationDate(creationDate);
+        return message;
     }
 }
