@@ -100,7 +100,7 @@ public class AgentRestV1Controller implements AgentV1Api {
     private boolean hasDuplicateToolRule(List<AgentMcpToolRule> rules) {
         var seen = new HashSet<String>();
         for (var rule : rules) {
-            if (!seen.add(rule.getToolName())) {
+            if (!seen.add(ruleServerKey(rule) + ' ' + rule.getToolName())) {
                 return true;
             }
         }
@@ -110,9 +110,20 @@ public class AgentRestV1Controller implements AgentV1Api {
     private String duplicateToolRuleName(List<AgentMcpToolRule> rules) {
         var seen = new HashSet<String>();
         for (var rule : rules) {
-            if (!seen.add(rule.getToolName())) {
+            var key = ruleServerKey(rule) + ' ' + rule.getToolName();
+            if (!seen.add(key)) {
                 return rule.getToolName();
             }
+        }
+        return "";
+    }
+
+    private String ruleServerKey(AgentMcpToolRule rule) {
+        if (rule.getTool() != null) {
+            return "tool:" + rule.getTool().getId();
+        }
+        if (rule.getGlobalTool() != null) {
+            return "globalTool:" + rule.getGlobalTool().getId();
         }
         return "";
     }
