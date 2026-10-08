@@ -54,6 +54,25 @@ The external `POST /v1/agents/search` endpoint returns each matching agent as an
 
 Existing search fields, criteria, paging, and tenant isolation are unchanged.
 
+== Agent configuration
+
+The external `GET /v1/agents/{id}/configuration` endpoint publishes a single, resolved and secret-free view of an agent's current configuration. It requires the `ocx-ai:read` scope and returns `200` with an `AgentConfiguration` body, `404` when the agent does not exist, or `409` (a problem response) when the agent has two or more tool rules with the same tool name.
+
+The response body (`schemaVersion: "1"`) contains:
+
+* `context` — the `tenantId` and the calling `principal` resolved from the request.
+* `agent` — the agent `id`, `name`, and `description`.
+* `voice` — the `voiceEnabled` flag and `languageCode` voice settings.
+* `provider` — the provider `id`, `name`, `type`, `description`, `llmUrl`, `authMode`, and a `credentialRef` pointer (`credential://provider/{id}/api-key`).
+* `model` — the model `id`, `name`, `modelIdentifier`, `modelConfig`, and `communicationMode`.
+* `scaffold` — the active scaffold (the global scaffold is preferred when present) `id`, `name`, and `systemPrompt`.
+* `skills` — the scaffold's skills in position order (tenant skills first, then global skills for a tenant scaffold), each with `position`, `source` (`TENANT` or `GLOBAL`), and the skill metadata.
+* `mcpServers` — one entry per configured MCP server (tenant and global tools whose type is `MCP`), each with `url`, a `credentialRef` pointer (`credential://tool/{id}/api-key`), the resolved `unlistedToolPermission` and `unlistedToolPermissionSource`, and its `toolRules`.
+
+Each MCP server tool rule carries a single resolved `permission` and a `policySource` of `AGENT_TOOL_RULE`. Legacy permission values are normalized through the existing entity converters (`ALLOW`/`NEVER_ASK` become `ALWAYS_ALLOW`, `DENY` stays `DENY`), and a missing value resolves to `ALWAYS_ASK` — unknown values never resolve to `ALWAYS_ALLOW`. The `unlistedToolPermission` mirrors this resolution for unlisted tools, with `unlistedToolPermissionSource` of `TOOL_EXECUTION_POLICY` when the server defines an execution policy and `SYSTEM_DEFAULT` (resolving to `ALWAYS_ASK`) when it does not.
+
+Raw credentials and authorization headers are never returned; inline `credentialRef` pointers are emitted instead.
+
 == Extensions
 .Extensions List
 [%collapsible]

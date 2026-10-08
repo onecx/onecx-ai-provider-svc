@@ -60,4 +60,83 @@ class AgentRestV1ControllerTest extends AbstractTest {
         assertThat(data.getTotalElements()).isEqualTo(3);
         assertThat(data.getStream()).isNotNull().hasSize(1);
     }
+
+    @Test
+    void getAgentConfiguration_resolvesSecretFreeConfiguration() {
+        var response = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .basePath("/v1/agents")
+                .pathParam("id", "agent-11-111")
+                .get("/{id}/configuration");
+
+        assertThat(response.statusCode()).isEqualTo(OK.getStatusCode());
+
+        var config = response.as(AgentConfigurationDTOV1.class);
+        assertThat(config.getSchemaVersion()).isEqualTo("1");
+        assertThat(config.getContext().getTenantId()).isEqualTo("default");
+        assertThat(config.getAgent().getId()).isEqualTo("agent-11-111");
+        assertThat(config.getAgent().getName()).isEqualTo("agent1");
+        assertThat(config.getModel().getModelIdentifier()).isEqualTo("gpt-4.1-mini");
+        assertThat(config.getProvider().getType()).isEqualTo("OPENAI");
+        assertThat(config.getProvider().getCredentialRef()).isEqualTo("credential://provider/provider-11-111/api-key");
+        assertThat(config.getScaffold().getSystemPrompt()).isEqualTo("tenant scaffold prompt");
+
+        // Tenant skills first (ordered), then global skills
+        var skills = config.getSkills();
+        assertThat(skills).hasSize(3);
+        assertThat(skills.get(0).getId()).isEqualTo("skill-11-111");
+        assertThat(skills.get(0).getSource()).isEqualTo(SkillConfigurationDTOV1.SourceEnum.TENANT);
+        assertThat(skills.get(1).getId()).isEqualTo("skill-22-222");
+        assertThat(skills.get(1).getSource()).isEqualTo(SkillConfigurationDTOV1.SourceEnum.TENANT);
+        assertThat(skills.get(2).getId()).isEqualTo("gskill-11-111");
+        assertThat(skills.get(2).getSource()).isEqualTo(SkillConfigurationDTOV1.SourceEnum.GLOBAL);
+        assertThat(skills).extracting(SkillConfigurationDTOV1::getPosition).containsExactly(0, 1, 2);
+
+        // One configured MCP server with resolved permissions
+        var server = config.getMcpServers();
+        assertThat(server).hasSize(1);
+        var mcp = server.get(0);
+        assertThat(mcp.getId()).isEqualTo("tool-11-111");
+        assertThat(mcp.getUrl()).isEqualTo("http://mcp.server.org");
+        assertThat(mcp.getCredentialRef()).isEqualTo("credential://tool/tool-11-111/api-key");
+        assertThat(mcp.getUnlistedToolPermission())
+                .isEqualTo(McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ASK);
+        assertThat(mcp.getUnlistedToolPermissionSource())
+                .isEqualTo(McpServerConfigurationDTOV1.UnlistedToolPermissionSourceEnum.TOOL_EXECUTION_POLICY);
+        var rules = mcp.getToolRules().stream()
+                .collect(java.util.stream.Collectors.toMap(ToolRuleConfigurationDTOV1::getToolName, r -> r));
+        assertThat(rules).hasSize(2);
+        assertThat(rules.get("getProposal").getPermission()).isEqualTo(ToolRuleConfigurationDTOV1.PermissionEnum.ALWAYS_ALLOW);
+        assertThat(rules.get("getProposal").getPolicySource())
+                .isEqualTo(ToolRuleConfigurationDTOV1.PolicySourceEnum.AGENT_TOOL_RULE);
+        assertThat(rules.get("deleteProposal").getPermission()).isEqualTo(ToolRuleConfigurationDTOV1.PermissionEnum.DENY);
+        assertThat(rules.get("deleteProposal").getPolicySource())
+                .isEqualTo(ToolRuleConfigurationDTOV1.PolicySourceEnum.AGENT_TOOL_RULE);
+
+        // Raw credentials must never be exposed
+        assertThat(response.getBody().asString()).doesNotContain("api_key_1");
+    }
+
+    @Test
+    void getAgentConfiguration_unknownAgent_returnsNotFound() {
+        var response = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .basePath("/v1/agents")
+                .pathParam("id", "agent-not-exists")
+                .get("/{id}/configuration");
+
+        assertThat(response.statusCode()).isEqualTo(NOT_FOUND.getStatusCode());
+    }
+
+    @Test
+    void getAgentConfiguration_duplicateToolRules_returnsConflict() {
+        var response = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .basePath("/v1/agents")
+                .pathParam("id", "agent-33-333")
+                .get("/{id}/configuration");
+
+        assertThat(response.statusCode()).isEqualTo(CONFLICT.getStatusCode());
+        assertThat(response.jsonPath().getString("errorCode")).isEqualTo("DUPLICATE_AGENT_TOOL_RULE");
+    }
 }
