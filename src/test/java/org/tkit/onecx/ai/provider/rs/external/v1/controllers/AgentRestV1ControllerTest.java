@@ -108,18 +108,18 @@ class AgentRestV1ControllerTest extends AbstractTest {
         var server = config.getMcpServers();
         assertThat(server).hasSize(1);
         var mcp = server.get(0);
-        assertThat(List.of(
+        assertThat(tuple(
                 mcp.getId(),
                 mcp.getUrl(),
                 mcp.getCredentialRef(),
                 mcp.getUnlistedToolPermission(),
                 mcp.getUnlistedToolPermissionSource()))
-                .containsExactly(
+                .isEqualTo(tuple(
                         "tool-11-111",
                         "http://mcp.server.org",
                         "credential://tool/tool-11-111/api-key",
                         McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ASK,
-                        McpServerConfigurationDTOV1.UnlistedToolPermissionSourceEnum.TOOL_EXECUTION_POLICY);
+                        McpServerConfigurationDTOV1.UnlistedToolPermissionSourceEnum.TOOL_EXECUTION_POLICY));
         var rules = mcp.getToolRules().stream()
                 .collect(java.util.stream.Collectors.toMap(ToolRuleConfigurationDTOV1::getToolName, r -> r));
         assertThat(List.of(
