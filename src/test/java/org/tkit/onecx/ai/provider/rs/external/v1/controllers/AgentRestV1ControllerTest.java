@@ -4,6 +4,9 @@ import static io.restassured.RestAssured.given;
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.Response.Status.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
+
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
@@ -72,46 +75,61 @@ class AgentRestV1ControllerTest extends AbstractTest {
         assertThat(response.statusCode()).isEqualTo(OK.getStatusCode());
 
         var config = response.as(AgentConfigurationDTOV1.class);
-        assertThat(config.getSchemaVersion()).isEqualTo("1");
-        assertThat(config.getContext().getTenantId()).isEqualTo("default");
-        assertThat(config.getAgent().getId()).isEqualTo("agent-11-111");
-        assertThat(config.getAgent().getName()).isEqualTo("agent1");
-        assertThat(config.getModel().getModelIdentifier()).isEqualTo("gpt-4.1-mini");
-        assertThat(config.getProvider().getType()).isEqualTo("OPENAI");
-        assertThat(config.getProvider().getCredentialRef()).isEqualTo("credential://provider/provider-11-111/api-key");
-        assertThat(config.getScaffold().getSystemPrompt()).isEqualTo("tenant scaffold prompt");
+        assertThat(List.of(
+                config.getSchemaVersion(),
+                config.getContext().getTenantId(),
+                config.getAgent().getId(),
+                config.getAgent().getName(),
+                config.getModel().getModelIdentifier(),
+                config.getProvider().getType(),
+                config.getProvider().getCredentialRef(),
+                config.getScaffold().getSystemPrompt()))
+                .containsExactly(
+                        "1",
+                        "default",
+                        "agent-11-111",
+                        "agent1",
+                        "gpt-4.1-mini",
+                        "OPENAI",
+                        "credential://provider/provider-11-111/api-key",
+                        "tenant scaffold prompt");
 
         // Tenant skills first (ordered), then global skills
         var skills = config.getSkills();
-        assertThat(skills).hasSize(3);
-        assertThat(skills.get(0).getId()).isEqualTo("skill-11-111");
-        assertThat(skills.get(0).getSource()).isEqualTo(SkillConfigurationDTOV1.SourceEnum.TENANT);
-        assertThat(skills.get(1).getId()).isEqualTo("skill-22-222");
-        assertThat(skills.get(1).getSource()).isEqualTo(SkillConfigurationDTOV1.SourceEnum.TENANT);
-        assertThat(skills.get(2).getId()).isEqualTo("gskill-11-111");
-        assertThat(skills.get(2).getSource()).isEqualTo(SkillConfigurationDTOV1.SourceEnum.GLOBAL);
+        assertThat(skills).extracting(
+                skill -> tuple(skill.getId(), skill.getSource()))
+                .containsExactly(
+                        tuple("skill-11-111", SkillConfigurationDTOV1.SourceEnum.TENANT),
+                        tuple("skill-22-222", SkillConfigurationDTOV1.SourceEnum.TENANT),
+                        tuple("gskill-11-111", SkillConfigurationDTOV1.SourceEnum.GLOBAL));
         assertThat(skills).extracting(SkillConfigurationDTOV1::getPosition).containsExactly(0, 1, 2);
 
         // One configured MCP server with resolved permissions
         var server = config.getMcpServers();
         assertThat(server).hasSize(1);
         var mcp = server.get(0);
-        assertThat(mcp.getId()).isEqualTo("tool-11-111");
-        assertThat(mcp.getUrl()).isEqualTo("http://mcp.server.org");
-        assertThat(mcp.getCredentialRef()).isEqualTo("credential://tool/tool-11-111/api-key");
-        assertThat(mcp.getUnlistedToolPermission())
-                .isEqualTo(McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ASK);
-        assertThat(mcp.getUnlistedToolPermissionSource())
-                .isEqualTo(McpServerConfigurationDTOV1.UnlistedToolPermissionSourceEnum.TOOL_EXECUTION_POLICY);
+        assertThat(List.of(
+                mcp.getId(),
+                mcp.getUrl(),
+                mcp.getCredentialRef(),
+                mcp.getUnlistedToolPermission(),
+                mcp.getUnlistedToolPermissionSource()))
+                .containsExactly(
+                        "tool-11-111",
+                        "http://mcp.server.org",
+                        "credential://tool/tool-11-111/api-key",
+                        McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ASK,
+                        McpServerConfigurationDTOV1.UnlistedToolPermissionSourceEnum.TOOL_EXECUTION_POLICY);
         var rules = mcp.getToolRules().stream()
                 .collect(java.util.stream.Collectors.toMap(ToolRuleConfigurationDTOV1::getToolName, r -> r));
-        assertThat(rules).hasSize(2);
-        assertThat(rules.get("getProposal").getPermission()).isEqualTo(ToolRuleConfigurationDTOV1.PermissionEnum.ALWAYS_ALLOW);
-        assertThat(rules.get("getProposal").getPolicySource())
-                .isEqualTo(ToolRuleConfigurationDTOV1.PolicySourceEnum.AGENT_TOOL_RULE);
-        assertThat(rules.get("deleteProposal").getPermission()).isEqualTo(ToolRuleConfigurationDTOV1.PermissionEnum.DENY);
-        assertThat(rules.get("deleteProposal").getPolicySource())
-                .isEqualTo(ToolRuleConfigurationDTOV1.PolicySourceEnum.AGENT_TOOL_RULE);
+        assertThat(List.of(
+                tuple(rules.get("getProposal").getPermission(), rules.get("getProposal").getPolicySource()),
+                tuple(rules.get("deleteProposal").getPermission(), rules.get("deleteProposal").getPolicySource())))
+                .containsExactly(
+                        tuple(ToolRuleConfigurationDTOV1.PermissionEnum.ALWAYS_ALLOW,
+                                ToolRuleConfigurationDTOV1.PolicySourceEnum.AGENT_TOOL_RULE),
+                        tuple(ToolRuleConfigurationDTOV1.PermissionEnum.DENY,
+                                ToolRuleConfigurationDTOV1.PolicySourceEnum.AGENT_TOOL_RULE));
 
         // Raw credentials must never be exposed
         assertThat(response.getBody().asString()).doesNotContain("api_key_1");

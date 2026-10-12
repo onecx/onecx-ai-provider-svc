@@ -146,8 +146,6 @@ class AgentConfigurationMapperTest {
         var servers = config.getMcpServers();
         assertThat(servers).extracting(McpServerConfigurationDTOV1::getId)
                 .containsExactlyInAnyOrder("mcp-tool-1", "mcp-global-tool-1");
-        // MCP-only filtering: HTTP tools are absent
-        assertThat(servers).noneSatisfy(s -> assertThat(s.getId()).isIn("http-tool-1", "http-global-tool-1"));
         // Each server resolves an inline credential reference (never the raw key)
         assertThat(servers).allSatisfy(s -> assertThat(s.getCredentialRef())
                 .isEqualTo("credential://tool/" + s.getId() + "/api-key"));
@@ -221,11 +219,10 @@ class AgentConfigurationMapperTest {
         var config = mapper.build(agent, List.of(rule(mcpTool, "someTool", ToolPermission.ALLOW)), TENANT_ID, PRINCIPAL);
 
         var json = objectMapper.writeValueAsString(config);
-        assertThat(json).doesNotContain(PROVIDER_API_KEY);
-        assertThat(json).doesNotContain(MCP_TOOL_API_KEY);
         // Credential references are present instead of raw secrets
-        assertThat(json).contains("credential://provider/provider-1/api-key");
-        assertThat(json).contains("credential://tool/mcp-tool-1/api-key");
+        assertThat(json)
+                .doesNotContain(PROVIDER_API_KEY, MCP_TOOL_API_KEY)
+                .contains("credential://provider/provider-1/api-key", "credential://tool/mcp-tool-1/api-key");
     }
 
     @Test
@@ -256,46 +253,46 @@ class AgentConfigurationMapperTest {
     }
 
     private Provider provider() {
-        var provider = new Provider();
-        provider.setId("provider-1");
-        provider.setName("provider1");
-        provider.setType(ProviderType.OPENAI);
-        provider.setDescription("provider_description");
-        provider.setLlmUrl("http://some.url.org");
-        provider.setAuthMode(AuthMode.API_KEY);
-        return provider;
+        var providerEntity = new Provider();
+        providerEntity.setId("provider-1");
+        providerEntity.setName("provider1");
+        providerEntity.setType(ProviderType.OPENAI);
+        providerEntity.setDescription("provider_description");
+        providerEntity.setLlmUrl("http://some.url.org");
+        providerEntity.setAuthMode(AuthMode.API_KEY);
+        return providerEntity;
     }
 
-    private Model modelWith(Provider provider) {
-        var model = new Model();
-        model.setId("model-1");
-        model.setName("model1");
-        model.setModelIdentifier("gpt-4.1-mini");
-        model.setModelConfig("temperature=0.2");
-        model.setCommunicationMode(CommunicationMode.SYNC);
-        model.setProvider(provider);
-        return model;
+    private Model modelWith(Provider providerEntity) {
+        var modelEntity = new Model();
+        modelEntity.setId("model-1");
+        modelEntity.setName("model1");
+        modelEntity.setModelIdentifier("gpt-4.1-mini");
+        modelEntity.setModelConfig("temperature=0.2");
+        modelEntity.setCommunicationMode(CommunicationMode.SYNC);
+        modelEntity.setProvider(providerEntity);
+        return modelEntity;
     }
 
     private Scaffold tenantScaffold() {
-        var scaffold = new Scaffold();
-        scaffold.setId("scaffold-1");
-        scaffold.setName("scaffold1");
-        scaffold.setSystemPrompt("tenant scaffold prompt");
+        var scaffoldEntity = new Scaffold();
+        scaffoldEntity.setId("scaffold-1");
+        scaffoldEntity.setName("scaffold1");
+        scaffoldEntity.setSystemPrompt("tenant scaffold prompt");
         var skill1 = skill("skill-1", "extract facts");
         var skill2 = skill("skill-2", "summarize response");
-        scaffold.setSkills(Set.of(skill1, skill2));
-        scaffold.setGlobalSkills(Set.of(globalSkill("gskill-2")));
-        return scaffold;
+        scaffoldEntity.setSkills(Set.of(skill1, skill2));
+        scaffoldEntity.setGlobalSkills(Set.of(globalSkill("gskill-2")));
+        return scaffoldEntity;
     }
 
     private GlobalScaffold globalScaffold() {
-        var scaffold = new GlobalScaffold();
-        scaffold.setId("gscaffold-1");
-        scaffold.setName("global-scaffold1");
-        scaffold.setSystemPrompt("global scaffold prompt");
-        scaffold.setSkills(Set.of(globalSkill("gskill-2")));
-        return scaffold;
+        var scaffoldEntity = new GlobalScaffold();
+        scaffoldEntity.setId("gscaffold-1");
+        scaffoldEntity.setName("global-scaffold1");
+        scaffoldEntity.setSystemPrompt("global scaffold prompt");
+        scaffoldEntity.setSkills(Set.of(globalSkill("gskill-2")));
+        return scaffoldEntity;
     }
 
     private Skill skill(String id, String instruction) {
