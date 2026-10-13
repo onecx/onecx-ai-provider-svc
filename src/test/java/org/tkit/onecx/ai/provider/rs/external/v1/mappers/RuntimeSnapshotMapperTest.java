@@ -163,6 +163,12 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
     }
 
     @Test
+    void mapRuntimeChatMessage_preservesMessage() {
+        var msg = mapper.mapRuntimeChatMessage("hello", "conv-1");
+        assertThat(msg.getMessage()).isEqualTo("hello");
+    }
+
+    @Test
     void mapChatRequest_null_returnsNull() {
         assertThat(mapper.mapChatRequest(null)).isNull();
     }
@@ -308,6 +314,18 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
 
         var snapshot = mapper.mapProvider(provider);
         assertThat(snapshot.getAuthMode()).isNull();
+    }
+
+    @Test
+    void mapProvider_withTypeAndAuthMode_mapsNames() {
+        var provider = new Provider();
+        provider.setType(ProviderType.OPENAI);
+        provider.setAuthMode(AuthMode.API_KEY);
+
+        var snapshot = mapper.mapProvider(provider);
+
+        assertThat(snapshot.getType()).isEqualTo("OPENAI");
+        assertThat(snapshot.getAuthMode()).isEqualTo("API_KEY");
     }
 
     @Test
@@ -483,6 +501,29 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
     }
 
     @Test
+    void mapTools_ignoresRulesWithoutMatchingToolReferences() {
+        var tool = new Tool();
+        tool.setId("tool-1");
+        tool.setName("tenant-tool");
+        var globalTool = new GlobalTool();
+        globalTool.setId("global-tool-1");
+        globalTool.setName("global-tool");
+        var agent = new Agent();
+        agent.setId("agent-1");
+        agent.setTools(Set.of(tool));
+        agent.setGlobalTools(Set.of(globalTool));
+
+        when(agentMcpToolRuleDAO.findByAgentAndToolIds("agent-1", List.of("tool-1")))
+                .thenReturn(List.of(new AgentMcpToolRule()));
+        when(agentMcpToolRuleDAO.findByAgentAndGlobalToolIds("agent-1", List.of("global-tool-1")))
+                .thenReturn(List.of(new AgentMcpToolRule()));
+
+        var tools = mapper.mapTools(agent);
+
+        assertThat(tools).hasSize(2).allSatisfy(snapshot -> assertThat(snapshot.getToolRules()).isEmpty());
+    }
+
+    @Test
     void toRuntimeRequest_mapsFullRequest() {
         var provider = new Provider();
         provider.setType(ProviderType.OLLAMA);
@@ -514,6 +555,40 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
         s.setName(name);
         s.setSystemPrompt("prompt");
         return s;
+    }
+
+    @Test
+    void mapTools_ignoresRulesWithoutMatchingToolRelationships() {
+        var tool = new Tool();
+        tool.setId("tool-1");
+        var globalTool = new GlobalTool();
+        globalTool.setId("global-1");
+        var agent = new Agent();
+        agent.setId("agent-1");
+        agent.setTools(Set.of(tool));
+        agent.setGlobalTools(Set.of(globalTool));
+        var orphanRule = new AgentMcpToolRule();
+        orphanRule.setToolName("orphan");
+        when(agentMcpToolRuleDAO.findByAgentAndToolIds("agent-1", List.of("tool-1")))
+                .thenReturn(List.of(orphanRule));
+        when(agentMcpToolRuleDAO.findByAgentAndGlobalToolIds("agent-1", List.of("global-1")))
+                .thenReturn(List.of(orphanRule));
+
+        var tools = mapper.mapTools(agent);
+
+        assertThat(tools).hasSize(2)
+                .allSatisfy(snapshot -> assertThat(snapshot.getToolRules()).isEmpty());
+    }
+
+    @Test
+    void mapTool_nullRules_returnsEmptyRules() {
+        var tool = new Tool();
+        tool.setName("search");
+
+        var snapshot = mapper.mapTool(tool, null);
+
+        assertThat(snapshot.getName()).isEqualTo("search");
+        assertThat(snapshot.getToolRules()).isEmpty();
     }
 
     private GlobalScaffold globalScaffold(String name) {

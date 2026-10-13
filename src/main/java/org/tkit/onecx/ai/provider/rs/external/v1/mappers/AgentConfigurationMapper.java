@@ -141,7 +141,8 @@ public abstract class AgentConfigurationMapper {
                 skills.add(globalSkill(skill));
                 skills.get(skills.size() - 1).setPosition(position++);
             }
-        } else if (scaffold instanceof GlobalScaffold globalScaffold) {
+        } else {
+            var globalScaffold = (GlobalScaffold) scaffold;
             for (var skill : orderedGlobalSkills(globalScaffold.getSkills())) {
                 skills.add(globalSkill(skill));
                 skills.get(skills.size() - 1).setPosition(position++);

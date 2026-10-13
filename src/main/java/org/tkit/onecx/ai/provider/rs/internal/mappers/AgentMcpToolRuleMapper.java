@@ -78,17 +78,6 @@ public interface AgentMcpToolRuleMapper {
 
     default ToolPermissionDTO mapToolPermission(ToolPermission permission) {
         var canonical = (permission == null ? ToolPermission.DEFAULT : permission).toCanonical();
-        try {
-            return ToolPermissionDTO.fromValue(canonical.name());
-        } catch (IllegalArgumentException ignored) {
-            if (canonical == ToolPermission.ALWAYS_ALLOW) {
-                try {
-                    return ToolPermissionDTO.fromValue("ALLOW");
-                } catch (IllegalArgumentException ignored2) {
-                    return ToolPermissionDTO.ALWAYS_ASK;
-                }
-            }
-            return canonical == ToolPermission.DENY ? ToolPermissionDTO.DENY : ToolPermissionDTO.ALWAYS_ASK;
-        }
+        return ToolPermissionDTO.fromValue(canonical.name());
     }
 }

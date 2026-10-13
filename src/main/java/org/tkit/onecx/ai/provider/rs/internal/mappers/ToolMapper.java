@@ -94,10 +94,6 @@ public interface ToolMapper {
 
     default ExecutionPolicyDTO mapExecutionPolicy(ExecutionPolicy executionPolicy) {
         var canonical = (executionPolicy == null ? ExecutionPolicy.DEFAULT : executionPolicy).toCanonical();
-        try {
-            return ExecutionPolicyDTO.fromValue(canonical.name());
-        } catch (IllegalArgumentException ignored) {
-            return ExecutionPolicyDTO.ALWAYS_ASK;
-        }
+        return ExecutionPolicyDTO.fromValue(canonical.name());
     }
 }

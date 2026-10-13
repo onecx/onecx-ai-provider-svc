@@ -1,15 +1,21 @@
 package org.tkit.onecx.ai.provider.rs.external.v1.controllers;
 
 import static jakarta.ws.rs.core.Response.Status.CONFLICT;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Set;
+
+import jakarta.ws.rs.core.SecurityContext;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,10 +23,14 @@ import org.tkit.onecx.ai.provider.domain.daos.AgentDAO;
 import org.tkit.onecx.ai.provider.domain.daos.AgentMcpToolRuleDAO;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.AgentMcpToolRule;
+import org.tkit.onecx.ai.provider.domain.models.GlobalTool;
 import org.tkit.onecx.ai.provider.domain.models.Tool;
 import org.tkit.onecx.ai.provider.domain.models.enums.ToolPermission;
 import org.tkit.onecx.ai.provider.domain.models.enums.ToolType;
+import org.tkit.onecx.ai.provider.rs.external.v1.mappers.AgentConfigurationMapper;
 import org.tkit.onecx.ai.provider.rs.external.v1.mappers.AgentConfigurationMapperImpl;
+
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ProblemDetailResponseDTOV1;
 
 /**
  * Unit test (no {@code @QuarkusTest}/{@code AbstractTest}) for the duplicate tool-rule detection in
@@ -90,6 +100,106 @@ class AgentRestV1ControllerDuplicateRuleTest {
         agent.setTenantId("default");
         agent.setTools(tools);
         return agent;
+    }
+
+    @Test
+    void unknownAgent_returnsNotFoundWithoutLoadingRules() {
+        try (var response = controller.getAgentConfiguration(AGENT_ID)) {
+            assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+        }
+        verifyNoInteractions(agentMcpToolRuleDAO);
+    }
+
+    @Test
+    void nullToolCollections_doNotLoadRules() {
+        var agent = agentWithTools(null);
+        agent.setGlobalTools(null);
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+
+        try (var response = controller.getAgentConfiguration(AGENT_ID)) {
+            assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
+        }
+        verifyNoInteractions(agentMcpToolRuleDAO);
+    }
+
+    @Test
+    void nonMcpTools_doNotLoadRules() {
+        var tool = mcpTool("tool-a");
+        tool.setType(null);
+        var globalTool = new GlobalTool();
+        globalTool.setId("global-a");
+        globalTool.setType(null);
+        var agent = agentWithTools(Set.of(tool));
+        agent.setGlobalTools(Set.of(globalTool));
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+
+        try (var response = controller.getAgentConfiguration(AGENT_ID)) {
+            assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
+        }
+        verifyNoInteractions(agentMcpToolRuleDAO);
+    }
+
+    @Test
+    void sameToolNameOnSameGlobalServer_returnsDetailedConflict() {
+        var globalTool = new GlobalTool();
+        globalTool.setId("global-a");
+        globalTool.setType(ToolType.MCP);
+        var agent = agentWithTools(Set.of());
+        agent.setGlobalTools(Set.of(globalTool));
+        var rule = rule(null, "search");
+        rule.setGlobalTool(globalTool);
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+        when(agentMcpToolRuleDAO.findByAgentAndGlobalToolIds(AGENT_ID, List.of("global-a")))
+                .thenReturn(List.of(rule, rule));
+
+        try (var response = controller.getAgentConfiguration(AGENT_ID)) {
+            assertThat(response.getStatus()).isEqualTo(CONFLICT.getStatusCode());
+            var problem = (ProblemDetailResponseDTOV1) response.getEntity();
+            assertThat(problem.getErrorCode()).isEqualTo("DUPLICATE_AGENT_TOOL_RULE");
+            assertThat(problem.getDetail()).contains("'search'");
+        }
+    }
+
+    @Test
+    void rulesWithoutServer_useFallbackServerKey() {
+        var tool = mcpTool("tool-a");
+        var agent = agentWithTools(Set.of(tool));
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+        when(agentMcpToolRuleDAO.findByAgentAndToolIds(AGENT_ID, List.of("tool-a")))
+                .thenReturn(List.of(rule(null, "search"), rule(null, "search")));
+
+        try (var response = controller.getAgentConfiguration(AGENT_ID)) {
+            assertThat(response.getStatus()).isEqualTo(CONFLICT.getStatusCode());
+            assertThat(((ProblemDetailResponseDTOV1) response.getEntity()).getDetail()).contains("'search'");
+        }
+    }
+
+    @Test
+    void securityContextWithoutPrincipal_passesNullUser() {
+        var agent = agentWithTools(Set.of());
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+        controller.securityContext = mock(SecurityContext.class);
+        controller.agentConfigurationMapper = mock(AgentConfigurationMapper.class);
+
+        try (var response = controller.getAgentConfiguration(AGENT_ID)) {
+            assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
+        }
+        verify(controller.agentConfigurationMapper).build(agent, List.of(), "default", null);
+    }
+
+    @Test
+    void authenticatedPrincipal_isPassedToConfigurationMapper() {
+        var agent = agentWithTools(Set.of());
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+        controller.securityContext = mock(SecurityContext.class);
+        Principal principal = () -> "alice";
+        when(controller.securityContext.getUserPrincipal()).thenReturn(principal);
+        controller.agentConfigurationMapper = mock(AgentConfigurationMapper.class);
+
+        try (var response = controller.getAgentConfiguration(AGENT_ID)) {
+            assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
+        }
+        verify(controller.agentConfigurationMapper).build(agent, List.of(), "default", "alice");
     }
 
     private Tool mcpTool(String id) {

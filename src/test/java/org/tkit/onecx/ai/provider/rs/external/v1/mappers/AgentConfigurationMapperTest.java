@@ -239,6 +239,88 @@ class AgentConfigurationMapperTest {
         return config.getMcpServers().get(0);
     }
 
+    @Test
+    void build_missingRelationships_returnsEmptyConfigurationSections() {
+        var agent = new Agent();
+        agent.setTools(null);
+        agent.setGlobalTools(null);
+
+        var config = mapper.build(agent, null, TENANT_ID, null);
+
+        assertThat(config.getModel()).isNull();
+        assertThat(config.getProvider()).isNull();
+        assertThat(config.getScaffold()).isNull();
+        assertThat(config.getSkills()).isEmpty();
+        assertThat(config.getMcpServers()).isEmpty();
+        assertThat(config.getVoice().getVoiceEnabled()).isFalse();
+        assertThat(config.getContext().getPrincipal()).isNull();
+    }
+
+    @Test
+    void build_missingOptionalModelAndProviderValues_preservesNulls() {
+        var agent = baseAgent();
+        model.setCommunicationMode(null);
+        provider.setType(null);
+        provider.setAuthMode(null);
+
+        var config = mapper.build(agent, List.of(), TENANT_ID, PRINCIPAL);
+
+        assertThat(config.getModel().getCommunicationMode()).isNull();
+        assertThat(config.getProvider().getType()).isNull();
+        assertThat(config.getProvider().getAuthMode()).isNull();
+
+        model.setProvider(null);
+        assertThat(mapper.build(agent, List.of(), TENANT_ID, PRINCIPAL).getProvider()).isNull();
+    }
+
+    @Test
+    void build_scaffoldsWithNullSkillCollections_haveNoSkills() {
+        var agent = baseAgent();
+        scaffold.setSkills(null);
+        scaffold.setGlobalSkills(null);
+
+        assertThat(mapper.build(agent, List.of(), TENANT_ID, PRINCIPAL).getSkills()).isEmpty();
+
+        globalScaffold.setSkills(null);
+        agent.setGlobalScaffold(globalScaffold);
+        assertThat(mapper.build(agent, List.of(), TENANT_ID, PRINCIPAL).getSkills()).isEmpty();
+    }
+
+    @Test
+    void build_globalRulesAndOrphanRules_resolveOnlyTargetedPermissions() {
+        var agent = baseAgent();
+        var globalTool = globalTool("global-mcp", ToolType.MCP, null);
+        agent.setGlobalTools(Set.of(globalTool));
+        var globalRule = rule(null, "search", null);
+        globalRule.setGlobalTool(globalTool);
+        var orphanRule = rule(null, "orphan", ToolPermission.DENY);
+
+        var server = singleServer(mapper.build(agent, List.of(globalRule, orphanRule), TENANT_ID, PRINCIPAL));
+
+        assertThat(server.getId()).isEqualTo("global-mcp");
+        assertThat(server.getToolRules()).hasSize(1);
+        assertThat(server.getToolRules().get(0).getToolName()).isEqualTo("search");
+        assertThat(server.getToolRules().get(0).getPermission())
+                .isEqualTo(ToolRuleConfigurationDTOV1.PermissionEnum.ALWAYS_ASK);
+        assertThat(server.getUnlistedToolPermissionSource())
+                .isEqualTo(McpServerConfigurationDTOV1.UnlistedToolPermissionSourceEnum.SYSTEM_DEFAULT);
+    }
+
+    @Test
+    void build_ruleWithBothTargets_prefersTenantTool() {
+        var agent = baseAgent();
+        var tool = mcpTool("tenant-tool", ExecutionPolicy.ALWAYS_ASK);
+        var globalTool = globalTool("global-tool", ToolType.MCP, ExecutionPolicy.ALWAYS_ASK);
+        agent.setTools(Set.of(tool));
+        var rule = rule(tool, "search", ToolPermission.ALWAYS_ASK);
+        rule.setGlobalTool(globalTool);
+
+        var server = singleServer(mapper.build(agent, List.of(rule), TENANT_ID, PRINCIPAL));
+
+        assertThat(server.getId()).isEqualTo("tenant-tool");
+        assertThat(server.getToolRules()).extracting(ToolRuleConfigurationDTOV1::getToolName).containsExactly("search");
+    }
+
     private Agent baseAgent() {
         var agent = new Agent();
         agent.setId("agent-1");

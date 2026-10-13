@@ -63,10 +63,11 @@ public class AgentRestV1Controller implements AgentV1Api {
         }
 
         var rules = loadRules(agent);
-        if (hasDuplicateToolRule(rules)) {
+        var duplicateToolRuleName = duplicateToolRuleName(rules);
+        if (duplicateToolRuleName != null) {
             var problem = new ProblemDetailResponseDTOV1();
             problem.setErrorCode(ERROR_DUPLICATE_TOOL_RULE);
-            problem.setDetail("Agent has duplicate MCP tool rules for tool '" + duplicateToolRuleName(rules) + "'");
+            problem.setDetail("Agent has duplicate MCP tool rules for tool '" + duplicateToolRuleName + "'");
             return Response.status(Response.Status.CONFLICT).entity(problem).build();
         }
 
@@ -97,16 +98,6 @@ public class AgentRestV1Controller implements AgentV1Api {
         return rules;
     }
 
-    private boolean hasDuplicateToolRule(List<AgentMcpToolRule> rules) {
-        var seen = new HashSet<String>();
-        for (var rule : rules) {
-            if (!seen.add(ruleServerKey(rule) + ' ' + rule.getToolName())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private String duplicateToolRuleName(List<AgentMcpToolRule> rules) {
         var seen = new HashSet<String>();
         for (var rule : rules) {
@@ -115,7 +106,7 @@ public class AgentRestV1Controller implements AgentV1Api {
                 return rule.getToolName();
             }
         }
-        return "";
+        return null;
     }
 
     private String ruleServerKey(AgentMcpToolRule rule) {
