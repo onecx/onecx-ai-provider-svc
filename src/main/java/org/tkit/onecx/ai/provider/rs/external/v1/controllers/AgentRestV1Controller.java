@@ -77,23 +77,20 @@ public class AgentRestV1Controller implements AgentV1Api {
 
     private List<AgentMcpToolRule> loadRules(Agent agent) {
         var rules = new ArrayList<AgentMcpToolRule>();
-        if (agent.getTools() != null) {
-            var toolIds = agent.getTools().stream()
-                    .filter(tool -> tool.getType() == ToolType.MCP)
-                    .map(Tool::getId)
-                    .toList();
-            if (!toolIds.isEmpty()) {
-                rules.addAll(agentMcpToolRuleDAO.findByAgentAndToolIds(agent.getId(), toolIds));
-            }
+        var toolIds = agent.getTools().stream()
+                .filter(tool -> tool.getType() == ToolType.MCP)
+                .map(Tool::getId)
+                .toList();
+        if (!toolIds.isEmpty()) {
+            rules.addAll(agentMcpToolRuleDAO.findByAgentAndToolIds(agent.getId(), toolIds));
         }
-        if (agent.getGlobalTools() != null) {
-            var globalToolIds = agent.getGlobalTools().stream()
-                    .filter(tool -> tool.getType() == ToolType.MCP)
-                    .map(GlobalTool::getId)
-                    .toList();
-            if (!globalToolIds.isEmpty()) {
-                rules.addAll(agentMcpToolRuleDAO.findByAgentAndGlobalToolIds(agent.getId(), globalToolIds));
-            }
+
+        var globalToolIds = agent.getGlobalTools().stream()
+                .filter(tool -> tool.getType() == ToolType.MCP)
+                .map(GlobalTool::getId)
+                .toList();
+        if (!globalToolIds.isEmpty()) {
+            rules.addAll(agentMcpToolRuleDAO.findByAgentAndGlobalToolIds(agent.getId(), globalToolIds));
         }
         return rules;
     }
@@ -113,14 +110,10 @@ public class AgentRestV1Controller implements AgentV1Api {
         if (rule.getTool() != null) {
             return "tool:" + rule.getTool().getId();
         }
-        if (rule.getGlobalTool() != null) {
-            return "globalTool:" + rule.getGlobalTool().getId();
-        }
-        return "";
+        return "globalTool:" + rule.getGlobalTool().getId();
     }
 
     private String principal() {
-        var user = securityContext == null ? null : securityContext.getUserPrincipal();
-        return user != null ? user.getName() : null;
+        return securityContext.getUserPrincipal().getName();
     }
 }

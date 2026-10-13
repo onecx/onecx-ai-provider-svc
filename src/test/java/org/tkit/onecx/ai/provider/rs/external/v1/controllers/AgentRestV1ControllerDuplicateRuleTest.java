@@ -56,6 +56,8 @@ class AgentRestV1ControllerDuplicateRuleTest {
         controller.dao = dao;
         controller.agentMcpToolRuleDAO = agentMcpToolRuleDAO;
         controller.agentConfigurationMapper = new AgentConfigurationMapperImpl();
+        controller.securityContext = mock(SecurityContext.class);
+        when(controller.securityContext.getUserPrincipal()).thenReturn(() -> "tester");
     }
 
     @Test
@@ -99,6 +101,7 @@ class AgentRestV1ControllerDuplicateRuleTest {
         agent.setName("agent-config");
         agent.setTenantId("default");
         agent.setTools(tools);
+        agent.setGlobalTools(Set.of());
         return agent;
     }
 
@@ -106,18 +109,6 @@ class AgentRestV1ControllerDuplicateRuleTest {
     void unknownAgent_returnsNotFoundWithoutLoadingRules() {
         try (var response = controller.getAgentConfiguration(AGENT_ID)) {
             assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
-        }
-        verifyNoInteractions(agentMcpToolRuleDAO);
-    }
-
-    @Test
-    void nullToolCollections_doNotLoadRules() {
-        var agent = agentWithTools(null);
-        agent.setGlobalTools(null);
-        when(dao.findById(AGENT_ID)).thenReturn(agent);
-
-        try (var response = controller.getAgentConfiguration(AGENT_ID)) {
-            assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
         }
         verifyNoInteractions(agentMcpToolRuleDAO);
     }
@@ -161,37 +152,9 @@ class AgentRestV1ControllerDuplicateRuleTest {
     }
 
     @Test
-    void rulesWithoutServer_useFallbackServerKey() {
-        var tool = mcpTool("tool-a");
-        var agent = agentWithTools(Set.of(tool));
-        when(dao.findById(AGENT_ID)).thenReturn(agent);
-        when(agentMcpToolRuleDAO.findByAgentAndToolIds(AGENT_ID, List.of("tool-a")))
-                .thenReturn(List.of(rule(null, "search"), rule(null, "search")));
-
-        try (var response = controller.getAgentConfiguration(AGENT_ID)) {
-            assertThat(response.getStatus()).isEqualTo(CONFLICT.getStatusCode());
-            assertThat(((ProblemDetailResponseDTOV1) response.getEntity()).getDetail()).contains("'search'");
-        }
-    }
-
-    @Test
-    void securityContextWithoutPrincipal_passesNullUser() {
-        var agent = agentWithTools(Set.of());
-        when(dao.findById(AGENT_ID)).thenReturn(agent);
-        controller.securityContext = mock(SecurityContext.class);
-        controller.agentConfigurationMapper = mock(AgentConfigurationMapper.class);
-
-        try (var response = controller.getAgentConfiguration(AGENT_ID)) {
-            assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
-        }
-        verify(controller.agentConfigurationMapper).build(agent, List.of(), "default", null);
-    }
-
-    @Test
     void authenticatedPrincipal_isPassedToConfigurationMapper() {
         var agent = agentWithTools(Set.of());
         when(dao.findById(AGENT_ID)).thenReturn(agent);
-        controller.securityContext = mock(SecurityContext.class);
         Principal principal = () -> "alice";
         when(controller.securityContext.getUserPrincipal()).thenReturn(principal);
         controller.agentConfigurationMapper = mock(AgentConfigurationMapper.class);

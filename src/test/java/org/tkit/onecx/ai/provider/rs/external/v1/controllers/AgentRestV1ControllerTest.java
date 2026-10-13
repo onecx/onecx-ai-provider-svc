@@ -157,4 +157,35 @@ class AgentRestV1ControllerTest extends AbstractTest {
         assertThat(response.statusCode()).isEqualTo(CONFLICT.getStatusCode());
         assertThat(response.jsonPath().getString("errorCode")).isEqualTo("DUPLICATE_AGENT_TOOL_RULE");
     }
+
+    @Test
+    void getAgentConfiguration_nonMcpToolsAreIgnored_returnsNoMcpServers() {
+        var response = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .basePath("/v1/agents")
+                .pathParam("id", "agent-22-222")
+                .get("/{id}/configuration");
+
+        assertThat(response.statusCode()).isEqualTo(OK.getStatusCode());
+        var config = response.as(AgentConfigurationDTOV1.class);
+        assertThat(config.getMcpServers()).isEmpty();
+    }
+
+    @Test
+    void getAgentConfiguration_globalMcpRulesAreLoaded() {
+        var response = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .basePath("/v1/agents")
+                .pathParam("id", "agent-44-444")
+                .get("/{id}/configuration");
+
+        assertThat(response.statusCode()).isEqualTo(OK.getStatusCode());
+        var config = response.as(AgentConfigurationDTOV1.class);
+        assertThat(config.getMcpServers()).hasSize(1);
+
+        var server = config.getMcpServers().get(0);
+        assertThat(server.getId()).isEqualTo("gtool-22-222");
+        assertThat(server.getToolRules()).extracting(ToolRuleConfigurationDTOV1::getToolName)
+                .containsExactly("globalMcpRead");
+    }
 }

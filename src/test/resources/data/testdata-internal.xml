@@ -24,6 +24,7 @@
 	<TOOL guid="tool-22-222" optlock="0" name="tool2" description="tool_description_2" type="HTTP" url="http://tool.server.org" api_key="api_key_2" execution_policy="NEVER_ASK" auth_mode="OAUTH" tenant_id="default" creationuser="user1"/>
 	<TOOL guid="tool-33-333" optlock="0" name="tool3" description="tool_description_3" type="HTTP" url="http://tool3.server.org" api_key="api_key_3" tenant_id="default" creationuser="user1"/>
 	<GLOBAL_TOOL guid="gtool-11-111" optlock="0" name="global-tool1" description="global_tool_description_1" type="HTTP" url="http://global.tool.org" api_key="global_api_key_1" execution_policy="ALWAYS_ASK" auth_mode="API_KEY" creationuser="user1"/>
+	<GLOBAL_TOOL guid="gtool-22-222" optlock="0" name="global-tool2" description="global_tool_description_2" type="MCP" url="http://global.mcp.tool.org" api_key="global_api_key_2" execution_policy="ALWAYS_ASK" auth_mode="API_KEY" creationuser="user1"/>
 
 	<!-- Agent groups and external agents -->
 	<AGENT_GROUP guid="group-11-111" optlock="0" name="group1" description="group_description_1" routing_instructions="delegate by capability" orchestration_mode="LEAD_DELEGATES" response_strategy="LAST" tenant_id="default" creationuser="user1"/>
@@ -42,6 +43,7 @@
 	<AGENT_MCP_TOOL_RULE guid="rule-44-444" optlock="0" tool_id="tool-11-111" tool_name="orphanRule" tool_description="Rule with no agent" allowed="DENY" tenant_id="default" creationuser="user1"/>
 	<AGENT_MCP_TOOL_RULE guid="rule-55-555" optlock="0" agent_id="agent-33-333" tool_id="tool-11-111" tool_name="duplicateTool" tool_description="First duplicate rule" allowed="ALLOW" tenant_id="default" creationuser="user1"/>
 	<AGENT_MCP_TOOL_RULE guid="rule-55-556" optlock="0" agent_id="agent-33-333" tool_id="tool-11-111" tool_name="duplicateTool" tool_description="Second duplicate rule" allowed="DENY" tenant_id="default" creationuser="user1"/>
+	<AGENT_MCP_TOOL_RULE guid="rule-66-666" optlock="0" agent_id="agent-44-444" global_tool_id="gtool-22-222" tool_name="globalMcpRead" tool_description="Global MCP read tool" allowed="ALLOW" tenant_id="default" creationuser="user1"/>
 
 	<!-- Relation tables -->
 	<SCAFFOLD_SKILL_RL scaffold_id="scaffold-11-111" skill_id="skill-11-111"/>
@@ -53,6 +55,7 @@
 	<AGENT_TOOL_RL agent_id="agent-22-222" tool_id="tool-22-222"/>
 	<AGENT_TOOL_RL agent_id="agent-33-333" tool_id="tool-11-111"/>
 	<AGENT_GLOBAL_TOOL_RL agent_id="agent-22-222" global_tool_id="gtool-11-111"/>
+	<AGENT_GLOBAL_TOOL_RL agent_id="agent-44-444" global_tool_id="gtool-22-222"/>
 	<AGENT_GROUP_RL agent_id="agent-11-111" group_id="group-11-111"/>
 	<AGENT_GROUP_RL agent_id="agent-22-222" group_id="group-11-111"/>
 	<EXTERNAL_AGENT_GROUP_RL external_agent_id="ext-agent-11-111" group_id="group-11-111"/>
