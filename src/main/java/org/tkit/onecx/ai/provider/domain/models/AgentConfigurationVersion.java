@@ -4,18 +4,29 @@ import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.Immutable;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.TenantId;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 
 @Getter
 @Entity
 @Immutable
-@Table(name = "AGENT_CONFIGURATION_VERSION")
+@Table(name = "AGENT_CONFIGURATION_VERSION", uniqueConstraints = {
+        @UniqueConstraint(name = "uq_agent_configuration_version_owner", columnNames = { "AGENT_ID", "GUID" }),
+        @UniqueConstraint(name = "uq_agent_configuration_version_name", columnNames = { "TENANT_ID", "AGENT_ID", "NAME" })
+})
 public class AgentConfigurationVersion {
 
     @Id
@@ -28,6 +39,12 @@ public class AgentConfigurationVersion {
 
     @Column(name = "AGENT_ID", updatable = false, nullable = false)
     private String agentId;
+
+    @Getter(AccessLevel.NONE)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "AGENT_ID", insertable = false, updatable = false, foreignKey = @ForeignKey(name = "fk_configuration_version_agent"))
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private Agent agent;
 
     @Column(name = "NAME", updatable = false, nullable = false)
     private String name;
