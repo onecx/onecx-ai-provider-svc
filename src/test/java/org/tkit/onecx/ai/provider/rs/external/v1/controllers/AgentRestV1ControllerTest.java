@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
@@ -22,6 +23,19 @@ import io.quarkus.test.junit.QuarkusTest;
 @WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, deleteAfterTest = true, rinseAndRepeat = true)
 @GenerateKeycloakClient(clientName = "testClient", scopes = { "ocx-ai:read" })
 class AgentRestV1ControllerTest extends AbstractTest {
+
+    @Test
+    void readOnlyCallerCannotCreateOrActivateVersions() {
+        given().auth().oauth2(getKeycloakClientToken("testClient"))
+                .basePath("/v1/agents").contentType(APPLICATION_JSON)
+                .body(Map.of("name", "Unauthorized"))
+                .post("/agent-11-111/configuration/versions")
+                .then().statusCode(FORBIDDEN.getStatusCode());
+        given().auth().oauth2(getKeycloakClientToken("testClient"))
+                .basePath("/v1/agents")
+                .put("/agent-11-111/configuration/versions/missing/activate")
+                .then().statusCode(FORBIDDEN.getStatusCode());
+    }
 
     @Test
     void findAgentBySearchCriteriaTest() {
