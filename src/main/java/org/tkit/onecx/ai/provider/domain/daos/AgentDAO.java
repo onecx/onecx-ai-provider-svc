@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.persistence.LockModeType;
 import jakarta.persistence.criteria.Predicate;
 
 import org.tkit.onecx.ai.provider.domain.criteria.AgentSearchCriteria;
@@ -21,7 +20,13 @@ import org.tkit.quarkus.jpa.models.AbstractTraceableEntity_;
 public class AgentDAO extends AbstractDAO<Agent> {
 
     public void lockConfiguration(Agent agent) {
-        getEntityManager().refresh(agent, LockModeType.PESSIMISTIC_WRITE);
+        var entityManager = getEntityManager();
+        entityManager.createNativeQuery(
+                "select guid from agent where guid = :id and tenant_id = :tenantId for update", String.class)
+                .setParameter("id", agent.getId())
+                .setParameter("tenantId", agent.getTenantId())
+                .getSingleResult();
+        entityManager.refresh(agent);
     }
 
     public PageResult<Agent> findAgentsByCriteria(AgentSearchCriteria criteria) {
