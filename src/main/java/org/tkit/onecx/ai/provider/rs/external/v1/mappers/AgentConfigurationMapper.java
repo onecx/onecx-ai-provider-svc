@@ -209,6 +209,7 @@ public abstract class AgentConfigurationMapper {
         server.setName(tool.getName());
         server.setDescription(tool.getDescription());
         server.setUrl(tool.getUrl());
+        server.setAuthMode(tool.getAuthMode() != null ? tool.getAuthMode().name() : null);
         server.setCredentialRef(CREDENTIAL_PREFIX_TOOL + tool.getId() + CREDENTIAL_SUFFIX);
         server.setUnlistedToolPermission(mapUnlistedPermission(tool.getExecutionPolicy()));
         server.setUnlistedToolPermissionSource(mapUnlistedSource(tool.getExecutionPolicy()));

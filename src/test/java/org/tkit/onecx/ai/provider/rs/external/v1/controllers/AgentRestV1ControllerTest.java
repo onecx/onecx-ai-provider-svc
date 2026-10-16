@@ -111,12 +111,14 @@ class AgentRestV1ControllerTest extends AbstractTest {
         assertThat(tuple(
                 mcp.getId(),
                 mcp.getUrl(),
+                mcp.getAuthMode(),
                 mcp.getCredentialRef(),
                 mcp.getUnlistedToolPermission(),
                 mcp.getUnlistedToolPermissionSource()))
                 .isEqualTo(tuple(
                         "tool-11-111",
                         "http://mcp.server.org",
+                        "API_KEY",
                         "credential://tool/tool-11-111/api-key",
                         McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ASK,
                         McpServerConfigurationDTOV1.UnlistedToolPermissionSourceEnum.TOOL_EXECUTION_POLICY));
