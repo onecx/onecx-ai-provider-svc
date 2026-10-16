@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.persistence.LockModeType;
 import jakarta.persistence.criteria.Predicate;
 
 import org.tkit.onecx.ai.provider.domain.criteria.AgentSearchCriteria;
@@ -18,6 +19,10 @@ import org.tkit.quarkus.jpa.models.AbstractTraceableEntity_;
 
 @ApplicationScoped
 public class AgentDAO extends AbstractDAO<Agent> {
+
+    public void lockConfiguration(Agent agent) {
+        getEntityManager().refresh(agent, LockModeType.PESSIMISTIC_WRITE);
+    }
 
     public PageResult<Agent> findAgentsByCriteria(AgentSearchCriteria criteria) {
         try {

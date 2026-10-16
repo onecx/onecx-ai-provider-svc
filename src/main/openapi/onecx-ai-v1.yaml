@@ -70,7 +70,7 @@ paths:
         - oauth2: [ ocx-ai:read ]
       tags:
         - agent
-      description: Get the agent's single current, resolved and secret-free configuration
+      description: Get the active immutable configuration. The first read initializes a default version if none exists.
       operationId: getAgentConfiguration
       parameters:
         - name: id
@@ -93,6 +93,103 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProblemDetailResponse"
+  /v1/agents/{id}/configuration/versions:
+    post:
+      security:
+        - oauth2: [ ocx-ai:write ]
+      tags:
+        - agent
+      operationId: createAgentConfigurationVersion
+      description: Save the currently resolved configuration under a name unique to this agent and tenant. Names are trimmed and case-sensitive. Only the first version becomes active automatically.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAgentConfigurationVersion"
+      responses:
+        "201":
+          description: Immutable version created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentConfigurationVersion"
+        "400":
+          description: Invalid name
+        "404":
+          description: Agent not found
+        "409":
+          description: Duplicate version name (DUPLICATE_AGENT_CONFIGURATION_VERSION_NAME) or duplicate MCP tool rules (DUPLICATE_AGENT_TOOL_RULE)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetailResponse"
+  /v1/agents/{id}/configuration/versions/{versionId}:
+    get:
+      security:
+        - oauth2: [ ocx-ai:read ]
+      tags:
+        - agent
+      operationId: getAgentConfigurationVersion
+      description: Get the exact saved configuration, independent of the active version.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Saved configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentConfiguration"
+        "404":
+          description: Agent or version not found
+  /v1/agents/{id}/configuration/versions/{versionId}/activate:
+    put:
+      security:
+        - oauth2: [ ocx-ai:write ]
+      tags:
+        - agent
+      operationId: activateAgentConfigurationVersion
+      description: Make a saved version active without changing its identifier or content.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Version activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentConfigurationVersion"
+        "404":
+          description: Agent or version not found
 components:
   securitySchemes:
     oauth2:
@@ -102,7 +199,32 @@ components:
           tokenUrl: https://oauth.simple.api/token
           scopes:
             ocx-ai:read: Grants read access
+            ocx-ai:write: Grants configuration version creation and activation access
   schemas:
+    CreateAgentConfigurationVersion:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Unique per agent and tenant after trimming leading and trailing whitespace. Case-sensitive.
+          minLength: 1
+          maxLength: 255
+          pattern: '.*\S.*'
+    AgentConfigurationVersion:
+      type: object
+      required:
+        - id
+        - name
+        - active
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        active:
+          type: boolean
     ChatRequest:
       type: object
       required:

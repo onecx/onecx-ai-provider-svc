@@ -36,6 +36,9 @@ public class Agent extends TraceableEntity {
     @Column(name = "DESCRIPTION")
     private String description;
 
+    @Column(name = "ACTIVE_CONFIGURATION_VERSION_ID")
+    private String activeConfigurationVersionId;
+
     @Column(name = "ADDITIONAL_PROMPT")
     private String additionalPrompt;
 
