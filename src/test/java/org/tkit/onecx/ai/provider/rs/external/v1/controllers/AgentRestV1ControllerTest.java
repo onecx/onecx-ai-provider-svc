@@ -118,7 +118,7 @@ class AgentRestV1ControllerTest extends AbstractTest {
                 .isEqualTo(tuple(
                         "tool-11-111",
                         "http://mcp.server.org",
-                        "API_KEY",
+                        McpServerConfigurationDTOV1.AuthModeEnum.API_KEY,
                         "credential://tool/tool-11-111/api-key",
                         McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ASK,
                         McpServerConfigurationDTOV1.UnlistedToolPermissionSourceEnum.TOOL_EXECUTION_POLICY));

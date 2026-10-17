@@ -168,9 +168,30 @@ class AgentConfigurationMapperTest {
         var byId = config.getMcpServers().stream()
                 .collect(java.util.stream.Collectors.toMap(McpServerConfigurationDTOV1::getId, s -> s));
         // OAUTH and API_KEY surface their enum name; an unauthenticated tool exposes no auth mode
-        assertThat(byId.get("mcp-tool-oauth").getAuthMode()).isEqualTo(AuthMode.OAUTH.name());
-        assertThat(byId.get("mcp-tool-api-key").getAuthMode()).isEqualTo(AuthMode.API_KEY.name());
+        assertThat(byId.get("mcp-tool-oauth").getAuthMode()).isEqualTo(McpServerConfigurationDTOV1.AuthModeEnum.OAUTH);
+        assertThat(byId.get("mcp-tool-api-key").getAuthMode())
+                .isEqualTo(McpServerConfigurationDTOV1.AuthModeEnum.API_KEY);
         assertThat(byId.get("mcp-tool-plain").getAuthMode()).isNull();
+    }
+
+    @Test
+    void build_mcpServerWithApiKeyButNoAuthMode_reportsApiKey() {
+        var agent = baseAgent();
+        var implicitApiKeyTool = mcpTool("mcp-tool-implicit-key", ExecutionPolicy.ALWAYS_ASK);
+        implicitApiKeyTool.setApiKey(MCP_TOOL_API_KEY);
+        var blankApiKeyTool = mcpTool("mcp-tool-blank-key", ExecutionPolicy.ALWAYS_ASK);
+        blankApiKeyTool.setApiKey("   ");
+        agent.setTools(Set.of(implicitApiKeyTool, blankApiKeyTool));
+
+        var config = mapper.build(agent, List.of(), TENANT_ID, PRINCIPAL);
+
+        var byId = config.getMcpServers().stream()
+                .collect(java.util.stream.Collectors.toMap(McpServerConfigurationDTOV1::getId, s -> s));
+        // The runtime sends a non-blank apiKey as Authorization even without authMode
+        assertThat(byId.get("mcp-tool-implicit-key").getAuthMode())
+                .isEqualTo(McpServerConfigurationDTOV1.AuthModeEnum.API_KEY);
+        // A blank apiKey is not sent, so no server auth is reported
+        assertThat(byId.get("mcp-tool-blank-key").getAuthMode()).isNull();
     }
 
     @Test

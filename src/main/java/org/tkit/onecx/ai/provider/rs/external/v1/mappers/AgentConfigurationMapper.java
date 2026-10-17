@@ -209,12 +209,26 @@ public abstract class AgentConfigurationMapper {
         server.setName(tool.getName());
         server.setDescription(tool.getDescription());
         server.setUrl(tool.getUrl());
-        server.setAuthMode(tool.getAuthMode() != null ? tool.getAuthMode().name() : null);
+        server.setAuthMode(mapMcpAuthMode(tool));
         server.setCredentialRef(CREDENTIAL_PREFIX_TOOL + tool.getId() + CREDENTIAL_SUFFIX);
         server.setUnlistedToolPermission(mapUnlistedPermission(tool.getExecutionPolicy()));
         server.setUnlistedToolPermissionSource(mapUnlistedSource(tool.getExecutionPolicy()));
         server.setToolRules(rules.stream().map(this::mapRule).toList());
         return server;
+    }
+
+    /**
+     * Mirrors the runtime's MCP client rule: an explicit auth mode wins, otherwise a
+     * non-blank API key is sent as {@code Authorization}, i.e. behaves as API_KEY.
+     */
+    private McpServerConfigurationDTOV1.AuthModeEnum mapMcpAuthMode(AbstractTool tool) {
+        if (tool.getAuthMode() != null) {
+            return McpServerConfigurationDTOV1.AuthModeEnum.fromValue(tool.getAuthMode().name());
+        }
+        if (tool.getApiKey() != null && !tool.getApiKey().isBlank()) {
+            return McpServerConfigurationDTOV1.AuthModeEnum.API_KEY;
+        }
+        return null;
     }
 
     private ToolRuleConfigurationDTOV1 mapRule(AgentMcpToolRule rule) {
