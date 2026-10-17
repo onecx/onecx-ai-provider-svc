@@ -348,26 +348,32 @@ components:
           enum: [ TENANT, GLOBAL ]
     McpServerConfiguration:
       type: object
-      description: >-
+      description: |-
         An MCP server reachable by v1 consumers. `authMode` selects how the
         consumer authenticates to the server, mirroring how
         onecx-ai-provider-runtime builds its MCP clients:
+
         - `OAUTH`: the consumer sends its own OIDC client-credentials token as
           `Authorization: Bearer <token>` (a fresh token per request).
         - `API_KEY`: the consumer resolves `credentialRef` to the key value and
           sends it as `Authorization: <key>` (no `Bearer` prefix).
         - absent (null): no server `Authorization` header; only the user
           headers are sent.
-        A tool without an explicit auth mode but with a non-blank API key is
-        reported as `API_KEY`, because the runtime sends that key as
-        `Authorization` as well.
+
+        `authMode` is derived with the runtime's rule: a tool configured as
+        `OAUTH` is reported as `OAUTH`; otherwise a tool with a non-blank API
+        key is reported as `API_KEY` (whether or not its stored auth mode is
+        `API_KEY`); otherwise `authMode` is absent. A tool stored as `API_KEY`
+        without a key is therefore reported without `authMode`, because the
+        runtime sends no `Authorization` for it either.
+
         In every case the consumer also forwards the user headers
         `apm-principal-token` and `UserAuthorization` (the caller's own
         `Authorization` header, renamed) on each request. `credentialRef` is a
         reference, never a secret, so the configuration response itself stays
-        secret-free. Permission values use
-        the vocabulary `DENY`, `ALWAYS_ASK`, `ALWAYS_ALLOW` (the v1 canonical
-        form of the internal `ExecutionPolicy` values).
+        secret-free. Permission values use the vocabulary `DENY`,
+        `ALWAYS_ASK`, `ALWAYS_ALLOW` (the v1 canonical form of the internal
+        `ExecutionPolicy` values).
       properties:
         id:
           type: string
@@ -384,9 +390,10 @@ components:
             How the consumer must authenticate to this MCP server. `API_KEY`
             means resolve `credentialRef` and send it as `Authorization`;
             `OAUTH` means send the consumer's own OIDC client-credentials
-            token as `Authorization: Bearer`. A tool with no explicit auth
-            mode but a non-blank API key is reported as `API_KEY`. Absent
-            means no server authentication, only the user headers.
+            token as `Authorization: Bearer`. Absent means no server
+            authentication, only the user headers. Derived like the runtime:
+            `OAUTH` if the tool is configured as `OAUTH`, else `API_KEY` if the
+            tool has a non-blank API key, else absent.
         credentialRef:
           type: string
           description: >-

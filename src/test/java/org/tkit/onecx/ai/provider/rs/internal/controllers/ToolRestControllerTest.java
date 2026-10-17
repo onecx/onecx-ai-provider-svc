@@ -82,8 +82,8 @@ class ToolRestControllerTest extends AbstractTest {
                 .as(ToolPageResultDTO.class);
 
         assertThat(data).isNotNull();
-        assertThat(data.getTotalElements()).isEqualTo(5);
-        assertThat(data.getStream()).isNotNull().hasSize(5);
+        assertThat(data.getTotalElements()).isEqualTo(7);
+        assertThat(data.getStream()).isNotNull().hasSize(7);
 
         criteria.setType(ToolTypeDTO.MCP);
         data = given()
@@ -96,8 +96,8 @@ class ToolRestControllerTest extends AbstractTest {
                 .extract()
                 .as(ToolPageResultDTO.class);
 
-        assertThat(data.getTotalElements()).isEqualTo(2);
-        assertThat(data.getStream()).isNotNull().hasSize(2);
+        assertThat(data.getTotalElements()).isEqualTo(4);
+        assertThat(data.getStream()).isNotNull().hasSize(4);
     }
 
     @Test

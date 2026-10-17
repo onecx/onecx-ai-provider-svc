@@ -218,12 +218,20 @@ public abstract class AgentConfigurationMapper {
     }
 
     /**
-     * Mirrors the runtime's MCP client rule: an explicit auth mode wins, otherwise a
-     * non-blank API key is sent as {@code Authorization}, i.e. behaves as API_KEY.
+     * Mirrors the runtime's MCP client rule ({@code McpService.createMcpClient}): OAUTH sends
+     * the runtime's own token; otherwise a non-blank API key is sent as {@code Authorization};
+     * otherwise no server auth. So API_KEY without a key reports no auth mode.
      */
     private McpServerConfigurationDTOV1.AuthModeEnum mapMcpAuthMode(AbstractTool tool) {
         if (tool.getAuthMode() != null) {
-            return McpServerConfigurationDTOV1.AuthModeEnum.fromValue(tool.getAuthMode().name());
+            switch (tool.getAuthMode()) {
+                case OAUTH:
+                    return McpServerConfigurationDTOV1.AuthModeEnum.OAUTH;
+                case API_KEY:
+                    break;
+                default:
+                    return null;
+            }
         }
         if (tool.getApiKey() != null && !tool.getApiKey().isBlank()) {
             return McpServerConfigurationDTOV1.AuthModeEnum.API_KEY;

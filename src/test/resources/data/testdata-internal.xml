@@ -23,6 +23,8 @@
 	<TOOL guid="tool-11-111" optlock="0" name="tool1" description="tool_description_1" type="MCP" url="http://mcp.server.org" api_key="api_key_1" execution_policy="ALWAYS_ASK" auth_mode="API_KEY" tenant_id="default" creationuser="user1"/>
 	<TOOL guid="tool-22-222" optlock="0" name="tool2" description="tool_description_2" type="HTTP" url="http://tool.server.org" api_key="api_key_2" execution_policy="NEVER_ASK" auth_mode="OAUTH" tenant_id="default" creationuser="user1"/>
 	<TOOL guid="tool-33-333" optlock="0" name="tool3" description="tool_description_3" type="HTTP" url="http://tool3.server.org" api_key="api_key_3" tenant_id="default" creationuser="user1"/>
+	<TOOL guid="tool-44-444" optlock="0" name="tool4" description="tool_description_4" type="MCP" url="http://mcp.oauth.server.org" execution_policy="ALWAYS_ASK" auth_mode="OAUTH" tenant_id="default" creationuser="user1"/>
+	<TOOL guid="tool-55-555" optlock="0" name="tool5" description="tool_description_5" type="MCP" url="http://mcp.plain.server.org" execution_policy="ALWAYS_ASK" tenant_id="default" creationuser="user1"/>
 	<GLOBAL_TOOL guid="gtool-11-111" optlock="0" name="global-tool1" description="global_tool_description_1" type="HTTP" url="http://global.tool.org" api_key="global_api_key_1" execution_policy="ALWAYS_ASK" auth_mode="API_KEY" creationuser="user1"/>
 	<GLOBAL_TOOL guid="gtool-22-222" optlock="0" name="global-tool2" description="global_tool_description_2" type="MCP" url="http://global.mcp.tool.org" api_key="global_api_key_2" execution_policy="ALWAYS_ASK" auth_mode="API_KEY" creationuser="user1"/>
 
@@ -52,6 +54,8 @@
 	<GLOBAL_SCAFFOLD_GLOBAL_SKILL_RL global_scaffold_id="gscaffold-11-111" global_skill_id="gskill-11-111"/>
 	<GLOBAL_SCAFFOLD_GLOBAL_SKILL_RL global_scaffold_id="gscaffold-11-111" global_skill_id="gskill-22-222"/>
 	<AGENT_TOOL_RL agent_id="agent-11-111" tool_id="tool-11-111"/>
+	<AGENT_TOOL_RL agent_id="agent-11-111" tool_id="tool-44-444"/>
+	<AGENT_TOOL_RL agent_id="agent-11-111" tool_id="tool-55-555"/>
 	<AGENT_TOOL_RL agent_id="agent-22-222" tool_id="tool-22-222"/>
 	<AGENT_TOOL_RL agent_id="agent-33-333" tool_id="tool-11-111"/>
 	<AGENT_GLOBAL_TOOL_RL agent_id="agent-22-222" global_tool_id="gtool-11-111"/>

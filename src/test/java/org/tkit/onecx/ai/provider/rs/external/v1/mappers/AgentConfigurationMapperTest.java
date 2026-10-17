@@ -160,6 +160,7 @@ class AgentConfigurationMapperTest {
         oauthTool.setAuthMode(AuthMode.OAUTH);
         var apiKeyTool = mcpTool("mcp-tool-api-key", ExecutionPolicy.ALWAYS_ASK);
         apiKeyTool.setAuthMode(AuthMode.API_KEY);
+        apiKeyTool.setApiKey(MCP_TOOL_API_KEY);
         var unauthenticatedTool = mcpTool("mcp-tool-plain", ExecutionPolicy.ALWAYS_ASK);
         agent.setTools(Set.of(oauthTool, apiKeyTool, unauthenticatedTool));
 
@@ -192,6 +193,23 @@ class AgentConfigurationMapperTest {
                 .isEqualTo(McpServerConfigurationDTOV1.AuthModeEnum.API_KEY);
         // A blank apiKey is not sent, so no server auth is reported
         assertThat(byId.get("mcp-tool-blank-key").getAuthMode()).isNull();
+    }
+
+    @Test
+    void build_mcpServerWithApiKeyModeButNoKey_reportsNoAuthMode() {
+        var agent = baseAgent();
+        var nullKeyTool = mcpTool("mcp-tool-api-key-null", ExecutionPolicy.ALWAYS_ASK);
+        nullKeyTool.setAuthMode(AuthMode.API_KEY);
+        var blankKeyTool = mcpTool("mcp-tool-api-key-blank", ExecutionPolicy.ALWAYS_ASK);
+        blankKeyTool.setAuthMode(AuthMode.API_KEY);
+        blankKeyTool.setApiKey(" ");
+        agent.setTools(Set.of(nullKeyTool, blankKeyTool));
+
+        var config = mapper.build(agent, List.of(), TENANT_ID, PRINCIPAL);
+
+        // The runtime sends no Authorization for API_KEY without a key, so none is reported
+        assertThat(config.getMcpServers()).hasSize(2)
+                .allSatisfy(s -> assertThat(s.getAuthMode()).isNull());
     }
 
     @Test
@@ -272,6 +290,7 @@ class AgentConfigurationMapperTest {
                 .doesNotContain(PROVIDER_API_KEY, MCP_TOOL_API_KEY, OAUTH_MCP_API_KEY)
                 .contains("credential://provider/provider-1/api-key",
                         "credential://tool/mcp-tool-1/api-key", "credential://tool/mcp-tool-oauth/api-key")
+                .doesNotContain("\"apiKey\"")
                 .contains("API_KEY", "OAUTH");
     }
 

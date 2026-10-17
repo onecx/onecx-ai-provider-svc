@@ -104,10 +104,13 @@ class AgentRestV1ControllerTest extends AbstractTest {
                         tuple("gskill-11-111", SkillConfigurationDTOV1.SourceEnum.GLOBAL));
         assertThat(skills).extracting(SkillConfigurationDTOV1::getPosition).containsExactly(0, 1, 2);
 
-        // One configured MCP server with resolved permissions
-        var server = config.getMcpServers();
-        assertThat(server).hasSize(1);
-        var mcp = server.get(0);
+        // Three MCP servers: API_KEY, OAUTH and unauthenticated
+        var servers = config.getMcpServers().stream()
+                .collect(java.util.stream.Collectors.toMap(McpServerConfigurationDTOV1::getId, s -> s));
+        assertThat(servers).hasSize(3);
+        assertThat(servers.get("tool-44-444").getAuthMode()).isEqualTo(McpServerConfigurationDTOV1.AuthModeEnum.OAUTH);
+        assertThat(servers.get("tool-55-555").getAuthMode()).isNull();
+        var mcp = servers.get("tool-11-111");
         assertThat(tuple(
                 mcp.getId(),
                 mcp.getUrl(),
@@ -134,7 +137,7 @@ class AgentRestV1ControllerTest extends AbstractTest {
                                 ToolRuleConfigurationDTOV1.PolicySourceEnum.AGENT_TOOL_RULE));
 
         // Raw credentials must never be exposed
-        assertThat(response.getBody().asString()).doesNotContain("api_key_1");
+        assertThat(response.getBody().asString()).doesNotContain("api_key_1", "\"apiKey\"");
     }
 
     @Test
