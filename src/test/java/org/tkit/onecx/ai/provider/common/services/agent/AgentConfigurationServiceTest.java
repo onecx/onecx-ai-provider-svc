@@ -1,4 +1,4 @@
-package org.tkit.onecx.ai.provider.rs.external.v1.controllers;
+package org.tkit.onecx.ai.provider.common.services.agent;
 
 import static jakarta.ws.rs.core.Response.Status.CONFLICT;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
@@ -14,12 +14,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.security.Principal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
-
-import jakarta.ws.rs.core.SecurityContext;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,17 +36,10 @@ import org.tkit.onecx.ai.provider.rs.external.v1.mappers.AgentConfigurationMappe
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationDTOV1;
-import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationVersionDTOV1;
-import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.CreateAgentConfigurationVersionDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ProblemDetailResponseDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.internal.model.AgentConfigurationVersionDTO;
 
-/**
- * Unit test (no {@code @QuarkusTest}/{@code AbstractTest}) for the duplicate tool-rule detection in
- * {@link AgentRestV1Controller}. A duplicate is two rules on the <em>same</em> MCP server with the
- * same tool name. The same tool name on <em>different</em> servers is legitimate and must not be
- * rejected.
- */
-class AgentRestV1ControllerDuplicateRuleTest {
+class AgentConfigurationServiceTest {
 
     private static final String AGENT_ID = "agent-config";
 
@@ -57,33 +47,31 @@ class AgentRestV1ControllerDuplicateRuleTest {
 
     private AgentMcpToolRuleDAO agentMcpToolRuleDAO;
 
-    private AgentRestV1Controller controller;
+    private AgentConfigurationService service;
 
     @BeforeEach
     void setUp() {
         dao = mock(AgentDAO.class);
         agentMcpToolRuleDAO = mock(AgentMcpToolRuleDAO.class);
-        controller = new AgentRestV1Controller();
-        controller.dao = dao;
-        controller.agentMcpToolRuleDAO = agentMcpToolRuleDAO;
-        controller.agentConfigurationMapper = new AgentConfigurationMapperImpl();
-        controller.objectMapper = new ObjectMapper().findAndRegisterModules();
-        controller.versionDAO = mock(AgentConfigurationVersionDAO.class);
+        service = new AgentConfigurationService();
+        service.dao = dao;
+        service.agentMcpToolRuleDAO = agentMcpToolRuleDAO;
+        service.agentConfigurationMapper = new AgentConfigurationMapperImpl();
+        service.objectMapper = new ObjectMapper().findAndRegisterModules();
+        service.versionDAO = mock(AgentConfigurationVersionDAO.class);
         var versions = new HashMap<String, AgentConfigurationVersion>();
         doAnswer(invocation -> {
             AgentConfigurationVersion version = invocation.getArgument(0);
             versions.put(version.getId(), version);
             return null;
-        }).when(controller.versionDAO).create(any());
-        when(controller.versionDAO.existsByAgentAndName(anyString(), anyString())).thenAnswer(invocation -> versions.values()
+        }).when(service.versionDAO).create(any());
+        when(service.versionDAO.existsByAgentAndName(anyString(), anyString())).thenAnswer(invocation -> versions.values()
                 .stream().anyMatch(version -> version.getAgentId().equals(invocation.getArgument(0))
                         && version.getName().equals(invocation.getArgument(1))));
-        when(controller.versionDAO.findByAgentAndId(anyString(), anyString())).thenAnswer(invocation -> {
+        when(service.versionDAO.findByAgentAndId(anyString(), anyString())).thenAnswer(invocation -> {
             var version = versions.get(invocation.getArgument(1));
             return version != null && version.getAgentId().equals(invocation.getArgument(0)) ? version : null;
         });
-        controller.securityContext = mock(SecurityContext.class);
-        when(controller.securityContext.getUserPrincipal()).thenReturn(() -> "tester");
     }
 
     @Test
@@ -97,7 +85,7 @@ class AgentRestV1ControllerDuplicateRuleTest {
                         rule(toolA, "search"),
                         rule(toolB, "search")));
 
-        var response = controller.getAgentConfiguration(AGENT_ID);
+        var response = service.getAgentConfiguration(AGENT_ID, "tester");
 
         assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
         // Both servers publish the same tool name legitimately, so the configuration is returned
@@ -115,7 +103,7 @@ class AgentRestV1ControllerDuplicateRuleTest {
                         rule(toolA, "search"),
                         rule(toolA, "search")));
 
-        var response = controller.getAgentConfiguration(AGENT_ID);
+        var response = service.getAgentConfiguration(AGENT_ID, "tester");
 
         assertThat(response.getStatus()).isEqualTo(CONFLICT.getStatusCode());
         assertThat(response.getEntity()).isNotNull();
@@ -133,7 +121,7 @@ class AgentRestV1ControllerDuplicateRuleTest {
 
     @Test
     void unknownAgent_returnsNotFoundWithoutLoadingRules() {
-        try (var response = controller.getAgentConfiguration(AGENT_ID)) {
+        try (var response = service.getAgentConfiguration(AGENT_ID, "tester")) {
             assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
         }
         verifyNoInteractions(agentMcpToolRuleDAO);
@@ -150,7 +138,7 @@ class AgentRestV1ControllerDuplicateRuleTest {
         agent.setGlobalTools(Set.of(globalTool));
         when(dao.findById(AGENT_ID)).thenReturn(agent);
 
-        try (var response = controller.getAgentConfiguration(AGENT_ID)) {
+        try (var response = service.getAgentConfiguration(AGENT_ID, "tester")) {
             assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
         }
         verifyNoInteractions(agentMcpToolRuleDAO);
@@ -169,7 +157,7 @@ class AgentRestV1ControllerDuplicateRuleTest {
         when(agentMcpToolRuleDAO.findByAgentAndGlobalToolIds(AGENT_ID, List.of("global-a")))
                 .thenReturn(List.of(rule, rule));
 
-        try (var response = controller.getAgentConfiguration(AGENT_ID)) {
+        try (var response = service.getAgentConfiguration(AGENT_ID, "tester")) {
             assertThat(response.getStatus()).isEqualTo(CONFLICT.getStatusCode());
             var problem = (ProblemDetailResponseDTOV1) response.getEntity();
             assertThat(problem.getErrorCode()).isEqualTo("DUPLICATE_AGENT_TOOL_RULE");
@@ -181,14 +169,12 @@ class AgentRestV1ControllerDuplicateRuleTest {
     void authenticatedPrincipal_isPassedToConfigurationMapper() {
         var agent = agentWithTools(Set.of());
         when(dao.findById(AGENT_ID)).thenReturn(agent);
-        Principal principal = () -> "alice";
-        when(controller.securityContext.getUserPrincipal()).thenReturn(principal);
-        controller.agentConfigurationMapper = mock(AgentConfigurationMapper.class);
+        service.agentConfigurationMapper = mock(AgentConfigurationMapper.class);
 
-        try (var response = controller.getAgentConfiguration(AGENT_ID)) {
+        try (var response = service.getAgentConfiguration(AGENT_ID, "alice")) {
             assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
         }
-        verify(controller.agentConfigurationMapper).build(agent, List.of(), "default", "alice");
+        verify(service.agentConfigurationMapper).build(agent, List.of(), "default", "alice");
     }
 
     @Test
@@ -204,15 +190,15 @@ class AgentRestV1ControllerDuplicateRuleTest {
         assertThat(second.getId()).isNotEqualTo(first.getId());
         assertThat(activeConfiguration().getAgent().getName()).isEqualTo("agent-config");
 
-        try (var response = controller.activateAgentConfigurationVersion(AGENT_ID, second.getId())) {
+        try (var response = service.activateAgentConfigurationVersion(AGENT_ID, second.getId())) {
             assertThat(response.getStatus()).isEqualTo(200);
         }
         assertThat(activeConfiguration().getAgent().getName()).isEqualTo("Changed draft");
-        try (var response = controller.getAgentConfigurationVersion(AGENT_ID, first.getId())) {
+        try (var response = service.getAgentConfigurationVersion(AGENT_ID, first.getId(), "tester")) {
             assertThat(((AgentConfigurationDTOV1) response.getEntity()).getAgent().getName()).isEqualTo("agent-config");
             assertThat(response.getHeaderString("Content-Location")).endsWith("/" + first.getId());
         }
-        controller.activateAgentConfigurationVersion(AGENT_ID, first.getId()).close();
+        service.activateAgentConfigurationVersion(AGENT_ID, first.getId()).close();
         assertThat(agent.getActiveConfigurationVersionId()).isEqualTo(first.getId());
         assertThat(activeConfiguration().getAgent().getName()).isEqualTo("agent-config");
     }
@@ -226,7 +212,7 @@ class AgentRestV1ControllerDuplicateRuleTest {
         agent.setName("Unsaved draft");
         assertThat(activeConfiguration().getAgent().getName()).isEqualTo("agent-config");
         assertThat(agent.getActiveConfigurationVersionId()).isEqualTo(initialId);
-        verify(controller.versionDAO).create(any());
+        verify(service.versionDAO).create(any());
     }
 
     @Test
@@ -241,27 +227,29 @@ class AgentRestV1ControllerDuplicateRuleTest {
         when(dao.findById(AGENT_ID)).thenReturn(agent);
         var first = saveVersion("Release 1");
         for (var name : List.of("Release 1", "  Release 1  ")) {
-            var request = new CreateAgentConfigurationVersionDTOV1();
-            request.setName(name);
-            try (var response = controller.createAgentConfigurationVersion(AGENT_ID, request)) {
+            try (var response = service.createVersion(AGENT_ID, name, "tester")) {
                 assertThat(response.getStatus()).isEqualTo(CONFLICT.getStatusCode());
                 assertThat(((ProblemDetailResponseDTOV1) response.getEntity()).getErrorCode())
                         .isEqualTo("DUPLICATE_AGENT_CONFIGURATION_VERSION_NAME");
             }
         }
-        verify(controller.versionDAO).create(any());
+        verify(service.versionDAO).create(any());
         assertThat(agent.getActiveConfigurationVersionId()).isEqualTo(first.getId());
     }
 
     @Test
-    void savedConfigurationUsesRetrievingPrincipal() {
+    void savedConfigurationUsesRetrievingPrincipal() throws Exception {
         when(dao.findById(AGENT_ID)).thenReturn(agentWithTools(Set.of()));
         var version = saveVersion("First");
-        when(controller.securityContext.getUserPrincipal()).thenReturn(() -> "runtime-user");
-        try (var response = controller.getAgentConfigurationVersion(AGENT_ID, version.getId())) {
+        var storedVersion = service.versionDAO.findByAgentAndId(AGENT_ID, version.getId());
+        var storedConfiguration = storedVersion.getConfiguration();
+        var versionConfiguration = service.objectMapper.readValue(storedConfiguration, AgentConfigurationDTOV1.class);
+        assertThat(versionConfiguration.getContext().getPrincipal()).isNull();
+        try (var response = service.getAgentConfigurationVersion(AGENT_ID, version.getId(), "runtime-user")) {
             assertThat(((AgentConfigurationDTOV1) response.getEntity()).getContext().getPrincipal())
                     .isEqualTo("runtime-user");
         }
+        assertThat(storedVersion.getConfiguration()).isEqualTo(storedConfiguration);
     }
 
     @Test
@@ -272,16 +260,16 @@ class AgentRestV1ControllerDuplicateRuleTest {
         var other = agentWithTools(Set.of());
         other.setId("other-agent");
         when(dao.findById("other-agent")).thenReturn(other);
-        try (var response = controller.getAgentConfigurationVersion("other-agent", version.getId())) {
+        try (var response = service.getAgentConfigurationVersion("other-agent", version.getId(), "tester")) {
             assertThat(response.getStatus()).isEqualTo(404);
         }
-        try (var response = controller.activateAgentConfigurationVersion("other-agent", version.getId())) {
+        try (var response = service.activateAgentConfigurationVersion("other-agent", version.getId())) {
             assertThat(response.getStatus()).isEqualTo(404);
         }
-        try (var response = controller.activateAgentConfigurationVersion(AGENT_ID, "missing")) {
+        try (var response = service.activateAgentConfigurationVersion(AGENT_ID, "missing")) {
             assertThat(response.getStatus()).isEqualTo(404);
         }
-        try (var response = controller.getAgentConfigurationVersion(AGENT_ID, "missing")) {
+        try (var response = service.getAgentConfigurationVersion(AGENT_ID, "missing", "tester")) {
             assertThat(response.getStatus()).isEqualTo(404);
         }
         assertThat(agent.getActiveConfigurationVersionId()).isEqualTo(version.getId());
@@ -291,16 +279,14 @@ class AgentRestV1ControllerDuplicateRuleTest {
     @Test
     void invalidVersionNamesAreRejectedWithoutPersistence() {
         for (var name : List.of("", " ", "a".repeat(256))) {
-            var request = new CreateAgentConfigurationVersionDTOV1();
-            request.setName(name);
-            try (var response = controller.createAgentConfigurationVersion(AGENT_ID, request)) {
+            try (var response = service.createVersion(AGENT_ID, name, "tester")) {
                 assertThat(response.getStatus()).isEqualTo(400);
             }
         }
-        try (var response = controller.createAgentConfigurationVersion(AGENT_ID, null)) {
+        try (var response = service.createVersion(AGENT_ID, null, "tester")) {
             assertThat(response.getStatus()).isEqualTo(400);
         }
-        verifyNoInteractions(controller.versionDAO);
+        verifyNoInteractions(service.versionDAO);
     }
 
     @Test
@@ -310,21 +296,17 @@ class AgentRestV1ControllerDuplicateRuleTest {
         when(dao.findById(AGENT_ID)).thenReturn(agent);
         when(agentMcpToolRuleDAO.findByAgentAndToolIds(anyString(), anyList()))
                 .thenReturn(List.of(rule(tool, "search"), rule(tool, "search")));
-        var request = new CreateAgentConfigurationVersionDTOV1();
-        request.setName("Invalid");
-        try (var response = controller.createAgentConfigurationVersion(AGENT_ID, request)) {
+        try (var response = service.createVersion(AGENT_ID, "Invalid", "tester")) {
             assertThat(response.getStatus()).isEqualTo(409);
         }
-        verify(controller.versionDAO, never()).create(any());
+        verify(service.versionDAO, never()).create(any());
         assertThat(agent.getActiveConfigurationVersionId()).isNull();
     }
 
-    private AgentConfigurationVersionDTOV1 saveVersion(String name) {
-        var request = new CreateAgentConfigurationVersionDTOV1();
-        request.setName(name);
-        try (var response = controller.createAgentConfigurationVersion(AGENT_ID, request)) {
+    private AgentConfigurationVersionDTO saveVersion(String name) {
+        try (var response = service.createVersion(AGENT_ID, name, "tester")) {
             assertThat(response.getStatus()).isEqualTo(201);
-            var version = (AgentConfigurationVersionDTOV1) response.getEntity();
+            var version = (AgentConfigurationVersionDTO) response.getEntity();
             assertThat(version.getName()).isEqualTo(name);
             assertThat(response.getLocation().toString()).endsWith("/" + version.getId());
             return version;
@@ -332,7 +314,7 @@ class AgentRestV1ControllerDuplicateRuleTest {
     }
 
     private AgentConfigurationDTOV1 activeConfiguration() {
-        try (var response = controller.getAgentConfiguration(AGENT_ID)) {
+        try (var response = service.getAgentConfiguration(AGENT_ID, "tester")) {
             assertThat(response.getStatus()).isEqualTo(200);
             return (AgentConfigurationDTOV1) response.getEntity();
         }

@@ -6,6 +6,7 @@ import static jakarta.ws.rs.core.Response.Status.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +23,7 @@ import org.tkit.quarkus.test.WithDBData;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationVersionDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ProblemDetailResponseDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.internal.model.AgentConfigurationVersionDTO;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
@@ -29,7 +31,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 @TestHTTPEndpoint(AgentRestV1Controller.class)
 @WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, deleteAfterTest = true, rinseAndRepeat = true)
-@GenerateKeycloakClient(clientName = "versionEditor", scopes = { "ocx-ai:read", "ocx-ai:write" })
+@GenerateKeycloakClient(clientName = "versionEditor", scopes = { "ocx-ai:all", "ocx-ai:read", "ocx-ai:write" })
 class AgentConfigurationVersionRestV1ControllerTest extends AbstractTest {
 
     @Inject
@@ -42,6 +44,7 @@ class AgentConfigurationVersionRestV1ControllerTest extends AbstractTest {
     void configurationVersionsPersistAcrossDraftChangesAndActivation() {
         var first = createVersion("First");
         assertThat(first.getActive()).isTrue();
+        var firstConfiguration = readConfiguration("/agent-11-111/configuration/versions/" + first.getId());
 
         QuarkusTransaction.requiringNew().run(() -> {
             var agent = agentDAO.findById("agent-11-111");
@@ -50,16 +53,25 @@ class AgentConfigurationVersionRestV1ControllerTest extends AbstractTest {
         var second = createVersion("Second");
         assertThat(second.getActive()).isFalse();
         assertThat(second.getId()).isNotEqualTo(first.getId());
+        var secondConfiguration = readConfiguration("/agent-11-111/configuration/versions/" + second.getId());
 
-        assertThat(readConfiguration("/agent-11-111/configuration").getAgent().getName()).isEqualTo("agent1");
-        given().auth().oauth2(getKeycloakClientToken("versionEditor"))
+        assertThat(readConfiguration("/agent-11-111/configuration"))
+                .usingRecursiveComparison().isEqualTo(firstConfiguration);
+        var activated = given().auth().oauth2(getKeycloakClientToken("versionEditor"))
                 .basePath("/v1/agents")
                 .put("/agent-11-111/configuration/versions/" + second.getId() + "/activate")
-                .then().statusCode(OK.getStatusCode());
+                .then().statusCode(OK.getStatusCode()).extract().as(AgentConfigurationVersionDTOV1.class);
+        assertThat(activated.getId()).isEqualTo(second.getId());
+        assertThat(activated.getName()).isEqualTo(second.getName());
+        assertThat(activated.getActive()).isTrue();
 
         assertThat(readConfiguration("/agent-11-111/configuration").getAgent().getName()).isEqualTo("Updated draft");
-        assertThat(readConfiguration("/agent-11-111/configuration/versions/" + first.getId()).getAgent().getName())
-                .isEqualTo("agent1");
+        assertThat(readConfiguration("/agent-11-111/configuration"))
+                .usingRecursiveComparison().isEqualTo(secondConfiguration);
+        assertThat(readConfiguration("/agent-11-111/configuration/versions/" + first.getId()))
+                .usingRecursiveComparison().isEqualTo(firstConfiguration);
+        assertThat(readConfiguration("/agent-11-111/configuration/versions/" + second.getId()))
+                .usingRecursiveComparison().isEqualTo(secondConfiguration);
 
         given().auth().oauth2(getKeycloakClientToken("versionEditor"))
                 .basePath("/v1/agents")
@@ -72,11 +84,35 @@ class AgentConfigurationVersionRestV1ControllerTest extends AbstractTest {
     }
 
     @Test
+    void firstReadInitializesOneStableActiveVersion() {
+        var initial = given().auth().oauth2(getKeycloakClientToken("versionEditor"))
+                .basePath("/v1/agents").get("/agent-11-111/configuration")
+                .then().statusCode(OK.getStatusCode()).extract().response();
+        var location = initial.header("Content-Location");
+        assertThat(location).isNotBlank();
+        assertThat(URI.create(location).getPath()).startsWith("/v1/agents/agent-11-111/configuration/versions/");
+        var initialConfiguration = initial.as(AgentConfigurationDTOV1.class);
+
+        QuarkusTransaction.requiringNew().run(() -> agentDAO.findById("agent-11-111").setName("Changed draft"));
+        var subsequent = given().auth().oauth2(getKeycloakClientToken("versionEditor"))
+                .basePath("/v1/agents").get("/agent-11-111/configuration")
+                .then().statusCode(OK.getStatusCode()).extract().response();
+        assertThat(subsequent.header("Content-Location")).isEqualTo(location);
+        assertThat(subsequent.as(AgentConfigurationDTOV1.class))
+                .usingRecursiveComparison().isEqualTo(initialConfiguration);
+
+        var saved = createVersion("New draft");
+        assertThat(saved.getActive()).isFalse();
+        assertThat(readConfiguration("/agent-11-111/configuration"))
+                .usingRecursiveComparison().isEqualTo(initialConfiguration);
+    }
+
+    @Test
     void duplicateVersionNamesReturnConflictWithoutChangingActiveVersion() {
         var first = createVersion("Release 1");
         for (var name : List.of("Release 1", "  Release 1  ")) {
             var problem = given().auth().oauth2(getKeycloakClientToken("versionEditor"))
-                    .basePath("/v1/agents").contentType(APPLICATION_JSON)
+                    .basePath("/internal/agents").contentType(APPLICATION_JSON)
                     .body(Map.of("name", name))
                     .post("/agent-11-111/configuration/versions")
                     .then().statusCode(CONFLICT.getStatusCode()).extract()
@@ -99,10 +135,10 @@ class AgentConfigurationVersionRestV1ControllerTest extends AbstractTest {
         assertThat(differentCase.getActive()).isFalse();
 
         var otherAgentVersion = given().auth().oauth2(getKeycloakClientToken("versionEditor"))
-                .basePath("/v1/agents").contentType(APPLICATION_JSON)
+                .basePath("/internal/agents").contentType(APPLICATION_JSON)
                 .body(Map.of("name", "Release 1"))
                 .post("/agent-22-222/configuration/versions")
-                .then().statusCode(CREATED.getStatusCode()).extract().as(AgentConfigurationVersionDTOV1.class);
+                .then().statusCode(CREATED.getStatusCode()).extract().as(AgentConfigurationVersionDTO.class);
         assertThat(otherAgentVersion.getId()).isNotEqualTo(first.getId());
         assertThat(otherAgentVersion.getActive()).isTrue();
     }
@@ -120,25 +156,25 @@ class AgentConfigurationVersionRestV1ControllerTest extends AbstractTest {
     void invalidVersionNamesAndMissingAgentsAreRejected() {
         for (var name : List.of("", "  ", "a".repeat(256))) {
             given().auth().oauth2(getKeycloakClientToken("versionEditor"))
-                    .basePath("/v1/agents").contentType(APPLICATION_JSON)
+                    .basePath("/internal/agents").contentType(APPLICATION_JSON)
                     .body(Map.of("name", name))
                     .post("/agent-11-111/configuration/versions")
                     .then().statusCode(BAD_REQUEST.getStatusCode());
         }
         given().auth().oauth2(getKeycloakClientToken("versionEditor"))
-                .basePath("/v1/agents").contentType(APPLICATION_JSON)
+                .basePath("/internal/agents").contentType(APPLICATION_JSON)
                 .body(Map.of("name", "Missing"))
                 .post("/missing/configuration/versions")
                 .then().statusCode(NOT_FOUND.getStatusCode());
     }
 
-    private AgentConfigurationVersionDTOV1 createVersion(String name) {
+    private AgentConfigurationVersionDTO createVersion(String name) {
         var response = given().auth().oauth2(getKeycloakClientToken("versionEditor"))
-                .basePath("/v1/agents").contentType(APPLICATION_JSON)
+                .basePath("/internal/agents").contentType(APPLICATION_JSON)
                 .body(Map.of("name", name))
                 .post("/agent-11-111/configuration/versions")
                 .then().statusCode(CREATED.getStatusCode()).extract().response();
-        var version = response.as(AgentConfigurationVersionDTOV1.class);
+        var version = response.as(AgentConfigurationVersionDTO.class);
         assertThat(response.header("Location")).endsWith("/configuration/versions/" + version.getId());
         return version;
     }

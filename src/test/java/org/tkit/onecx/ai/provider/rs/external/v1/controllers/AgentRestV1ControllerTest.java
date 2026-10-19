@@ -30,6 +30,11 @@ class AgentRestV1ControllerTest extends AbstractTest {
                 .basePath("/v1/agents").contentType(APPLICATION_JSON)
                 .body(Map.of("name", "Unauthorized"))
                 .post("/agent-11-111/configuration/versions")
+                .then().statusCode(NOT_FOUND.getStatusCode());
+        given().auth().oauth2(getKeycloakClientToken("testClient"))
+                .basePath("/internal/agents").contentType(APPLICATION_JSON)
+                .body(Map.of("name", "Unauthorized"))
+                .post("/agent-11-111/configuration/versions")
                 .then().statusCode(FORBIDDEN.getStatusCode());
         given().auth().oauth2(getKeycloakClientToken("testClient"))
                 .basePath("/v1/agents")
