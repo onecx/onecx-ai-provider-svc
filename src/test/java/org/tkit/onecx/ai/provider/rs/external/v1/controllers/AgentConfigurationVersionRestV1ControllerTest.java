@@ -15,7 +15,11 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import org.tkit.onecx.ai.provider.domain.daos.AgentConfigurationVersionDAO;
 import org.tkit.onecx.ai.provider.domain.daos.AgentDAO;
+import org.tkit.onecx.ai.provider.domain.daos.ProviderDAO;
 import org.tkit.onecx.ai.provider.domain.models.AgentConfigurationVersion;
+import org.tkit.onecx.ai.provider.domain.models.Provider;
+import org.tkit.onecx.ai.provider.domain.models.enums.AuthMode;
+import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 import org.tkit.quarkus.security.test.GenerateKeycloakClient;
 import org.tkit.quarkus.test.WithDBData;
@@ -39,6 +43,43 @@ class AgentConfigurationVersionRestV1ControllerTest extends AbstractTest {
 
     @Inject
     AgentConfigurationVersionDAO versionDAO;
+
+    @Inject
+    ProviderDAO providerDAO;
+
+    @Test
+    void deletedSavedProviderPreventsActivationEvenWhenDraftProviderExists() {
+        var providerId = QuarkusTransaction.requiringNew().call(() -> {
+            var provider = new Provider();
+            provider.setName("Temporary provider");
+            provider.setType(ProviderType.OPENAI);
+            provider.setAuthMode(AuthMode.API_KEY);
+            provider.setApiKey("temporary-key");
+            provider.setLlmUrl("http://provider.example");
+            provider = providerDAO.create(provider);
+            agentDAO.findById("agent-11-111").getModel().setProvider(provider);
+            return provider.getId();
+        });
+        var first = createVersion("First");
+        var second = createVersion("Second");
+        QuarkusTransaction.requiringNew().run(() -> {
+            agentDAO.findById("agent-11-111").getModel()
+                    .setProvider(providerDAO.findById("provider-11-111"));
+        });
+        QuarkusTransaction.requiringNew().run(() -> providerDAO.deleteQueryById(providerId));
+
+        var problem = given().auth().oauth2(getKeycloakClientToken("versionEditor"))
+                .basePath("/v1/agents")
+                .put("/agent-11-111/configuration/versions/" + second.getId() + "/activate")
+                .then().statusCode(CONFLICT.getStatusCode()).extract().as(ProblemDetailResponseDTOV1.class);
+        assertThat(problem.getErrorCode()).isEqualTo("INVALID_AGENT_CONFIGURATION_DEPENDENCIES");
+        assertThat(problem.getDetail()).contains(providerId, "does not exist");
+        QuarkusTransaction.requiringNew().run(() -> {
+            assertThat(agentDAO.findById("agent-11-111").getActiveConfigurationVersionId()).isEqualTo(first.getId());
+        });
+        assertThat(readConfiguration("/agent-11-111/configuration/versions/" + second.getId())
+                .getProvider().getId()).isEqualTo(providerId);
+    }
 
     @Test
     void configurationVersionsPersistAcrossDraftChangesAndActivation() {

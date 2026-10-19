@@ -59,6 +59,7 @@ class AgentConfigurationServiceTest {
         service.agentConfigurationMapper = new AgentConfigurationMapperImpl();
         service.objectMapper = new ObjectMapper().findAndRegisterModules();
         service.versionDAO = mock(AgentConfigurationVersionDAO.class);
+        service.dependencyValidator = mock(AgentConfigurationDependencyValidator.class);
         var versions = new HashMap<String, AgentConfigurationVersion>();
         doAnswer(invocation -> {
             AgentConfigurationVersion version = invocation.getArgument(0);
@@ -201,6 +202,45 @@ class AgentConfigurationServiceTest {
         service.activateAgentConfigurationVersion(AGENT_ID, first.getId()).close();
         assertThat(agent.getActiveConfigurationVersionId()).isEqualTo(first.getId());
         assertThat(activeConfiguration().getAgent().getName()).isEqualTo("agent-config");
+    }
+
+    @Test
+    void invalidDependenciesRejectActivationWithoutChangingActiveVersion() {
+        var agent = agentWithTools(Set.of());
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+        var first = saveVersion("First");
+        agent.setName("Saved draft");
+        var second = saveVersion("Second");
+        agent.setName("Current draft");
+        when(service.dependencyValidator.validate(any())).thenAnswer(invocation -> {
+            AgentConfigurationDTOV1 configuration = invocation.getArgument(0);
+            assertThat(configuration.getAgent().getName()).isEqualTo("Saved draft");
+            return List.of("Referenced provider 'deleted' does not exist");
+        });
+
+        try (var response = service.activateAgentConfigurationVersion(AGENT_ID, second.getId())) {
+            assertThat(response.getStatus()).isEqualTo(CONFLICT.getStatusCode());
+            var problem = (ProblemDetailResponseDTOV1) response.getEntity();
+            assertThat(problem.getErrorCode()).isEqualTo("INVALID_AGENT_CONFIGURATION_DEPENDENCIES");
+            assertThat(problem.getDetail()).contains("deleted");
+        }
+        assertThat(agent.getActiveConfigurationVersionId()).isEqualTo(first.getId());
+    }
+
+    @Test
+    void invalidDependenciesPreventImplicitActivation() {
+        var agent = agentWithTools(Set.of());
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+        when(service.dependencyValidator.validate(any())).thenReturn(List.of("Referenced tool is missing"));
+
+        try (var response = service.createVersion(AGENT_ID, "First", "tester")) {
+            assertThat(response.getStatus()).isEqualTo(CONFLICT.getStatusCode());
+        }
+        try (var response = service.getAgentConfiguration(AGENT_ID, "tester")) {
+            assertThat(response.getStatus()).isEqualTo(CONFLICT.getStatusCode());
+        }
+        assertThat(agent.getActiveConfigurationVersionId()).isNull();
+        verify(service.versionDAO, never()).create(any());
     }
 
     @Test

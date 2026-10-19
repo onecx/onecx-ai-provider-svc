@@ -128,7 +128,10 @@ paths:
       tags:
         - agent
       operationId: activateAgentConfigurationVersion
-      description: Make a saved version active without changing its identifier or content.
+      description: >-
+        Make a saved version active without changing its identifier or content.
+        Reject activation if referenced models, providers, MCP tools or required credentials
+        are missing or incompatible.
       parameters:
         - name: id
           in: path
@@ -147,6 +150,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AgentConfigurationVersion"
+        "409":
+          description: Invalid configuration dependencies (INVALID_AGENT_CONFIGURATION_DEPENDENCIES)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetailResponse"
         "404":
           description: Agent or version not found
 components:

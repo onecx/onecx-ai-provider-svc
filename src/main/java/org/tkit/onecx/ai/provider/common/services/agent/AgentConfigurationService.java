@@ -54,6 +54,9 @@ public class AgentConfigurationService {
     @Inject
     ObjectMapper objectMapper;
 
+    @Inject
+    AgentConfigurationDependencyValidator dependencyValidator;
+
     @Transactional(REQUIRED)
     public Response getAgentConfiguration(String id, String principal) {
         Agent agent = dao.findById(id);
@@ -122,6 +125,10 @@ public class AgentConfigurationService {
         if (version == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
+        var errors = dependencyValidator.validate(readConfiguration(version));
+        if (!errors.isEmpty()) {
+            return dependencyConflict(errors);
+        }
         agent.setActiveConfigurationVersionId(version.getId());
         return Response.ok(versionMetadata(agent, version)).build();
     }
@@ -146,12 +153,16 @@ public class AgentConfigurationService {
         if (version == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
+        var payload = readConfiguration(version);
+        if (payload != null && payload.getContext() != null) {
+            payload.getContext().setPrincipal(principal);
+        }
+        return Response.ok(payload).contentLocation(versionLocation(version)).build();
+    }
+
+    private AgentConfigurationDTOV1 readConfiguration(AgentConfigurationVersion version) {
         try {
-            var payload = objectMapper.readValue(version.getConfiguration(), AgentConfigurationDTOV1.class);
-            if (payload != null && payload.getContext() != null) {
-                payload.getContext().setPrincipal(principal);
-            }
-            return Response.ok(payload).contentLocation(versionLocation(version)).build();
+            return objectMapper.readValue(version.getConfiguration(), AgentConfigurationDTOV1.class);
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Cannot deserialize agent configuration version " + version.getId(), ex);
         }
@@ -181,7 +192,20 @@ public class AgentConfigurationService {
         }
 
         var payload = agentConfigurationMapper.build(agent, rules, agent.getTenantId(), principal);
+        if (agent.getActiveConfigurationVersionId() == null) {
+            var errors = dependencyValidator.validate(payload);
+            if (!errors.isEmpty()) {
+                return dependencyConflict(errors);
+            }
+        }
         return Response.ok(payload).build();
+    }
+
+    private Response dependencyConflict(List<String> errors) {
+        var problem = new ProblemDetailResponseDTOV1();
+        problem.setErrorCode("INVALID_AGENT_CONFIGURATION_DEPENDENCIES");
+        problem.setDetail(String.join("; ", errors));
+        return Response.status(Response.Status.CONFLICT).entity(problem).build();
     }
 
     private List<AgentMcpToolRule> loadRules(Agent agent) {
