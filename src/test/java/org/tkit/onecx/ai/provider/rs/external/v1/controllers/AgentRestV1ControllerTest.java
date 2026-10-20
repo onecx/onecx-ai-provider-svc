@@ -39,6 +39,18 @@ class AgentRestV1ControllerTest extends AbstractTest {
         given().auth().oauth2(getKeycloakClientToken("testClient"))
                 .basePath("/v1/agents")
                 .put("/agent-11-111/configuration/versions/missing/activate")
+                .then().statusCode(NOT_FOUND.getStatusCode());
+        given().auth().oauth2(getKeycloakClientToken("testClient"))
+                .basePath("/v1/agents")
+                .get("/agent-11-111/configuration/versions/missing")
+                .then().statusCode(NOT_FOUND.getStatusCode());
+        given().auth().oauth2(getKeycloakClientToken("testClient"))
+                .basePath("/internal/agents")
+                .get("/agent-11-111/configuration/versions/missing")
+                .then().statusCode(NOT_FOUND.getStatusCode());
+        given().auth().oauth2(getKeycloakClientToken("testClient"))
+                .basePath("/internal/agents")
+                .put("/agent-11-111/configuration/versions/missing/activate")
                 .then().statusCode(FORBIDDEN.getStatusCode());
     }
 

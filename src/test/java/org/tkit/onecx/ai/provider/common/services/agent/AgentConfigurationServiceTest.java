@@ -193,11 +193,16 @@ class AgentConfigurationServiceTest {
 
         try (var response = service.activateAgentConfigurationVersion(AGENT_ID, second.getId())) {
             assertThat(response.getStatus()).isEqualTo(200);
+            var metadata = (AgentConfigurationVersionDTO) response.getEntity();
+            assertThat(metadata.getId()).isEqualTo(second.getId());
+            assertThat(metadata.getName()).isEqualTo("Second");
+            assertThat(metadata.getActive()).isTrue();
         }
         assertThat(activeConfiguration().getAgent().getName()).isEqualTo("Changed draft");
         try (var response = service.getAgentConfigurationVersion(AGENT_ID, first.getId(), "tester")) {
             assertThat(((AgentConfigurationDTOV1) response.getEntity()).getAgent().getName()).isEqualTo("agent-config");
-            assertThat(response.getHeaderString("Content-Location")).endsWith("/" + first.getId());
+            assertThat(response.getHeaderString("Content-Location"))
+                    .isEqualTo("/internal/agents/" + AGENT_ID + "/configuration/versions/" + first.getId());
         }
         service.activateAgentConfigurationVersion(AGENT_ID, first.getId()).close();
         assertThat(agent.getActiveConfigurationVersionId()).isEqualTo(first.getId());

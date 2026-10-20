@@ -154,6 +154,16 @@ public class AgentRestController implements AgentInternalApi {
     }
 
     @Override
+    public Response getAgentConfigurationVersion(String id, String versionId) {
+        return configurationService.getAgentConfigurationVersion(id, versionId, securityContext.getUserPrincipal().getName());
+    }
+
+    @Override
+    public Response activateAgentConfigurationVersion(String id, String versionId) {
+        return configurationService.activateAgentConfigurationVersion(id, versionId);
+    }
+
+    @Override
     public Response getAgent(String id) {
         var item = dao.findById(id);
         if (item == null) {

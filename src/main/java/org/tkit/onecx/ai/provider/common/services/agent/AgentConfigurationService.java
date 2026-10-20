@@ -29,7 +29,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationDTOV1;
-import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationVersionDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ProblemDetailResponseDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.AgentConfigurationVersionDTO;
 
@@ -169,12 +168,12 @@ public class AgentConfigurationService {
     }
 
     private URI versionLocation(AgentConfigurationVersion version) {
-        return UriBuilder.fromPath("/v1/agents/{id}/configuration/versions/{versionId}")
+        return UriBuilder.fromPath("/internal/agents/{id}/configuration/versions/{versionId}")
                 .build(version.getAgentId(), version.getId());
     }
 
-    private AgentConfigurationVersionDTOV1 versionMetadata(Agent agent, AgentConfigurationVersion version) {
-        var result = new AgentConfigurationVersionDTOV1();
+    private AgentConfigurationVersionDTO versionMetadata(Agent agent, AgentConfigurationVersion version) {
+        var result = new AgentConfigurationVersionDTO();
         result.setId(version.getId());
         result.setName(version.getName());
         result.setActive(version.getId().equals(agent.getActiveConfigurationVersionId()));

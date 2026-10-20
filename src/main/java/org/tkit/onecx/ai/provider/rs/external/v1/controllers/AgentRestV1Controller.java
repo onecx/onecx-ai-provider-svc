@@ -43,14 +43,4 @@ public class AgentRestV1Controller implements AgentV1Api {
     public Response getAgentConfiguration(String id) {
         return configurationService.getAgentConfiguration(id, securityContext.getUserPrincipal().getName());
     }
-
-    @Override
-    public Response getAgentConfigurationVersion(String id, String versionId) {
-        return configurationService.getAgentConfigurationVersion(id, versionId, securityContext.getUserPrincipal().getName());
-    }
-
-    @Override
-    public Response activateAgentConfigurationVersion(String id, String versionId) {
-        return configurationService.activateAgentConfigurationVersion(id, versionId);
-    }
 }

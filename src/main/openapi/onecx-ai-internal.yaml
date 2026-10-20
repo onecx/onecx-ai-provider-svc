@@ -188,6 +188,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetailResponse'
+  /internal/agents/{id}/configuration/versions/{versionId}:
+    get:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags:
+        - agentInternal
+      operationId: getAgentConfigurationVersion
+      description: Get the saved configuration by its stable identifier, independent of the active version.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Saved configuration
+          content:
+            application/json:
+              schema:
+                $ref: './onecx-ai-v1.yaml#/components/schemas/AgentConfiguration'
+        "404":
+          description: Agent or version not found
+  /internal/agents/{id}/configuration/versions/{versionId}/activate:
+    put:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:write ]
+      tags:
+        - agentInternal
+      operationId: activateAgentConfigurationVersion
+      description: >-
+        Make a saved version active without changing its identifier or content.
+        Reject activation if referenced models, providers, MCP tools or required credentials
+        are missing or incompatible.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Version activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentConfigurationVersion'
+        "409":
+          description: Invalid configuration dependencies (INVALID_AGENT_CONFIGURATION_DEPENDENCIES)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        "404":
+          description: Agent or version not found
   /internal/agents/search:
     post:
       security:
