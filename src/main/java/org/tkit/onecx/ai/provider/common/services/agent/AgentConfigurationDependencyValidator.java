@@ -19,6 +19,8 @@ import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationDTO
 @ApplicationScoped
 public class AgentConfigurationDependencyValidator {
 
+    private static final String REFERENCE_DOES_NOT_EXIST = "' does not exist";
+
     @Inject
     ProviderDAO providerDAO;
 
@@ -36,15 +38,26 @@ public class AgentConfigurationDependencyValidator {
         if (configuration == null) {
             return List.of("Saved configuration is missing");
         }
+        validateModel(configuration, errors);
+        validateProvider(configuration, errors);
+        validateMcpServers(configuration, errors);
+        return errors;
+    }
+
+    private void validateModel(AgentConfigurationDTOV1 configuration, List<String> errors) {
         var model = configuration.getModel();
         if (model != null && (blank(model.getId()) || modelDAO.findById(model.getId()) == null)) {
-            errors.add("Referenced model '" + model.getId() + "' does not exist");
+            errors.add("Referenced model '" + model.getId() + REFERENCE_DOES_NOT_EXIST);
         }
+    }
+
+    private void validateProvider(AgentConfigurationDTOV1 configuration, List<String> errors) {
+        var model = configuration.getModel();
         var provider = configuration.getProvider();
         if (provider != null) {
             var current = blank(provider.getId()) ? null : providerDAO.findById(provider.getId());
             if (current == null) {
-                errors.add("Referenced provider '" + provider.getId() + "' does not exist");
+                errors.add("Referenced provider '" + provider.getId() + REFERENCE_DOES_NOT_EXIST);
             } else {
                 if (current.getType() == null) {
                     errors.add("Referenced provider '" + provider.getId() + "' has no type");
@@ -56,28 +69,35 @@ public class AgentConfigurationDependencyValidator {
         } else if (model != null) {
             errors.add("Referenced model has no provider configuration");
         }
-        if (configuration.getMcpServers() != null) {
-            for (var server : configuration.getMcpServers()) {
-                if (server == null || blank(server.getId())) {
-                    errors.add("Referenced MCP tool has no identifier");
-                    continue;
-                }
-                AbstractTool tool = toolDAO.findById(server.getId());
-                if (tool == null) {
-                    tool = globalToolDAO.findById(server.getId());
-                }
-                if (tool == null) {
-                    errors.add("Referenced tool '" + server.getId() + "' does not exist");
-                } else {
-                    if (tool.getType() != ToolType.MCP) {
-                        errors.add("Referenced tool '" + server.getId() + "' is no longer an MCP tool");
-                    }
-                    validateCredential(errors, "tool", server.getId(), server.getCredentialRef(),
-                            tool.getAuthMode() == AuthMode.API_KEY, tool.getApiKey());
-                }
-            }
+    }
+
+    private void validateMcpServers(AgentConfigurationDTOV1 configuration, List<String> errors) {
+        if (configuration.getMcpServers() == null) {
+            return;
         }
-        return errors;
+        for (var server : configuration.getMcpServers()) {
+            if (server == null || blank(server.getId())) {
+                errors.add("Referenced MCP tool has no identifier");
+                continue;
+            }
+            validateMcpServer(server.getId(), server.getCredentialRef(), errors);
+        }
+    }
+
+    private void validateMcpServer(String id, String credentialRef, List<String> errors) {
+        AbstractTool tool = toolDAO.findById(id);
+        if (tool == null) {
+            tool = globalToolDAO.findById(id);
+        }
+        if (tool == null) {
+            errors.add("Referenced tool '" + id + REFERENCE_DOES_NOT_EXIST);
+            return;
+        }
+        if (tool.getType() != ToolType.MCP) {
+            errors.add("Referenced tool '" + id + "' is no longer an MCP tool");
+        }
+        validateCredential(errors, "tool", id, credentialRef,
+                tool.getAuthMode() == AuthMode.API_KEY, tool.getApiKey());
     }
 
     private void validateCredential(List<String> errors, String kind, String id, String reference,

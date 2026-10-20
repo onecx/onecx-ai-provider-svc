@@ -1,5 +1,7 @@
 package org.tkit.onecx.ai.provider.domain.models;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -27,7 +29,10 @@ import lombok.Getter;
         @UniqueConstraint(name = "uq_agent_configuration_version_owner", columnNames = { "AGENT_ID", "GUID" }),
         @UniqueConstraint(name = "uq_agent_configuration_version_name", columnNames = { "TENANT_ID", "AGENT_ID", "NAME" })
 })
-public class AgentConfigurationVersion {
+public class AgentConfigurationVersion implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     @Id
     @Column(name = "GUID", updatable = false, nullable = false)

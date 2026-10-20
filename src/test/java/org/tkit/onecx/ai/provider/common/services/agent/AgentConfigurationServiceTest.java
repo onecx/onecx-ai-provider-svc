@@ -406,14 +406,15 @@ class AgentConfigurationServiceTest {
         var first = saveVersion("First");
         var malformed = new AgentConfigurationVersion(agent, "Malformed", "{invalid");
         service.versionDAO.create(malformed);
+        var malformedId = malformed.getId();
 
-        assertThatThrownBy(() -> service.getAgentConfigurationVersion(AGENT_ID, malformed.getId(), "tester"))
+        assertThatThrownBy(() -> service.getAgentConfigurationVersion(AGENT_ID, malformedId, "tester"))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Cannot deserialize agent configuration version " + malformed.getId())
+                .hasMessage("Cannot deserialize agent configuration version " + malformedId)
                 .hasCauseInstanceOf(JsonProcessingException.class);
-        assertThatThrownBy(() -> service.activateAgentConfigurationVersion(AGENT_ID, malformed.getId()))
+        assertThatThrownBy(() -> service.activateAgentConfigurationVersion(AGENT_ID, malformedId))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Cannot deserialize agent configuration version " + malformed.getId())
+                .hasMessage("Cannot deserialize agent configuration version " + malformedId)
                 .hasCauseInstanceOf(JsonProcessingException.class);
         assertThat(agent.getActiveConfigurationVersionId()).isEqualTo(first.getId());
     }
