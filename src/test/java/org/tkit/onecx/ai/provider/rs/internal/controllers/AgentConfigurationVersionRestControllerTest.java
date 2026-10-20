@@ -5,14 +5,18 @@ import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.Response.Status.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.SecurityContext;
 
 import org.junit.jupiter.api.Test;
+import org.tkit.onecx.ai.provider.common.services.agent.AgentConfigurationService;
 import org.tkit.onecx.ai.provider.domain.daos.AgentConfigurationVersionDAO;
 import org.tkit.onecx.ai.provider.domain.daos.AgentDAO;
 import org.tkit.onecx.ai.provider.domain.daos.ProviderDAO;
@@ -46,6 +50,21 @@ class AgentConfigurationVersionRestControllerTest extends AbstractTest {
     @Inject
     ProviderDAO providerDAO;
 
+    @Inject
+    AgentConfigurationService configurationService;
+
+    @Test
+    void absentVersionRequestReturnsBadRequest() {
+        var controller = new AgentRestController();
+        controller.configurationService = configurationService;
+        controller.securityContext = mock(SecurityContext.class);
+        when(controller.securityContext.getUserPrincipal()).thenReturn(() -> "versionEditor");
+
+        try (var response = controller.createAgentConfigurationVersion("agent-11-111", null)) {
+            assertThat(response.getStatus()).isEqualTo(BAD_REQUEST.getStatusCode());
+        }
+    }
+
     @Test
     void deletedSavedProviderPreventsActivationEvenWhenDraftProviderExists() {
         var providerId = QuarkusTransaction.requiringNew().call(() -> {
@@ -70,7 +89,7 @@ class AgentConfigurationVersionRestControllerTest extends AbstractTest {
         var problem = given().auth().oauth2(getKeycloakClientToken("versionEditor"))
                 .basePath("/internal/agents")
                 .put("/agent-11-111/configuration/versions/" + second.getId() + "/activate")
-                .then().statusCode(CONFLICT.getStatusCode()).extract().as(ProblemDetailResponseDTOV1.class);
+                .then().statusCode(BAD_REQUEST.getStatusCode()).extract().as(ProblemDetailResponseDTOV1.class);
         assertThat(problem.getErrorCode()).isEqualTo("INVALID_AGENT_CONFIGURATION_DEPENDENCIES");
         assertThat(problem.getDetail()).contains(providerId, "does not exist");
         QuarkusTransaction.requiringNew().run(() -> {
@@ -148,14 +167,14 @@ class AgentConfigurationVersionRestControllerTest extends AbstractTest {
     }
 
     @Test
-    void duplicateVersionNamesReturnConflictWithoutChangingActiveVersion() {
+    void duplicateVersionNamesReturnBadRequestWithoutChangingActiveVersion() {
         var first = createVersion("Release 1");
         for (var name : List.of("Release 1", "  Release 1  ")) {
             var problem = given().auth().oauth2(getKeycloakClientToken("versionEditor"))
                     .basePath("/internal/agents").contentType(APPLICATION_JSON)
                     .body(Map.of("name", name))
                     .post("/agent-11-111/configuration/versions")
-                    .then().statusCode(CONFLICT.getStatusCode()).extract()
+                    .then().statusCode(BAD_REQUEST.getStatusCode()).extract()
                     .as(ProblemDetailResponseDTOV1.class);
             assertThat(problem.getErrorCode()).isEqualTo("DUPLICATE_AGENT_CONFIGURATION_VERSION_NAME");
         }

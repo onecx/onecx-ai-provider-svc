@@ -65,11 +65,16 @@ public class AgentConfigurationService {
 
         dao.lockConfiguration(agent);
         if (agent.getActiveConfigurationVersionId() == null) {
+            Response initializationError = null;
             try (var resolved = resolveConfiguration(agent, principal)) {
                 if (resolved.getStatus() != Response.Status.OK.getStatusCode()) {
-                    return Response.fromResponse(resolved).build();
+                    initializationError = Response.fromResponse(resolved).build();
+                } else {
+                    saveVersion(agent, "Initial configuration", (AgentConfigurationDTOV1) resolved.getEntity());
                 }
-                saveVersion(agent, "Initial configuration", (AgentConfigurationDTOV1) resolved.getEntity());
+            }
+            if (initializationError != null) {
+                return initializationError;
             }
         }
         return configuration(versionDAO.findByAgentAndId(id, agent.getActiveConfigurationVersionId()), principal);
@@ -90,20 +95,23 @@ public class AgentConfigurationService {
             var problem = new ProblemDetailResponseDTOV1();
             problem.setErrorCode("DUPLICATE_AGENT_CONFIGURATION_VERSION_NAME");
             problem.setDetail("Agent already has a configuration version named '" + name + "'");
-            return Response.status(Response.Status.CONFLICT).entity(problem).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(problem).build();
         }
+        Response response;
         try (var resolved = resolveConfiguration(agent, principal)) {
             if (resolved.getStatus() != Response.Status.OK.getStatusCode()) {
-                return Response.fromResponse(resolved).build();
+                response = Response.fromResponse(resolved).build();
+            } else {
+                var version = saveVersion(agent, name, (AgentConfigurationDTOV1) resolved.getEntity());
+                var metadata = new AgentConfigurationVersionDTO();
+                metadata.setId(version.getId());
+                metadata.setName(version.getName());
+                metadata.setActive(version.getId().equals(agent.getActiveConfigurationVersionId()));
+                response = Response.created(versionLocation(version))
+                        .entity(metadata).build();
             }
-            var version = saveVersion(agent, name, (AgentConfigurationDTOV1) resolved.getEntity());
-            var metadata = new AgentConfigurationVersionDTO();
-            metadata.setId(version.getId());
-            metadata.setName(version.getName());
-            metadata.setActive(version.getId().equals(agent.getActiveConfigurationVersionId()));
-            return Response.created(versionLocation(version))
-                    .entity(metadata).build();
         }
+        return response;
     }
 
     public Response getAgentConfigurationVersion(String id, String versionId, String principal) {
@@ -126,7 +134,7 @@ public class AgentConfigurationService {
         }
         var errors = dependencyValidator.validate(readConfiguration(version));
         if (!errors.isEmpty()) {
-            return dependencyConflict(errors);
+            return invalidDependencies(errors);
         }
         agent.setActiveConfigurationVersionId(version.getId());
         return Response.ok(versionMetadata(agent, version)).build();
@@ -187,24 +195,24 @@ public class AgentConfigurationService {
             var problem = new ProblemDetailResponseDTOV1();
             problem.setErrorCode(ERROR_DUPLICATE_TOOL_RULE);
             problem.setDetail("Agent has duplicate MCP tool rules for tool '" + duplicateToolRuleName + "'");
-            return Response.status(Response.Status.CONFLICT).entity(problem).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(problem).build();
         }
 
         var payload = agentConfigurationMapper.build(agent, rules, agent.getTenantId(), principal);
         if (agent.getActiveConfigurationVersionId() == null) {
             var errors = dependencyValidator.validate(payload);
             if (!errors.isEmpty()) {
-                return dependencyConflict(errors);
+                return invalidDependencies(errors);
             }
         }
         return Response.ok(payload).build();
     }
 
-    private Response dependencyConflict(List<String> errors) {
+    private Response invalidDependencies(List<String> errors) {
         var problem = new ProblemDetailResponseDTOV1();
         problem.setErrorCode("INVALID_AGENT_CONFIGURATION_DEPENDENCIES");
         problem.setDetail(String.join("; ", errors));
-        return Response.status(Response.Status.CONFLICT).entity(problem).build();
+        return Response.status(Response.Status.BAD_REQUEST).entity(problem).build();
     }
 
     private List<AgentMcpToolRule> loadRules(Agent agent) {

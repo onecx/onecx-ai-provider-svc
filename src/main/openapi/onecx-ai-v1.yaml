@@ -87,8 +87,8 @@ paths:
                 $ref: "#/components/schemas/AgentConfiguration"
         "404":
           description: Not found
-        "409":
-          description: Conflict
+        "400":
+          description: Duplicate MCP tool rules (DUPLICATE_AGENT_TOOL_RULE) or invalid configuration dependencies (INVALID_AGENT_CONFIGURATION_DEPENDENCIES)
           content:
             application/json:
               schema:

@@ -178,14 +178,14 @@ class AgentRestV1ControllerTest extends AbstractTest {
     }
 
     @Test
-    void getAgentConfiguration_duplicateToolRules_returnsConflict() {
+    void getAgentConfiguration_duplicateToolRules_returnsBadRequest() {
         var response = given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
                 .basePath("/v1/agents")
                 .pathParam("id", "agent-33-333")
                 .get("/{id}/configuration");
 
-        assertThat(response.statusCode()).isEqualTo(CONFLICT.getStatusCode());
+        assertThat(response.statusCode()).isEqualTo(BAD_REQUEST.getStatusCode());
         assertThat(response.jsonPath().getString("errorCode")).isEqualTo("DUPLICATE_AGENT_TOOL_RULE");
     }
 

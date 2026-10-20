@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -24,7 +25,9 @@ import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationDTO
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.McpServerConfigurationDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ModelConfigurationDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ProviderConfigurationDTOV1;
+import io.quarkus.test.junit.QuarkusTest;
 
+@QuarkusTest
 class AgentConfigurationDependencyValidatorTest {
 
     private AgentConfigurationDependencyValidator validator;
@@ -156,5 +159,49 @@ class AgentConfigurationDependencyValidatorTest {
     void absentConfigurationIsRejectedButUnreferencedDependenciesAreOptional() {
         assertThat(validator.validate(null)).containsExactly("Saved configuration is missing");
         assertThat(validator.validate(new AgentConfigurationDTOV1())).isEmpty();
+        var empty = new AgentConfigurationDTOV1();
+        empty.setMcpServers(null);
+        assertThat(validator.validate(empty)).isEmpty();
+    }
+
+    @Test
+    void blankModelAndProviderIdentifiersAreRejected() {
+        configuration.getModel().setId(" ");
+        configuration.getProvider().setId(null);
+
+        assertThat(validator.validate(configuration)).containsExactly(
+                "Referenced model ' ' does not exist",
+                "Referenced provider 'null' does not exist");
+    }
+
+    @Test
+    void nullServersAndMissingServerIdentifiersAreReported() {
+        configuration.setMcpServers(Arrays.asList(null,
+                new McpServerConfigurationDTOV1(), new McpServerConfigurationDTOV1().id(" ")));
+
+        assertThat(validator.validate(configuration)).containsExactly(
+                "Referenced MCP tool has no identifier",
+                "Referenced MCP tool has no identifier",
+                "Referenced MCP tool has no identifier");
+    }
+
+    @Test
+    void optionalCredentialsMayBeAbsentButMustBeValidWhenProvided() {
+        configuration.getProvider().setAuthMode(null);
+        configuration.getProvider().setCredentialRef(null);
+        configuration.getMcpServers().get(0).setCredentialRef(null);
+        provider.setAuthMode(AuthMode.OAUTH);
+        tool.setAuthMode(AuthMode.OAUTH);
+        provider.setApiKey(null);
+        tool.setApiKey(null);
+
+        assertThat(validator.validate(configuration)).isEmpty();
+
+        configuration.getProvider().setCredentialRef("invalid");
+        configuration.getMcpServers().get(0).setCredentialRef("invalid");
+
+        assertThat(validator.validate(configuration)).containsExactly(
+                "Invalid credential reference for provider 'provider'",
+                "Invalid credential reference for tool 'tool'");
     }
 }

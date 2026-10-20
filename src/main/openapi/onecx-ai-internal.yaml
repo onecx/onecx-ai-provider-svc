@@ -179,15 +179,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/AgentConfigurationVersion'
         "400":
-          description: Invalid name
-        "404":
-          description: Agent not found
-        "409":
-          description: Duplicate version name (DUPLICATE_AGENT_CONFIGURATION_VERSION_NAME) or duplicate MCP tool rules (DUPLICATE_AGENT_TOOL_RULE)
+          description: Invalid name, duplicate version name (DUPLICATE_AGENT_CONFIGURATION_VERSION_NAME), duplicate MCP tool rules (DUPLICATE_AGENT_TOOL_RULE), or invalid configuration dependencies (INVALID_AGENT_CONFIGURATION_DEPENDENCIES)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetailResponse'
+        "404":
+          description: Agent not found
   /internal/agents/{id}/configuration/versions/{versionId}:
     get:
       security:
@@ -245,7 +243,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AgentConfigurationVersion'
-        "409":
+        "400":
           description: Invalid configuration dependencies (INVALID_AGENT_CONFIGURATION_DEPENDENCIES)
           content:
             application/json:

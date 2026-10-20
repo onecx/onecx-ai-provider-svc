@@ -1,9 +1,10 @@
 package org.tkit.onecx.ai.provider.common.services.agent;
 
-import static jakarta.ws.rs.core.Response.Status.CONFLICT;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -33,12 +34,15 @@ import org.tkit.onecx.ai.provider.domain.models.enums.ToolType;
 import org.tkit.onecx.ai.provider.rs.external.v1.mappers.AgentConfigurationMapper;
 import org.tkit.onecx.ai.provider.rs.external.v1.mappers.AgentConfigurationMapperImpl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ProblemDetailResponseDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.AgentConfigurationVersionDTO;
+import io.quarkus.test.junit.QuarkusTest;
 
+@QuarkusTest
 class AgentConfigurationServiceTest {
 
     private static final String AGENT_ID = "agent-config";
@@ -106,7 +110,7 @@ class AgentConfigurationServiceTest {
 
         var response = service.getAgentConfiguration(AGENT_ID, "tester");
 
-        assertThat(response.getStatus()).isEqualTo(CONFLICT.getStatusCode());
+        assertThat(response.getStatus()).isEqualTo(BAD_REQUEST.getStatusCode());
         assertThat(response.getEntity()).isNotNull();
     }
 
@@ -146,7 +150,7 @@ class AgentConfigurationServiceTest {
     }
 
     @Test
-    void sameToolNameOnSameGlobalServer_returnsDetailedConflict() {
+    void sameToolNameOnSameGlobalServer_returnsDetailedBadRequest() {
         var globalTool = new GlobalTool();
         globalTool.setId("global-a");
         globalTool.setType(ToolType.MCP);
@@ -159,7 +163,7 @@ class AgentConfigurationServiceTest {
                 .thenReturn(List.of(rule, rule));
 
         try (var response = service.getAgentConfiguration(AGENT_ID, "tester")) {
-            assertThat(response.getStatus()).isEqualTo(CONFLICT.getStatusCode());
+            assertThat(response.getStatus()).isEqualTo(BAD_REQUEST.getStatusCode());
             var problem = (ProblemDetailResponseDTOV1) response.getEntity();
             assertThat(problem.getErrorCode()).isEqualTo("DUPLICATE_AGENT_TOOL_RULE");
             assertThat(problem.getDetail()).contains("'search'");
@@ -224,7 +228,7 @@ class AgentConfigurationServiceTest {
         });
 
         try (var response = service.activateAgentConfigurationVersion(AGENT_ID, second.getId())) {
-            assertThat(response.getStatus()).isEqualTo(CONFLICT.getStatusCode());
+            assertThat(response.getStatus()).isEqualTo(BAD_REQUEST.getStatusCode());
             var problem = (ProblemDetailResponseDTOV1) response.getEntity();
             assertThat(problem.getErrorCode()).isEqualTo("INVALID_AGENT_CONFIGURATION_DEPENDENCIES");
             assertThat(problem.getDetail()).contains("deleted");
@@ -239,10 +243,10 @@ class AgentConfigurationServiceTest {
         when(service.dependencyValidator.validate(any())).thenReturn(List.of("Referenced tool is missing"));
 
         try (var response = service.createVersion(AGENT_ID, "First", "tester")) {
-            assertThat(response.getStatus()).isEqualTo(CONFLICT.getStatusCode());
+            assertThat(response.getStatus()).isEqualTo(BAD_REQUEST.getStatusCode());
         }
         try (var response = service.getAgentConfiguration(AGENT_ID, "tester")) {
-            assertThat(response.getStatus()).isEqualTo(CONFLICT.getStatusCode());
+            assertThat(response.getStatus()).isEqualTo(BAD_REQUEST.getStatusCode());
         }
         assertThat(agent.getActiveConfigurationVersionId()).isNull();
         verify(service.versionDAO, never()).create(any());
@@ -273,7 +277,7 @@ class AgentConfigurationServiceTest {
         var first = saveVersion("Release 1");
         for (var name : List.of("Release 1", "  Release 1  ")) {
             try (var response = service.createVersion(AGENT_ID, name, "tester")) {
-                assertThat(response.getStatus()).isEqualTo(CONFLICT.getStatusCode());
+                assertThat(response.getStatus()).isEqualTo(BAD_REQUEST.getStatusCode());
                 assertThat(((ProblemDetailResponseDTOV1) response.getEntity()).getErrorCode())
                         .isEqualTo("DUPLICATE_AGENT_CONFIGURATION_VERSION_NAME");
             }
@@ -342,10 +346,76 @@ class AgentConfigurationServiceTest {
         when(agentMcpToolRuleDAO.findByAgentAndToolIds(anyString(), anyList()))
                 .thenReturn(List.of(rule(tool, "search"), rule(tool, "search")));
         try (var response = service.createVersion(AGENT_ID, "Invalid", "tester")) {
-            assertThat(response.getStatus()).isEqualTo(409);
+            assertThat(response.getStatus()).isEqualTo(BAD_REQUEST.getStatusCode());
         }
         verify(service.versionDAO, never()).create(any());
         assertThat(agent.getActiveConfigurationVersionId()).isNull();
+    }
+
+    @Test
+    void unknownAgentCannotCreateReadOrActivateVersions() {
+        try (var response = service.createVersion(AGENT_ID, "First", "tester")) {
+            assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+        }
+        try (var response = service.getAgentConfigurationVersion(AGENT_ID, "missing", "tester")) {
+            assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+        }
+        try (var response = service.activateAgentConfigurationVersion(AGENT_ID, "missing")) {
+            assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+        }
+        verifyNoInteractions(service.versionDAO);
+    }
+
+    @Test
+    void configurationsWithoutContextCanBeSavedAndRead() {
+        var agent = agentWithTools(Set.of());
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+        service.agentConfigurationMapper = mock(AgentConfigurationMapper.class);
+        when(service.agentConfigurationMapper.build(agent, List.of(), "default", "tester"))
+                .thenReturn(new AgentConfigurationDTOV1());
+
+        var version = saveVersion("Without context");
+
+        try (var response = service.getAgentConfigurationVersion(AGENT_ID, version.getId(), "reader")) {
+            assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
+            assertThat(((AgentConfigurationDTOV1) response.getEntity()).getContext()).isNull();
+        }
+    }
+
+    @Test
+    void serializationFailureIsReportedWithoutPersistingOrActivatingVersion() throws Exception {
+        var agent = agentWithTools(Set.of());
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+        service.objectMapper = mock(ObjectMapper.class);
+        var failure = new JsonProcessingException("Cannot write configuration") {
+        };
+        when(service.objectMapper.writeValueAsString(any())).thenThrow(failure);
+
+        assertThatThrownBy(() -> service.createVersion(AGENT_ID, "First", "tester"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Cannot serialize agent configuration")
+                .hasCause(failure);
+        verify(service.versionDAO, never()).create(any());
+        assertThat(agent.getActiveConfigurationVersionId()).isNull();
+    }
+
+    @Test
+    void malformedSavedConfigurationCannotBeReadOrActivated() {
+        var agent = agentWithTools(Set.of());
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+        var first = saveVersion("First");
+        var malformed = new AgentConfigurationVersion(agent, "Malformed", "{invalid");
+        service.versionDAO.create(malformed);
+
+        assertThatThrownBy(() -> service.getAgentConfigurationVersion(AGENT_ID, malformed.getId(), "tester"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Cannot deserialize agent configuration version " + malformed.getId())
+                .hasCauseInstanceOf(JsonProcessingException.class);
+        assertThatThrownBy(() -> service.activateAgentConfigurationVersion(AGENT_ID, malformed.getId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Cannot deserialize agent configuration version " + malformed.getId())
+                .hasCauseInstanceOf(JsonProcessingException.class);
+        assertThat(agent.getActiveConfigurationVersionId()).isEqualTo(first.getId());
     }
 
     private AgentConfigurationVersionDTO saveVersion(String name) {
