@@ -209,11 +209,34 @@ public abstract class AgentConfigurationMapper {
         server.setName(tool.getName());
         server.setDescription(tool.getDescription());
         server.setUrl(tool.getUrl());
+        server.setAuthMode(mapMcpAuthMode(tool));
         server.setCredentialRef(CREDENTIAL_PREFIX_TOOL + tool.getId() + CREDENTIAL_SUFFIX);
         server.setUnlistedToolPermission(mapUnlistedPermission(tool.getExecutionPolicy()));
         server.setUnlistedToolPermissionSource(mapUnlistedSource(tool.getExecutionPolicy()));
         server.setToolRules(rules.stream().map(this::mapRule).toList());
         return server;
+    }
+
+    /**
+     * Mirrors the runtime's MCP client rule ({@code McpService.createMcpClient}): OAUTH sends
+     * the runtime's own token; otherwise a non-blank API key is sent as {@code Authorization};
+     * otherwise no server auth. So API_KEY without a key reports no auth mode.
+     */
+    private McpServerConfigurationDTOV1.AuthModeEnum mapMcpAuthMode(AbstractTool tool) {
+        if (tool.getAuthMode() != null) {
+            switch (tool.getAuthMode()) {
+                case OAUTH:
+                    return McpServerConfigurationDTOV1.AuthModeEnum.OAUTH;
+                case API_KEY:
+                    break;
+                default:
+                    return null;
+            }
+        }
+        if (tool.getApiKey() != null && !tool.getApiKey().isBlank()) {
+            return McpServerConfigurationDTOV1.AuthModeEnum.API_KEY;
+        }
+        return null;
     }
 
     private ToolRuleConfigurationDTOV1 mapRule(AgentMcpToolRule rule) {
