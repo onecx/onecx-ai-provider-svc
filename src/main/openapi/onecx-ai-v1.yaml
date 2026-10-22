@@ -260,6 +260,11 @@ components:
             $ref: "#/components/schemas/SkillConfiguration"
         mcpServers:
           type: array
+          description: >-
+            The agent's MCP servers. `authMode` tells a consumer how to
+            authenticate to each server (`OAUTH`, `API_KEY`, or absent for
+            none) and `credentialRef` names a mounted credential to resolve,
+            so the response contains no secrets.
           items:
             $ref: "#/components/schemas/McpServerConfiguration"
     Context:
@@ -343,6 +348,24 @@ components:
           enum: [ TENANT, GLOBAL ]
     McpServerConfiguration:
       type: object
+      description: >-
+        An MCP server reachable by v1 consumers. `authMode` selects how the
+        consumer authenticates to the server, mirroring how
+        onecx-ai-provider-runtime builds its MCP clients:
+        - `OAUTH`: the consumer sends its own OIDC client-credentials token as
+          `Authorization: Bearer <token>` (a fresh token per request).
+        - `API_KEY`: the consumer resolves `credentialRef` to the key value and
+          sends it as `Authorization: <key>` (no `Bearer` prefix).
+        - absent (null): no server `Authorization` header; only the user
+          headers are sent.
+        In every case the consumer also forwards the user headers
+        `apm-principal-token` and `UserAuthorization` (the caller's own
+        `Authorization` header, renamed) on each request. `credentialRef` is a
+        reference, never a secret: it names a Kubernetes Secret / environment
+        variable that the consumer mounts and resolves locally, so the
+        configuration response itself stays secret-free. Permission values use
+        the vocabulary `DENY`, `ALWAYS_ASK`, `ALWAYS_ALLOW` (the v1 canonical
+        form of the internal `ExecutionPolicy` values).
       properties:
         id:
           type: string
@@ -352,8 +375,21 @@ components:
           type: string
         url:
           type: string
+        authMode:
+          type: string
+          description: >-
+            How the consumer must authenticate to this MCP server. `API_KEY`
+            means resolve `credentialRef` and send it as `Authorization`;
+            `OAUTH` means send the consumer's own OIDC client-credentials
+            token as `Authorization: Bearer`. Absent means no server
+            authentication, only the user headers.
         credentialRef:
           type: string
+          description: >-
+            Reference to the server credential (never the secret itself). It
+            names a Kubernetes Secret / environment variable the consumer
+            mounts and resolves locally; absent when `authMode` is not
+            `API_KEY`.
         unlistedToolPermission:
           type: string
           enum: [ DENY, ALWAYS_ASK, ALWAYS_ALLOW ]

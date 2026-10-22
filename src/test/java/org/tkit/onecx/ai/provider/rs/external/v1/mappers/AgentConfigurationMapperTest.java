@@ -45,6 +45,8 @@ class AgentConfigurationMapperTest {
 
     private static final String MCP_TOOL_API_KEY = "MCP_TOOL_SECRET_777";
 
+    private static final String OAUTH_MCP_API_KEY = "OAUTH_MCP_SECRET_888";
+
     private final AgentConfigurationMapper mapper = new AgentConfigurationMapperImpl();
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -152,6 +154,26 @@ class AgentConfigurationMapperTest {
     }
 
     @Test
+    void build_mcpServersExposeAuthModePerTool() {
+        var agent = baseAgent();
+        var oauthTool = mcpTool("mcp-tool-oauth", ExecutionPolicy.ALWAYS_ASK);
+        oauthTool.setAuthMode(AuthMode.OAUTH);
+        var apiKeyTool = mcpTool("mcp-tool-api-key", ExecutionPolicy.ALWAYS_ASK);
+        apiKeyTool.setAuthMode(AuthMode.API_KEY);
+        var unauthenticatedTool = mcpTool("mcp-tool-plain", ExecutionPolicy.ALWAYS_ASK);
+        agent.setTools(Set.of(oauthTool, apiKeyTool, unauthenticatedTool));
+
+        var config = mapper.build(agent, List.of(), TENANT_ID, PRINCIPAL);
+
+        var byId = config.getMcpServers().stream()
+                .collect(java.util.stream.Collectors.toMap(McpServerConfigurationDTOV1::getId, s -> s));
+        // OAUTH and API_KEY surface their enum name; an unauthenticated tool exposes no auth mode
+        assertThat(byId.get("mcp-tool-oauth").getAuthMode()).isEqualTo(AuthMode.OAUTH.name());
+        assertThat(byId.get("mcp-tool-api-key").getAuthMode()).isEqualTo(AuthMode.API_KEY.name());
+        assertThat(byId.get("mcp-tool-plain").getAuthMode()).isNull();
+    }
+
+    @Test
     void build_toolRulePermissions_resolveCanonicalAndLegacyValues() {
         var agent = baseAgent();
         var mcpTool = mcpTool("mcp-tool-1", ExecutionPolicy.ALWAYS_ASK);
@@ -214,15 +236,22 @@ class AgentConfigurationMapperTest {
         var agent = baseAgent();
         var mcpTool = mcpTool("mcp-tool-1", ExecutionPolicy.ALWAYS_ASK);
         mcpTool.setApiKey(MCP_TOOL_API_KEY);
-        agent.setTools(Set.of(mcpTool));
+        mcpTool.setAuthMode(AuthMode.API_KEY);
+        var oauthTool = mcpTool("mcp-tool-oauth", ExecutionPolicy.ALWAYS_ASK);
+        oauthTool.setApiKey(OAUTH_MCP_API_KEY);
+        oauthTool.setAuthMode(AuthMode.OAUTH);
+        agent.setTools(Set.of(mcpTool, oauthTool));
 
-        var config = mapper.build(agent, List.of(rule(mcpTool, "someTool", ToolPermission.ALLOW)), TENANT_ID, PRINCIPAL);
+        var config = mapper.build(agent,
+                List.of(rule(mcpTool, "someTool", ToolPermission.ALLOW)), TENANT_ID, PRINCIPAL);
 
         var json = objectMapper.writeValueAsString(config);
-        // Credential references are present instead of raw secrets
+        // Credential references are present instead of raw secrets, even when authMode is set
         assertThat(json)
-                .doesNotContain(PROVIDER_API_KEY, MCP_TOOL_API_KEY)
-                .contains("credential://provider/provider-1/api-key", "credential://tool/mcp-tool-1/api-key");
+                .doesNotContain(PROVIDER_API_KEY, MCP_TOOL_API_KEY, OAUTH_MCP_API_KEY)
+                .contains("credential://provider/provider-1/api-key",
+                        "credential://tool/mcp-tool-1/api-key", "credential://tool/mcp-tool-oauth/api-key")
+                .contains("API_KEY", "OAUTH");
     }
 
     @Test
