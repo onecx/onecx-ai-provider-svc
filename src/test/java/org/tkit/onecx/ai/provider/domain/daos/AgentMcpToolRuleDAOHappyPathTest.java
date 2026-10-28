@@ -12,7 +12,7 @@ import org.tkit.quarkus.test.WithDBData;
 import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
-@WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, deleteAfterTest = true, rinseAndRepeat = true)
+@WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, rinseAndRepeat = true)
 class AgentMcpToolRuleDAOHappyPathTest extends AbstractTest {
 
     @Inject

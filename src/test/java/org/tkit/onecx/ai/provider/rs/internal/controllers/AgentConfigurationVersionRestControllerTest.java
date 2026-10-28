@@ -37,7 +37,7 @@ import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
 @TestHTTPEndpoint(AgentRestController.class)
-@WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, deleteAfterTest = true, rinseAndRepeat = true)
+@WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, rinseAndRepeat = true)
 @GenerateKeycloakClient(clientName = "versionEditor", scopes = { "ocx-ai:all", "ocx-ai:read", "ocx-ai:write" })
 class AgentConfigurationVersionRestControllerTest extends AbstractTest {
 
