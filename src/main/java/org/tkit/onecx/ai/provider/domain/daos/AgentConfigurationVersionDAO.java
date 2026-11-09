@@ -1,5 +1,7 @@
 package org.tkit.onecx.ai.provider.domain.daos;
 
+import java.util.List;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -33,5 +35,13 @@ public class AgentConfigurationVersionDAO {
                 .setParameter("agentId", agentId)
                 .setParameter("versionId", versionId)
                 .getResultStream().findFirst().orElse(null);
+    }
+
+    public List<AgentConfigurationVersion> findAllByAgent(String agentId) {
+        return entityManager.createQuery(
+                "select v from AgentConfigurationVersion v where v.agentId = :agentId order by v.name",
+                AgentConfigurationVersion.class)
+                .setParameter("agentId", agentId)
+                .getResultList();
     }
 }
