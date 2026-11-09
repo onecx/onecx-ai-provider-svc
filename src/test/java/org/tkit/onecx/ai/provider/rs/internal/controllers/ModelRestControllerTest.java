@@ -7,6 +7,8 @@ import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 import org.tkit.quarkus.security.test.GenerateKeycloakClient;
 import org.tkit.quarkus.test.WithDBData;
@@ -125,6 +127,10 @@ class ModelRestControllerTest extends AbstractTest {
                 "{\"api\":\"legacy\"}",
                 "{\"api\":1}",
                 "{\"reasoningEffort\":true}",
+                "{\"api\":\"chat-completions\",\"api\":\"responses\",\"reasoningEffort\":\"medium\"}",
+                "{\"api\":\"chat-completions\",\"\\u0061pi\":\"responses\"}",
+                "{\"reasoningEffort\":\"low\",\"reasoningEffort\":\"medium\"}",
+                "{\"reasoningEffort\":\"low\",\"reasoning\\u0045ffort\":\"medium\"}",
                 "x".repeat(256)
         };
 
@@ -144,9 +150,9 @@ class ModelRestControllerTest extends AbstractTest {
         }
     }
 
-    @Test
-    void createNonOpenAiModelKeepsGenericConfigUnvalidated() {
-        var config = "legacy-provider-settings";
+    @ParameterizedTest
+    @ValueSource(strings = { "legacy-provider-settings", "{\"api\":\"chat-completions\",\"api\":\"responses\"}" })
+    void createNonOpenAiModelKeepsGenericConfigUnvalidated(String config) {
         var dto = openAiCreateRequest(config);
         dto.setProvider(provider(ANTHROPIC_PROVIDER_ID));
 
@@ -342,11 +348,12 @@ class ModelRestControllerTest extends AbstractTest {
         assertThat(updated.getModelConfig()).isEqualTo("temperature=0.2");
     }
 
-    @Test
-    void updateNonOpenAiModelKeepsGenericConfigUnvalidated() {
+    @ParameterizedTest
+    @ValueSource(strings = { "legacy-provider-settings", "{\"api\":\"chat-completions\",\"api\":\"responses\"}" })
+    void updateNonOpenAiModelKeepsGenericConfigUnvalidated(String config) {
         var update = new UpdateModelRequestDTO();
         update.setModificationCount(0);
-        update.setModelConfig("legacy-provider-settings");
+        update.setModelConfig(config);
 
         var updated = given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
@@ -357,7 +364,7 @@ class ModelRestControllerTest extends AbstractTest {
                 .then().statusCode(OK.getStatusCode())
                 .extract().as(ModelDTO.class);
 
-        assertThat(updated.getModelConfig()).isEqualTo("legacy-provider-settings");
+        assertThat(updated.getModelConfig()).isEqualTo(config);
     }
 
     @Test
@@ -378,6 +385,92 @@ class ModelRestControllerTest extends AbstractTest {
                 .extract().as(ModelDTO.class);
 
         assertThat(updated.getModelConfig()).isEqualTo(config);
+    }
+
+    @Test
+    void updateOpenAiModelRejectsDuplicateKeysWithoutChangingStoredModel() {
+        for (var config : new String[] {
+                "{\"api\":\"chat-completions\",\"api\":\"responses\",\"reasoningEffort\":\"medium\"}",
+                "{\"api\":\"chat-completions\",\"\\u0061pi\":\"responses\"}",
+                "{\"reasoningEffort\":\"low\",\"reasoningEffort\":\"medium\"}",
+                "{\"reasoningEffort\":\"low\",\"reasoning\\u0045ffort\":\"medium\"}"
+        }) {
+            var update = new UpdateModelRequestDTO();
+            update.setModificationCount(0);
+            update.setProvider(provider(OPENAI_PROVIDER_ID));
+            update.setCommunicationMode(CommunicationModeDTO.SYNC);
+            update.setName("must-not-be-saved");
+            update.setModelConfig(config);
+
+            var error = given()
+                    .auth().oauth2(getKeycloakClientToken("testClient"))
+                    .contentType(APPLICATION_JSON)
+                    .body(update)
+                    .put("/model-11-111")
+                    .then().statusCode(BAD_REQUEST.getStatusCode())
+                    .extract().as(ProblemDetailResponseDTO.class);
+            assertThat(error.getErrorCode()).isEqualTo("INVALID_MODEL_CONFIG");
+        }
+        var stored = getModel("model-11-111");
+        assertThat(stored.getName()).isEqualTo("model1");
+        assertThat(stored.getModificationCount()).isZero();
+        assertThat(stored.getModelConfig()).isEqualTo("temperature=0.2");
+        assertThat(stored.getProvider().getId()).isEqualTo(OPENAI_PROVIDER_ID);
+        assertThat(stored.getCommunicationMode()).isEqualTo(CommunicationModeDTO.SYNC);
+    }
+
+    @Test
+    void fixedUiUpdatePreservesProviderCommunicationModeAndProviderListMembership() {
+        assertFixedUiUpdate("model-11-111", OPENAI_PROVIDER_ID, "{\"api\":\"responses\",\"reasoningEffort\":\"medium\"}");
+        assertFixedUiUpdate("model-22-222", ANTHROPIC_PROVIDER_ID, "temperature=0.6");
+    }
+
+    private void assertFixedUiUpdate(String modelId, String providerId, String config) {
+        var original = getModel(modelId);
+        // The edit dialog changes identifier/config only; all replacement fields match the UI effect payload.
+        var update = new UpdateModelRequestDTO();
+        update.setModificationCount(original.getModificationCount());
+        update.setName("edited-" + modelId);
+        update.setModelIdentifier("edited-" + modelId);
+        update.setModelConfig(config);
+        update.setProvider(original.getProvider());
+        update.setCommunicationMode(original.getCommunicationMode());
+
+        given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(update)
+                .put("/" + modelId)
+                .then().statusCode(OK.getStatusCode());
+
+        var stored = getModel(modelId);
+        assertThat(stored.getName()).isEqualTo("edited-" + modelId);
+        assertThat(stored.getModelIdentifier()).isEqualTo("edited-" + modelId);
+        assertThat(stored.getProvider().getId()).isEqualTo(providerId);
+        assertThat(stored.getCommunicationMode()).isEqualTo(original.getCommunicationMode());
+        assertThat(stored.getModelConfig()).isEqualTo(config);
+
+        var criteria = new ModelSearchCriteriaDTO();
+        criteria.setProviderId(providerId);
+        criteria.setPageNumber(0);
+        criteria.setPageSize(10);
+        var models = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(criteria)
+                .post("/search")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(ModelPageResultDTO.class);
+        assertThat(models.getStream()).extracting(ModelDTO::getId).containsExactly(modelId);
+    }
+
+    private ModelDTO getModel(String modelId) {
+        return given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .get("/" + modelId)
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(ModelDTO.class);
     }
 
     private CreateModelRequestDTO openAiCreateRequest(String modelConfig) {

@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,6 +32,7 @@ public class OpenAiModelConfigValidator {
         JsonNode config;
         try {
             config = objectMapper.reader()
+                    .with(StreamReadFeature.STRICT_DUPLICATE_DETECTION.mappedFeature())
                     .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
                     .readTree(modelConfig);
         } catch (JsonProcessingException e) {
