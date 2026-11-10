@@ -6,8 +6,12 @@ import static jakarta.ws.rs.core.Response.Status.*;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 import org.tkit.quarkus.security.test.GenerateKeycloakClient;
@@ -47,9 +51,15 @@ class ModelRestControllerTest extends AbstractTest {
         assertThat(created.getCommunicationMode()).isEqualTo(CommunicationModeDTO.SYNC);
     }
 
-    @Test
-    void createOpenAiModelWithConfigRoundTripsUnchanged() {
-        var config = "{\"api\":\"responses\",\"reasoningEffort\":\"medium\"}";
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{\"api\":\"responses\",\"reasoningEffort\":\"medium\"}",
+            "{\"api\":\"chat-completions\",\"reasoningEffort\":\"  \"}",
+            "{\"reasoningEffort\":\"medium\"}",
+            "{}",
+            ""
+    })
+    void createOpenAiModelWithConfigRoundTripsUnchanged(String config) {
         var dto = openAiCreateRequest(config);
 
         var created = given()
@@ -65,64 +75,11 @@ class ModelRestControllerTest extends AbstractTest {
         assertThat(created.getModelConfig()).isEqualTo(config);
     }
 
-    @Test
-    void createOpenAiModelAcceptsBlankReasoningEffort() {
-        var config = "{\"api\":\"chat-completions\",\"reasoningEffort\":\"  \"}";
-        var dto = openAiCreateRequest(config);
-
-        var created = given()
-                .auth().oauth2(getKeycloakClientToken("testClient"))
-                .contentType(APPLICATION_JSON)
-                .body(dto)
-                .post()
-                .then()
-                .statusCode(CREATED.getStatusCode())
-                .extract()
-                .as(ModelDTO.class);
-
-        assertThat(created.getModelConfig()).isEqualTo(config);
-    }
-
-    @Test
-    void createOpenAiModelAcceptsBlankConfigAsUnset() {
-        var dto = openAiCreateRequest("");
-
-        var created = given()
-                .auth().oauth2(getKeycloakClientToken("testClient"))
-                .contentType(APPLICATION_JSON)
-                .body(dto)
-                .post()
-                .then()
-                .statusCode(CREATED.getStatusCode())
-                .extract()
-                .as(ModelDTO.class);
-
-        assertThat(created.getModelConfig()).isEmpty();
-    }
-
-    @Test
-    void createOpenAiModelAllowsOmittedApiSetting() {
-        var config = "{\"reasoningEffort\":\"medium\"}";
-        var dto = openAiCreateRequest(config);
-
-        var created = given()
-                .auth().oauth2(getKeycloakClientToken("testClient"))
-                .contentType(APPLICATION_JSON)
-                .body(dto)
-                .post()
-                .then()
-                .statusCode(CREATED.getStatusCode())
-                .extract()
-                .as(ModelDTO.class);
-
-        assertThat(created.getModelConfig()).isEqualTo(config);
-    }
-
-    @Test
-    void createOpenAiModelRejectsUnsupportedConfigsWithProblemDetail() {
-        var invalidConfigs = new String[] {
+    static Stream<String> unsupportedOpenAiConfigs() {
+        return Stream.of(
                 "{",
                 "[]",
+                "null",
                 "{\"api\":\"chat-completions\",\"unexpected\":true}",
                 "{\"api\":\"legacy\"}",
                 "{\"api\":1}",
@@ -131,27 +88,33 @@ class ModelRestControllerTest extends AbstractTest {
                 "{\"api\":\"chat-completions\",\"\\u0061pi\":\"responses\"}",
                 "{\"reasoningEffort\":\"low\",\"reasoningEffort\":\"medium\"}",
                 "{\"reasoningEffort\":\"low\",\"reasoning\\u0045ffort\":\"medium\"}",
-                "x".repeat(256)
-        };
-
-        for (var config : invalidConfigs) {
-            var response = given()
-                    .auth().oauth2(getKeycloakClientToken("testClient"))
-                    .contentType(APPLICATION_JSON)
-                    .body(openAiCreateRequest(config))
-                    .post()
-                    .then()
-                    .statusCode(BAD_REQUEST.getStatusCode())
-                    .extract()
-                    .as(ProblemDetailResponseDTO.class);
-
-            assertThat(response.getErrorCode()).isEqualTo("INVALID_MODEL_CONFIG");
-            assertThat(response.getDetail()).isNotBlank();
-        }
+                "x".repeat(256));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { "legacy-provider-settings", "{\"api\":\"chat-completions\",\"api\":\"responses\"}" })
+    @MethodSource("unsupportedOpenAiConfigs")
+    void createOpenAiModelRejectsUnsupportedConfigsWithProblemDetail(String config) {
+        var response = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(openAiCreateRequest(config))
+                .post()
+                .then()
+                .statusCode(BAD_REQUEST.getStatusCode())
+                .extract()
+                .as(ProblemDetailResponseDTO.class);
+
+        assertThat(response.getErrorCode()).isEqualTo("INVALID_MODEL_CONFIG");
+        assertThat(response.getDetail()).isNotBlank();
+    }
+
+    static Stream<String> opaqueConfigs() {
+        return Stream.of("legacy-provider-settings", "{\"api\":\"chat-completions\",\"api\":\"responses\"}",
+                "x".repeat(255));
+    }
+
+    @ParameterizedTest
+    @MethodSource("opaqueConfigs")
     void createNonOpenAiModelKeepsGenericConfigUnvalidated(String config) {
         var dto = openAiCreateRequest(config);
         dto.setProvider(provider(ANTHROPIC_PROVIDER_ID));
@@ -292,6 +255,7 @@ class ModelRestControllerTest extends AbstractTest {
         assertThat(updated.getName()).isEqualTo("model-updated");
         assertThat(updated.getModificationCount()).isNotEqualTo(dto.getModificationCount());
         assertThat(updated.getModelConfig()).isEqualTo("temperature=0.2");
+        assertThat(updated.getProvider().getId()).isEqualTo(OPENAI_PROVIDER_ID);
 
         given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
@@ -317,11 +281,19 @@ class ModelRestControllerTest extends AbstractTest {
                 .then().statusCode(OK.getStatusCode())
                 .extract().as(ModelDTO.class);
         assertThat(updated.getModelConfig()).isEqualTo("temperature=0.2");
+        assertThat(updated.getProvider()).isNotNull();
+        assertThat(updated.getProvider().getId()).isEqualTo(OPENAI_PROVIDER_ID);
+        var stored = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .pathParam("id", "model-11-111")
+                .get("/{id}")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(ModelDTO.class);
+        assertThat(stored.getProvider().getId()).isEqualTo(OPENAI_PROVIDER_ID);
 
         var invalid = new UpdateModelRequestDTO();
         invalid.setModificationCount(updated.getModificationCount());
         invalid.setModelConfig("{\"api\":\"unsupported\"}");
-        invalid.setProvider(provider(OPENAI_PROVIDER_ID));
 
         var error = given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
@@ -332,6 +304,77 @@ class ModelRestControllerTest extends AbstractTest {
                 .then().statusCode(BAD_REQUEST.getStatusCode())
                 .extract().as(ProblemDetailResponseDTO.class);
         assertThat(error.getErrorCode()).isEqualTo("INVALID_MODEL_CONFIG");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { ANTHROPIC_PROVIDER_ID, "", "provider-does-not-exist" })
+    void createModelRejectsOversizeConfigForAnyProvider(String providerId) {
+        var dto = openAiCreateRequest("x".repeat(256));
+        dto.setProvider(providerId.isEmpty() ? null : provider(providerId));
+
+        var error = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(dto)
+                .post()
+                .then().statusCode(BAD_REQUEST.getStatusCode())
+                .extract().as(ProblemDetailResponseDTO.class);
+
+        assertThat(error.getErrorCode()).isEqualTo("INVALID_MODEL_CONFIG");
+        assertThat(error.getDetail()).contains("255");
+    }
+
+    @Test
+    void updateNonOpenAiModelRejectsOversizeConfig() {
+        var update = new UpdateModelRequestDTO();
+        update.setModificationCount(0);
+        update.setModelConfig("x".repeat(256));
+
+        var error = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(update)
+                .pathParam("id", "model-22-222")
+                .put("/{id}")
+                .then().statusCode(BAD_REQUEST.getStatusCode())
+                .extract().as(ProblemDetailResponseDTO.class);
+
+        assertThat(error.getErrorCode()).isEqualTo("INVALID_MODEL_CONFIG");
+        assertThat(error.getDetail()).contains("255");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "model-22-222, provider-11-111, 400",
+            "model-11-111, provider-22-222, 200"
+    })
+    void updateModelValidatesConfigAgainstNewProvider(String modelId, String providerId, int status) {
+        var update = new UpdateModelRequestDTO();
+        update.setModificationCount(0);
+        update.setProvider(provider(providerId));
+        update.setModelConfig("opaque-provider-config");
+
+        var response = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(update)
+                .pathParam("id", modelId)
+                .put("/{id}")
+                .then().statusCode(status);
+
+        if (status == BAD_REQUEST.getStatusCode()) {
+            assertThat(response.extract().as(ProblemDetailResponseDTO.class).getErrorCode())
+                    .isEqualTo("INVALID_MODEL_CONFIG");
+        } else {
+            var stored = given()
+                    .auth().oauth2(getKeycloakClientToken("testClient"))
+                    .pathParam("id", modelId)
+                    .get("/{id}")
+                    .then().statusCode(OK.getStatusCode())
+                    .extract().as(ModelDTO.class);
+            assertThat(stored.getProvider().getId()).isEqualTo(providerId);
+            assertThat(stored.getModelConfig()).isEqualTo("opaque-provider-config");
+        }
     }
 
     @Test
@@ -349,7 +392,7 @@ class ModelRestControllerTest extends AbstractTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { "legacy-provider-settings", "{\"api\":\"chat-completions\",\"api\":\"responses\"}" })
+    @MethodSource("opaqueConfigs")
     void updateNonOpenAiModelKeepsGenericConfigUnvalidated(String config) {
         var update = new UpdateModelRequestDTO();
         update.setModificationCount(0);

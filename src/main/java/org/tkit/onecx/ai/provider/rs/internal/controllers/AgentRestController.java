@@ -23,6 +23,8 @@ import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 import org.tkit.onecx.ai.provider.common.services.agent.AgentConfigurationService;
 import org.tkit.onecx.ai.provider.common.services.agent.AgentService;
+import org.tkit.onecx.ai.provider.common.services.configuration.ModelConfigValidationException;
+import org.tkit.onecx.ai.provider.common.services.configuration.ModelService;
 import org.tkit.onecx.ai.provider.config.AiProviderConfig;
 import org.tkit.onecx.ai.provider.domain.daos.AgentDAO;
 import org.tkit.onecx.ai.provider.domain.daos.AgentGroupDAO;
@@ -78,6 +80,9 @@ public class AgentRestController implements AgentInternalApi {
 
     @Inject
     ModelDAO modelDAO;
+
+    @Inject
+    ModelService modelService;
 
     @Inject
     ScaffoldDAO scaffoldDAO;
@@ -192,9 +197,9 @@ public class AgentRestController implements AgentInternalApi {
         Model model = null;
         if (updateAgentRequestDTO.getModel() != null) {
             var modelId = updateAgentRequestDTO.getModel().getId();
-            model = modelDAO.findById(modelId);
+            model = modelId == null ? null : modelDAO.findById(modelId);
             if (model == null) {
-                model = modelDAO.create(modelMapper.map(updateAgentRequestDTO.getModel()));
+                model = modelService.create(modelMapper.map(updateAgentRequestDTO.getModel()));
             }
         }
 
@@ -378,6 +383,12 @@ public class AgentRestController implements AgentInternalApi {
         invalidParam.setMessage(message);
         response.setInvalidParams(List.of(invalidParam));
         return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+    }
+
+    @ServerExceptionMapper
+    public RestResponse<ProblemDetailResponseDTO> invalidModelConfig(ModelConfigValidationException ex) {
+        return RestResponse.status(Response.Status.BAD_REQUEST,
+                exceptionMapper.exception("INVALID_MODEL_CONFIG", ex.getMessage()));
     }
 
     @ServerExceptionMapper

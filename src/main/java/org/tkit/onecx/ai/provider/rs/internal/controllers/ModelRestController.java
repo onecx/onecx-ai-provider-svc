@@ -8,10 +8,9 @@ import jakarta.ws.rs.core.Response;
 
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
+import org.tkit.onecx.ai.provider.common.services.configuration.ModelConfigValidationException;
+import org.tkit.onecx.ai.provider.common.services.configuration.ModelService;
 import org.tkit.onecx.ai.provider.domain.daos.ModelDAO;
-import org.tkit.onecx.ai.provider.domain.daos.ProviderDAO;
-import org.tkit.onecx.ai.provider.domain.models.Provider;
-import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ExceptionMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ModelMapper;
 
@@ -33,22 +32,15 @@ public class ModelRestController implements ModelInternalApi {
     ModelDAO dao;
 
     @Inject
-    ProviderDAO providerDAO;
-
-    @Inject
     ModelMapper mapper;
 
     @Inject
-    OpenAiModelConfigValidator modelConfigValidator;
+    ModelService modelService;
 
     @Override
     public Response createModel(CreateModelRequestDTO createModelRequestDTO) {
         var item = mapper.create(createModelRequestDTO);
-        item.setProvider(resolveProvider(item.getProvider()));
-        if (item.getModelConfig() != null && isOpenAi(item.getProvider())) {
-            modelConfigValidator.validate(item.getModelConfig());
-        }
-        item = dao.create(item);
+        item = modelService.create(item);
         return Response.status(Response.Status.CREATED).entity(mapper.map(item)).build();
     }
 
@@ -84,35 +76,14 @@ public class ModelRestController implements ModelInternalApi {
         var existingProvider = item.getProvider();
         var modelConfigChanged = updateModelRequestDTO.getModelConfig() != null;
         mapper.update(item, updateModelRequestDTO);
-        if (updateModelRequestDTO.getProvider() != null) {
-            item.setProvider(resolveProvider(item.getProvider()));
+        if (updateModelRequestDTO.getProvider() == null) {
+            item.setProvider(existingProvider);
         }
-        if (modelConfigChanged) {
-            var configProvider = updateModelRequestDTO.getProvider() == null ? existingProvider : item.getProvider();
-            if (isOpenAi(configProvider)) {
-                modelConfigValidator.validate(item.getModelConfig());
-            }
-        } else {
+        if (!modelConfigChanged) {
             item.setModelConfig(existingModelConfig);
         }
-        item = dao.update(item);
+        item = modelService.update(item, modelConfigChanged);
         return Response.status(Response.Status.OK).entity(mapper.map(item)).build();
-    }
-
-    private Provider resolveProvider(Provider provider) {
-        if (provider == null || provider.getId() == null) {
-            return provider;
-        }
-        var persistedProvider = providerDAO.findById(provider.getId());
-        return persistedProvider != null ? persistedProvider : provider;
-    }
-
-    private boolean isOpenAi(Provider provider) {
-        if (provider == null || provider.getId() == null) {
-            return false;
-        }
-        var persistedProvider = providerDAO.findById(provider.getId());
-        return persistedProvider != null && persistedProvider.getType() == ProviderType.OPENAI;
     }
 
     @ServerExceptionMapper

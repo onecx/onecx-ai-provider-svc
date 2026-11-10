@@ -1,4 +1,4 @@
-package org.tkit.onecx.ai.provider.rs.internal.controllers;
+package org.tkit.onecx.ai.provider.common.services.configuration;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -14,6 +14,14 @@ class OpenAiModelConfigValidatorTest {
 
     OpenAiModelConfigValidatorTest() {
         validator.objectMapper = new ObjectMapper();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "null", "[]", "\"text\"", "0", "true" })
+    void rejectsNonObjectJsonRoots(String config) {
+        assertThatThrownBy(() -> validator.validate(config))
+                .isInstanceOf(ModelConfigValidationException.class)
+                .hasMessage("modelConfig must be a JSON object");
     }
 
     @ParameterizedTest

@@ -1,4 +1,4 @@
-package org.tkit.onecx.ai.provider.rs.internal.controllers;
+package org.tkit.onecx.ai.provider.common.services.configuration;
 
 import java.util.Set;
 
@@ -14,7 +14,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @ApplicationScoped
 public class OpenAiModelConfigValidator {
 
-    private static final int MAX_CONFIG_LENGTH = 255;
     private static final Set<String> ALLOWED_KEYS = Set.of("api", "reasoningEffort");
     private static final Set<String> ALLOWED_APIS = Set.of("chat-completions", "responses");
 
@@ -22,9 +21,6 @@ public class OpenAiModelConfigValidator {
     ObjectMapper objectMapper;
 
     public void validate(String modelConfig) {
-        if (modelConfig.length() > MAX_CONFIG_LENGTH) {
-            throw new ModelConfigValidationException("modelConfig must not exceed 255 characters");
-        }
         if (modelConfig.isBlank()) {
             return;
         }
@@ -38,7 +34,7 @@ public class OpenAiModelConfigValidator {
         } catch (JsonProcessingException e) {
             throw new ModelConfigValidationException("modelConfig must contain valid JSON");
         }
-        if (config == null || !config.isObject()) {
+        if (!config.isObject()) {
             throw new ModelConfigValidationException("modelConfig must be a JSON object");
         }
 

@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import org.tkit.onecx.ai.provider.common.services.configuration.ModelService;
 import org.tkit.onecx.ai.provider.domain.daos.AgentDAO;
 import org.tkit.onecx.ai.provider.domain.daos.AgentGroupDAO;
 import org.tkit.onecx.ai.provider.domain.daos.ModelDAO;
@@ -30,6 +31,9 @@ public class AgentService {
 
     @Inject
     ModelDAO modelDAO;
+
+    @Inject
+    ModelService modelService;
 
     @Inject
     ScaffoldDAO scaffoldDAO;
@@ -57,7 +61,7 @@ public class AgentService {
             var modelId = agent.getModel().getId();
             Model resolved = modelDAO.findById(modelId);
             if (resolved == null) {
-                resolved = modelDAO.create(agent.getModel());
+                resolved = modelService.create(agent.getModel());
             }
             agent.setModel(resolved);
         }
