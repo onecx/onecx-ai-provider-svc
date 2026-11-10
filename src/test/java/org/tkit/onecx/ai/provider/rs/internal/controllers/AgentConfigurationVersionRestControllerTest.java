@@ -31,6 +31,7 @@ import org.tkit.quarkus.test.WithDBData;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ProblemDetailResponseDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.AgentConfigurationVersionDTO;
+import gen.org.tkit.onecx.ai.provider.rs.internal.model.AgentConfigurationVersionListDTO;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
@@ -224,6 +225,42 @@ class AgentConfigurationVersionRestControllerTest extends AbstractTest {
                 .basePath("/internal/agents").contentType(APPLICATION_JSON)
                 .body(Map.of("name", "Missing"))
                 .post("/missing/configuration/versions")
+                .then().statusCode(NOT_FOUND.getStatusCode());
+    }
+
+    @Test
+    void listVersionsReturnsSortedVersionsWithActiveFlagForOwningAgentOnly() {
+        var first = createVersion("Release 2");
+        var second = createVersion("Release 1");
+        createVersion("Release 3");
+        given().auth().oauth2(getKeycloakClientToken("versionEditor"))
+                .basePath("/internal/agents").contentType(APPLICATION_JSON)
+                .body(Map.of("name", "Other agent release"))
+                .post("/agent-22-222/configuration/versions")
+                .then().statusCode(CREATED.getStatusCode());
+
+        var list = given().auth().oauth2(getKeycloakClientToken("versionEditor"))
+                .basePath("/internal/agents")
+                .get("/agent-11-111/configuration/versions")
+                .then().statusCode(OK.getStatusCode()).extract().as(AgentConfigurationVersionListDTO.class);
+
+        assertThat(list.getVersions())
+                .extracting(AgentConfigurationVersionDTO::getName)
+                .containsExactly("Release 1", "Release 2", "Release 3");
+        assertThat(list.getVersions())
+                .filteredOn(AgentConfigurationVersionDTO::getActive)
+                .extracting(AgentConfigurationVersionDTO::getId)
+                .containsExactly(first.getId());
+        assertThat(list.getVersions())
+                .extracting(AgentConfigurationVersionDTO::getId)
+                .contains(second.getId());
+    }
+
+    @Test
+    void listVersionsForMissingAgentReturnsNotFound() {
+        given().auth().oauth2(getKeycloakClientToken("versionEditor"))
+                .basePath("/internal/agents")
+                .get("/missing/configuration/versions")
                 .then().statusCode(NOT_FOUND.getStatusCode());
     }
 

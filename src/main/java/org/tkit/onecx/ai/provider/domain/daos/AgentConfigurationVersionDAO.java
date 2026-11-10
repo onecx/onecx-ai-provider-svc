@@ -11,6 +11,8 @@ import org.tkit.onecx.ai.provider.domain.models.AgentConfigurationVersion;
 @ApplicationScoped
 public class AgentConfigurationVersionDAO {
 
+    private static final String PARAM_AGENT_ID = "agentId";
+
     @Inject
     EntityManager entityManager;
 
@@ -23,7 +25,7 @@ public class AgentConfigurationVersionDAO {
         return entityManager.createQuery(
                 "select count(v) from AgentConfigurationVersion v where v.agentId = :agentId and v.name = :name",
                 Long.class)
-                .setParameter("agentId", agentId)
+                .setParameter(PARAM_AGENT_ID, agentId)
                 .setParameter("name", name)
                 .getSingleResult() > 0;
     }
@@ -32,7 +34,7 @@ public class AgentConfigurationVersionDAO {
         return entityManager.createQuery(
                 "select v from AgentConfigurationVersion v where v.agentId = :agentId and v.id = :versionId",
                 AgentConfigurationVersion.class)
-                .setParameter("agentId", agentId)
+                .setParameter(PARAM_AGENT_ID, agentId)
                 .setParameter("versionId", versionId)
                 .getResultStream().findFirst().orElse(null);
     }
@@ -41,7 +43,7 @@ public class AgentConfigurationVersionDAO {
         return entityManager.createQuery(
                 "select v from AgentConfigurationVersion v where v.agentId = :agentId order by v.name",
                 AgentConfigurationVersion.class)
-                .setParameter("agentId", agentId)
+                .setParameter(PARAM_AGENT_ID, agentId)
                 .getResultList();
     }
 }
