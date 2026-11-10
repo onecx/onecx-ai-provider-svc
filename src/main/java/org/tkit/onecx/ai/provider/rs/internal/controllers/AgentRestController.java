@@ -159,6 +159,11 @@ public class AgentRestController implements AgentInternalApi {
     }
 
     @Override
+    public Response getAgentConfigurationVersions(String id) {
+        return configurationService.getAgentConfigurationVersions(id);
+    }
+
+    @Override
     public Response activateAgentConfigurationVersion(String id, String versionId) {
         return configurationService.activateAgentConfigurationVersion(id, versionId);
     }
