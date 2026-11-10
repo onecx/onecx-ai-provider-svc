@@ -232,7 +232,7 @@ class AgentConfigurationVersionRestControllerTest extends AbstractTest {
     void listVersionsReturnsSortedVersionsWithActiveFlagForOwningAgentOnly() {
         var first = createVersion("Release 2");
         var second = createVersion("Release 1");
-        createVersion("Release 3");
+        var third = createVersion("Release 3");
         given().auth().oauth2(getKeycloakClientToken("versionEditor"))
                 .basePath("/internal/agents").contentType(APPLICATION_JSON)
                 .body(Map.of("name", "Other agent release"))
@@ -253,7 +253,7 @@ class AgentConfigurationVersionRestControllerTest extends AbstractTest {
                 .containsExactly(first.getId());
         assertThat(list.getVersions())
                 .extracting(AgentConfigurationVersionDTO::getId)
-                .contains(second.getId());
+                .containsExactlyInAnyOrder(first.getId(), second.getId(), third.getId());
     }
 
     @Test
