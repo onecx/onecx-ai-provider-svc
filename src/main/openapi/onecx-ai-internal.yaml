@@ -148,6 +148,28 @@ paths:
           description: Agent not found
 
   /internal/agents/{id}/configuration/versions:
+    get:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags:
+        - agentInternal
+      operationId: getAgentConfigurationVersions
+      description: List all saved configuration versions for an agent, including which one is active.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of configuration versions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentConfigurationVersionList'
+        "404":
+          description: Agent not found
     post:
       security:
         - oauth2: [ ocx-ai:all, ocx-ai:write ]
@@ -2669,6 +2691,15 @@ components:
           type: string
         active:
           type: boolean
+    AgentConfigurationVersionList:
+      type: object
+      required:
+        - versions
+      properties:
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentConfigurationVersion'
     ProblemDetailResponse:
       type: object
       properties:

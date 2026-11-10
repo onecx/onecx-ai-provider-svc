@@ -31,6 +31,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ProblemDetailResponseDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.AgentConfigurationVersionDTO;
+import gen.org.tkit.onecx.ai.provider.rs.internal.model.AgentConfigurationVersionListDTO;
 
 @ApplicationScoped
 @Transactional(value = NOT_SUPPORTED)
@@ -119,6 +120,19 @@ public class AgentConfigurationService {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
         return configuration(versionDAO.findByAgentAndId(id, versionId), principal);
+    }
+
+    public Response getAgentConfigurationVersions(String id) {
+        var agent = dao.findById(id);
+        if (agent == null) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        var versions = versionDAO.findAllByAgent(id);
+        var list = new AgentConfigurationVersionListDTO();
+        list.setVersions(versions.stream()
+                .map(v -> versionMetadata(agent, v))
+                .toList());
+        return Response.ok(list).build();
     }
 
     @Transactional(REQUIRED)
