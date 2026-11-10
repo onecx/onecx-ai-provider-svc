@@ -82,9 +82,6 @@ public class AgentRestController implements AgentInternalApi {
     ModelDAO modelDAO;
 
     @Inject
-    ModelService modelService;
-
-    @Inject
     ScaffoldDAO scaffoldDAO;
 
     @Inject
@@ -119,6 +116,9 @@ public class AgentRestController implements AgentInternalApi {
 
     @Inject
     AgentService agentService;
+
+    @Inject
+    ModelService modelService;
 
     @Inject
     AiProviderConfig config;
