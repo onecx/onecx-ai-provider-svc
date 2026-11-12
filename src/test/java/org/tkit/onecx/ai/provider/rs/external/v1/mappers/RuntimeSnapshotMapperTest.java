@@ -1,6 +1,9 @@
 package org.tkit.onecx.ai.provider.rs.external.v1.mappers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -11,6 +14,9 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.tkit.onecx.ai.provider.domain.daos.AgentMcpToolRuleDAO;
+import org.tkit.onecx.ai.provider.domain.daos.GlobalToolDAO;
+import org.tkit.onecx.ai.provider.domain.daos.ProviderDAO;
+import org.tkit.onecx.ai.provider.domain.daos.ToolDAO;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
 import org.tkit.onecx.ai.provider.domain.models.AgentMcpToolRule;
@@ -32,10 +38,19 @@ import org.tkit.onecx.ai.provider.domain.models.enums.ToolPermission;
 import org.tkit.onecx.ai.provider.domain.models.enums.ToolType;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationAgentDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ConversationDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.McpServerConfigurationDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ModelConfigurationDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ProviderConfigurationDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ScaffoldConfigurationDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.SkillConfigurationDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ToolRuleConfigurationDTOV1;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.AgentGroupSnapshot;
+import gen.org.tkit.onecx.ai.provider.runtime.client.model.ToolRuleSnapshot;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.ToolRuleSnapshot.AllowedEnum;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.ToolSnapshot;
 import io.quarkus.test.InjectMock;
@@ -49,6 +64,15 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
 
     @InjectMock
     AgentMcpToolRuleDAO agentMcpToolRuleDAO;
+
+    @InjectMock
+    ProviderDAO providerDAO;
+
+    @InjectMock
+    ToolDAO toolDAO;
+
+    @InjectMock
+    GlobalToolDAO globalToolDAO;
 
     @BeforeEach
     void setUp() {
@@ -524,18 +548,24 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
     }
 
     @Test
-    void toRuntimeRequest_mapsFullRequest() {
+    void toRuntimeRequest_mapsActiveVersionWithLiveSecrets() {
         var provider = new Provider();
-        provider.setType(ProviderType.OLLAMA);
-        provider.setLlmUrl("http://ollama.local");
+        provider.setApiKey("provider-secret");
+        when(providerDAO.findById("provider-1")).thenReturn(provider);
+        var tool = liveTool("tool-1", ToolType.MCP, AuthMode.API_KEY, "tool-secret");
+        when(toolDAO.findById("tool-1")).thenReturn(tool);
 
-        var model = new Model();
-        model.setProvider(provider);
-        model.setModelIdentifier("mistral");
+        var configuration = activeConfiguration();
+        var server = new McpServerConfigurationDTOV1();
+        server.setId("tool-1");
+        server.setName("searchTool");
+        server.setUrl("http://mcp.local");
+        server.setUnlistedToolPermission(McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ALLOW);
+        configuration.setMcpServers(List.of(server));
 
         var agent = new Agent();
-        agent.setName("agent-1");
-        agent.setModel(model);
+        agent.setAdditionalPrompt("extra");
+        agent.setA2aEnabled(true);
 
         var request = new ChatRequestDTOV1();
         var msg = new ChatMessageDTOV1();
@@ -544,10 +574,201 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
         msg.setConversationId("conv-1");
         request.setChatMessage(msg);
 
-        var result = mapper.toRuntimeRequest(agent, request, List.of());
-        assertThat(result.getRootAgent().getName()).isEqualTo("agent-1");
-        assertThat(result.getRootAgent().getModel().getModelIdentifier()).isEqualTo("mistral");
+        var result = mapper.toRuntimeRequest(configuration, agent, request, List.of());
+        var root = result.getRootAgent();
+        assertThat(root.getName()).isEqualTo("agent-1");
+        assertThat(root.getDescription()).isEqualTo("agent description");
+        assertThat(root.getAdditionalPrompt()).isEqualTo("extra");
+        assertThat(root.getA2aEnabled()).isTrue();
+        assertThat(root.getModel().getModelIdentifier()).isEqualTo("mistral");
+        assertThat(root.getModel().getProvider().getType()).isEqualTo("OLLAMA");
+        assertThat(root.getModel().getProvider().getApiKey()).isEqualTo("provider-secret");
+        assertThat(root.getScaffold().getName()).isEqualTo("scaffold-1");
+        assertThat(root.getScaffold().getSkills()).hasSize(1);
+        assertThat(root.getScaffold().getSkills().get(0).getName()).isEqualTo("skill-1");
+        assertThat(root.getTools()).hasSize(1);
+        assertThat(root.getTools().get(0).getApiKey()).isEqualTo("tool-secret");
+        assertThat(root.getTools().get(0).getType()).isEqualTo("MCP");
+        assertThat(root.getTools().get(0).getAuthMode()).isEqualTo("API_KEY");
+        assertThat(root.getTools().get(0).getExecutionPolicy()).isEqualTo(ToolSnapshot.ExecutionPolicyEnum.NEVER_ASK);
         assertThat(result.getChatRequest().getChatMessage().getMessage()).isEqualTo("hello");
+    }
+
+    @Test
+    void toRuntimeRequest_emptyConfiguration_mapsDefaults() {
+        var agent = new Agent();
+        var groups = List.<AgentGroupSnapshot> of();
+
+        var result = mapper.toRuntimeRequest(new AgentConfigurationDTOV1(), agent, new ChatRequestDTOV1(), groups);
+        assertThat(result.getRootAgent().getName()).isNull();
+        assertThat(result.getRootAgent().getDescription()).isNull();
+        assertThat(result.getRootAgent().getModel()).isNull();
+        assertThat(result.getRootAgent().getScaffold()).isNull();
+        assertThat(result.getRootAgent().getTools()).isEmpty();
+        assertThat(result.getRootAgent().getGroups()).isSameAs(groups);
+    }
+
+    @Test
+    void toRuntimeRequest_scaffoldWithoutSkills_mapsEmptySkills() {
+        var configuration = new AgentConfigurationDTOV1();
+        var scaffold = new ScaffoldConfigurationDTOV1();
+        scaffold.setName("scaffold-1");
+        configuration.setScaffold(scaffold);
+
+        var result = mapper.toRuntimeRequest(configuration, new Agent(), new ChatRequestDTOV1(), List.of());
+        assertThat(result.getRootAgent().getScaffold().getName()).isEqualTo("scaffold-1");
+        assertThat(result.getRootAgent().getScaffold().getSkills()).isEmpty();
+    }
+
+    @Test
+    void toRuntimeRequest_missingLiveProvider_keepsModelWithoutProvider() {
+        when(providerDAO.findById("provider-1")).thenReturn(null);
+
+        var result = mapper.toRuntimeRequest(activeConfiguration(), new Agent(), new ChatRequestDTOV1(), List.of());
+        assertThat(result.getRootAgent().getModel().getModelIdentifier()).isEqualTo("mistral");
+        assertThat(result.getRootAgent().getModel().getProvider()).isNull();
+    }
+
+    @Test
+    void toRuntimeRequest_modelWithoutProvider_hasNoProvider() {
+        var configuration = activeConfiguration();
+        configuration.setProvider(null);
+
+        var result = mapper.toRuntimeRequest(configuration, new Agent(), new ChatRequestDTOV1(), List.of());
+        assertThat(result.getRootAgent().getModel().getProvider()).isNull();
+        verify(providerDAO, never()).findById(any());
+    }
+
+    @Test
+    void toRuntimeRequest_toolLookup_fallsBackToGlobalToolAndSkipsUnknown() {
+        when(toolDAO.findById("tool-1")).thenReturn(null);
+        var globalTool = new GlobalTool();
+        globalTool.setType(ToolType.HTTP);
+        when(globalToolDAO.findById("global-1")).thenReturn(globalTool);
+
+        var configuration = new AgentConfigurationDTOV1();
+        configuration.setMcpServers(List.of(
+                server("tool-1", McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ASK, List.of()),
+                server("global-1", McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.DENY, null)));
+
+        var tools = mapper.toRuntimeRequest(configuration, new Agent(), new ChatRequestDTOV1(), List.of())
+                .getRootAgent().getTools();
+        assertThat(tools).hasSize(1);
+        assertThat(tools.get(0).getName()).isEqualTo("global-1-name");
+        assertThat(tools.get(0).getType()).isEqualTo("HTTP");
+        assertThat(tools.get(0).getAuthMode()).isNull();
+        assertThat(tools.get(0).getExecutionPolicy()).isEqualTo(ToolSnapshot.ExecutionPolicyEnum.ALWAYS_ASK);
+        assertThat(tools.get(0).getToolRules()).isEmpty();
+    }
+
+    @Test
+    void toRuntimeRequest_toolWithoutTypeAndAuthMode_mapsNullFields() {
+        when(toolDAO.findById("tool-1")).thenReturn(liveTool("tool-1", null, null, null));
+
+        var configuration = new AgentConfigurationDTOV1();
+        configuration.setMcpServers(List.of(server("tool-1", null, List.of())));
+
+        var tool = mapper.toRuntimeRequest(configuration, new Agent(), new ChatRequestDTOV1(), List.of())
+                .getRootAgent().getTools().get(0);
+        assertThat(tool.getType()).isNull();
+        assertThat(tool.getAuthMode()).isNull();
+        assertThat(tool.getApiKey()).isNull();
+        assertThat(tool.getExecutionPolicy()).isEqualTo(ToolSnapshot.ExecutionPolicyEnum.ALWAYS_ASK);
+    }
+
+    @Test
+    void toRuntimeRequest_toolRulePermissions_mapToRuntimeAllowed() {
+        when(toolDAO.findById("tool-1")).thenReturn(liveTool("tool-1", ToolType.MCP, null, null));
+
+        var configuration = new AgentConfigurationDTOV1();
+        configuration.setMcpServers(List.of(server("tool-1", null, List.of(
+                rule("allow", ToolRuleConfigurationDTOV1.PermissionEnum.ALWAYS_ALLOW),
+                rule("deny", ToolRuleConfigurationDTOV1.PermissionEnum.DENY),
+                rule("ask", ToolRuleConfigurationDTOV1.PermissionEnum.ALWAYS_ASK)))));
+
+        var rules = mapper.toRuntimeRequest(configuration, new Agent(), new ChatRequestDTOV1(), List.of())
+                .getRootAgent().getTools().get(0).getToolRules();
+        assertThat(rules).extracting(ToolRuleSnapshot::getAllowed).containsExactly(
+                ToolRuleSnapshot.AllowedEnum.ALLOW,
+                ToolRuleSnapshot.AllowedEnum.DENY,
+                ToolRuleSnapshot.AllowedEnum.ALWAYS_ASK);
+        assertThat(rules).extracting(ToolRuleSnapshot::getToolName).containsExactly("allow", "deny", "ask");
+    }
+
+    @Test
+    void toRuntimeRequest_unlistedToolPermissionDeny_mapsToAlwaysAsk() {
+        when(toolDAO.findById("tool-1")).thenReturn(liveTool("tool-1", ToolType.MCP, null, null));
+
+        var configuration = new AgentConfigurationDTOV1();
+        configuration.setMcpServers(List.of(
+                server("tool-1", McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.DENY, List.of())));
+
+        var tool = mapper.toRuntimeRequest(configuration, new Agent(), new ChatRequestDTOV1(), List.of())
+                .getRootAgent().getTools().get(0);
+        assertThat(tool.getExecutionPolicy()).isEqualTo(ToolSnapshot.ExecutionPolicyEnum.ALWAYS_ASK);
+    }
+
+    private AgentConfigurationDTOV1 activeConfiguration() {
+        var agentDto = new AgentConfigurationAgentDTOV1();
+        agentDto.setName("agent-1");
+        agentDto.setDescription("agent description");
+
+        var provider = new ProviderConfigurationDTOV1();
+        provider.setId("provider-1");
+        provider.setName("ollama");
+        provider.setType("OLLAMA");
+        provider.setLlmUrl("http://ollama.local");
+        provider.setAuthMode("NONE");
+
+        var model = new ModelConfigurationDTOV1();
+        model.setId("model-1");
+        model.setName("mistral-model");
+        model.setModelIdentifier("mistral");
+        model.setCommunicationMode("TEXT");
+
+        var skill = new SkillConfigurationDTOV1();
+        skill.setId("skill-1");
+        skill.setName("skill-1");
+        skill.setInstruction("do things");
+
+        var scaffold = new ScaffoldConfigurationDTOV1();
+        scaffold.setId("scaffold-1");
+        scaffold.setName("scaffold-1");
+        scaffold.setSystemPrompt("prompt");
+
+        var configuration = new AgentConfigurationDTOV1();
+        configuration.setAgent(agentDto);
+        configuration.setProvider(provider);
+        configuration.setModel(model);
+        configuration.setScaffold(scaffold);
+        configuration.setSkills(List.of(skill));
+        return configuration;
+    }
+
+    private McpServerConfigurationDTOV1 server(String id, McpServerConfigurationDTOV1.UnlistedToolPermissionEnum permission,
+            List<ToolRuleConfigurationDTOV1> rules) {
+        var server = new McpServerConfigurationDTOV1();
+        server.setId(id);
+        server.setName(id + "-name");
+        server.setUnlistedToolPermission(permission);
+        server.setToolRules(rules);
+        return server;
+    }
+
+    private ToolRuleConfigurationDTOV1 rule(String toolName, ToolRuleConfigurationDTOV1.PermissionEnum permission) {
+        var rule = new ToolRuleConfigurationDTOV1();
+        rule.setToolName(toolName);
+        rule.setPermission(permission);
+        return rule;
+    }
+
+    private Tool liveTool(String id, ToolType type, AuthMode authMode, String apiKey) {
+        var tool = new Tool();
+        tool.setId(id);
+        tool.setType(type);
+        tool.setAuthMode(authMode);
+        tool.setApiKey(apiKey);
+        return tool;
     }
 
     private Scaffold scaffold(String name) {

@@ -130,10 +130,11 @@ class DispatchRestV1ControllerTest extends AbstractTest {
         message.setMessage("hello");
         request.setChatMessage(message);
 
-        // Route to agent-33-333 which has no group associations → getGroups().isEmpty() == true
+        // Route to agent-44-444 which has no group associations → getGroups().isEmpty() == true.
+        // agent-33-333 is not used here because its duplicate tool rules fail configuration validation.
         var filter = new AgentFilterDTOV1();
         filter.setKey(AgentFilterDTOV1.KeyEnum.APP_ID);
-        filter.setValue("no-groups-app");
+        filter.setValue("onecx-test-no-groups");
         var requestContext = new RequestContextDTOV1();
         requestContext.setFilter(filter);
         request.setRequestContext(requestContext);

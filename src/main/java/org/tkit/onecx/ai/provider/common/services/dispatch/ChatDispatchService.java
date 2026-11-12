@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 
 import org.eclipse.microprofile.rest.client.inject.RestClient;
+import org.tkit.onecx.ai.provider.common.services.agent.AgentConfigurationService;
 import org.tkit.onecx.ai.provider.common.services.agent.AgentService;
 import org.tkit.onecx.ai.provider.domain.daos.AgentDAO;
 import org.tkit.onecx.ai.provider.domain.daos.ExternalAgentDAO;
@@ -14,6 +15,7 @@ import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
 import org.tkit.onecx.ai.provider.rs.external.v1.mappers.RuntimeSnapshotMapper;
 
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
 import gen.org.tkit.onecx.ai.provider.runtime.client.api.RuntimeInternalApi;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.AgentGroupSnapshot;
@@ -26,6 +28,9 @@ public class ChatDispatchService {
 
     @Inject
     AgentService agentService;
+
+    @Inject
+    AgentConfigurationService agentConfigurationService;
 
     @Inject
     AgentDAO agentDAO;
@@ -54,10 +59,20 @@ public class ChatDispatchService {
                     .entity("No agent found for the given request context")
                     .build();
         }
+        AgentConfigurationDTOV1 configuration;
+        Response configurationResponse = agentConfigurationService.getAgentConfiguration(agent.getId(), null);
+        try {
+            if (configurationResponse.getStatus() != Response.Status.OK.getStatusCode()) {
+                return Response.fromResponse(configurationResponse).build();
+            }
+            configuration = (AgentConfigurationDTOV1) configurationResponse.getEntity();
+        } finally {
+            configurationResponse.close();
+        }
         int runtimeStatus;
         RuntimeChatResponse result;
         try (Response response = providerRuntimeClient.chat(
-                runtimeSnapshotMapper.toRuntimeRequest(agent, chatRequestDTO, mapGroups(agent)))) {
+                runtimeSnapshotMapper.toRuntimeRequest(configuration, agent, chatRequestDTO, mapGroups(agent)))) {
             runtimeStatus = response.getStatus();
             result = response.readEntity(RuntimeChatResponse.class);
         } catch (Exception e) {

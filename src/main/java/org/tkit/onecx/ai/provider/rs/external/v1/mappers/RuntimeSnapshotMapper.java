@@ -3,12 +3,16 @@ package org.tkit.onecx.ai.provider.rs.external.v1.mappers;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 
 import org.mapstruct.Mapper;
 import org.tkit.onecx.ai.provider.domain.daos.AgentMcpToolRuleDAO;
+import org.tkit.onecx.ai.provider.domain.daos.GlobalToolDAO;
+import org.tkit.onecx.ai.provider.domain.daos.ProviderDAO;
+import org.tkit.onecx.ai.provider.domain.daos.ToolDAO;
 import org.tkit.onecx.ai.provider.domain.models.AbstractTool;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
@@ -26,8 +30,15 @@ import org.tkit.onecx.ai.provider.domain.models.enums.ExecutionPolicy;
 import org.tkit.onecx.ai.provider.domain.models.enums.ToolPermission;
 import org.tkit.quarkus.rs.mappers.OffsetDateTimeMapper;
 
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatMessageDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.McpServerConfigurationDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ModelConfigurationDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ProviderConfigurationDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ScaffoldConfigurationDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.SkillConfigurationDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ToolRuleConfigurationDTOV1;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.AgentGroupSnapshot;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.AgentSnapshot;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.ChatMessage;
@@ -42,19 +53,160 @@ import gen.org.tkit.onecx.ai.provider.runtime.client.model.ScaffoldSnapshot;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.SkillSnapshot;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.ToolRuleSnapshot;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.ToolSnapshot;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Mapper(uses = OffsetDateTimeMapper.class)
 public abstract class RuntimeSnapshotMapper {
 
     @Inject
     AgentMcpToolRuleDAO agentMcpToolRuleDAO;
 
-    public RuntimeChatRequest toRuntimeRequest(Agent agent, ChatRequestDTOV1 chatRequestDTO,
-            List<AgentGroupSnapshot> groups) {
+    @Inject
+    ProviderDAO providerDAO;
+
+    @Inject
+    ToolDAO toolDAO;
+
+    @Inject
+    GlobalToolDAO globalToolDAO;
+
+    /**
+     * Builds the root agent from the active configuration version. Secrets and fields the version does not store
+     * (API keys, tool type and auth mode, additional prompt, A2A flag) are read from the live entities.
+     */
+    public RuntimeChatRequest toRuntimeRequest(AgentConfigurationDTOV1 configuration, Agent agent,
+            ChatRequestDTOV1 chatRequestDTO, List<AgentGroupSnapshot> groups) {
         var request = new RuntimeChatRequest();
         request.setChatRequest(mapChatRequest(chatRequestDTO));
-        request.setRootAgent(mapAgent(agent, groups));
+        request.setRootAgent(mapActiveAgent(configuration, agent, groups));
         return request;
+    }
+
+    private AgentSnapshot mapActiveAgent(AgentConfigurationDTOV1 configuration, Agent agent,
+            List<AgentGroupSnapshot> groups) {
+        var snapshot = new AgentSnapshot();
+        if (configuration.getAgent() != null) {
+            snapshot.setName(configuration.getAgent().getName());
+            snapshot.setDescription(configuration.getAgent().getDescription());
+        }
+        snapshot.setAdditionalPrompt(agent.getAdditionalPrompt());
+        snapshot.setA2aEnabled(agent.getA2aEnabled());
+        snapshot.setModel(mapActiveModel(configuration.getModel(), configuration.getProvider()));
+        snapshot.setScaffold(mapActiveScaffold(configuration.getScaffold(), configuration.getSkills()));
+        snapshot.setTools(mapActiveTools(configuration.getMcpServers()));
+        snapshot.setGroups(groups);
+        return snapshot;
+    }
+
+    private ModelSnapshot mapActiveModel(ModelConfigurationDTOV1 model, ProviderConfigurationDTOV1 provider) {
+        if (model == null) {
+            return null;
+        }
+        var snapshot = new ModelSnapshot();
+        snapshot.setName(model.getName());
+        snapshot.setModelIdentifier(model.getModelIdentifier());
+        snapshot.setModelConfig(model.getModelConfig());
+        snapshot.setCommunicationMode(model.getCommunicationMode());
+        snapshot.setProvider(mapActiveProvider(provider));
+        return snapshot;
+    }
+
+    private ProviderSnapshot mapActiveProvider(ProviderConfigurationDTOV1 provider) {
+        if (provider == null) {
+            return null;
+        }
+        var live = providerDAO.findById(provider.getId());
+        if (live == null) {
+            log.warn("Provider '{}' from the active configuration no longer exists, skipping it", provider.getId());
+            return null;
+        }
+        var snapshot = new ProviderSnapshot();
+        snapshot.setName(provider.getName());
+        snapshot.setType(provider.getType());
+        snapshot.setDescription(provider.getDescription());
+        snapshot.setLlmUrl(provider.getLlmUrl());
+        snapshot.setApiKey(live.getApiKey());
+        snapshot.setAuthMode(provider.getAuthMode());
+        return snapshot;
+    }
+
+    private ScaffoldSnapshot mapActiveScaffold(ScaffoldConfigurationDTOV1 scaffold,
+            List<SkillConfigurationDTOV1> skills) {
+        if (scaffold == null) {
+            return null;
+        }
+        var snapshot = new ScaffoldSnapshot();
+        snapshot.setName(scaffold.getName());
+        snapshot.setSystemPrompt(scaffold.getSystemPrompt());
+        snapshot.setSkills(skills == null ? List.of()
+                : skills.stream().map(this::mapActiveSkill).toList());
+        return snapshot;
+    }
+
+    private SkillSnapshot mapActiveSkill(SkillConfigurationDTOV1 skill) {
+        var snapshot = new SkillSnapshot();
+        snapshot.setName(skill.getName());
+        snapshot.setDescription(skill.getDescription());
+        snapshot.setInstruction(skill.getInstruction());
+        return snapshot;
+    }
+
+    private List<ToolSnapshot> mapActiveTools(List<McpServerConfigurationDTOV1> servers) {
+        if (servers == null) {
+            return List.of();
+        }
+        return servers.stream().map(this::mapActiveTool).filter(Objects::nonNull).toList();
+    }
+
+    private ToolSnapshot mapActiveTool(McpServerConfigurationDTOV1 server) {
+        AbstractTool live = toolDAO.findById(server.getId());
+        if (live == null) {
+            live = globalToolDAO.findById(server.getId());
+        }
+        if (live == null) {
+            log.warn("Tool '{}' from the active configuration no longer exists, skipping it", server.getId());
+            return null;
+        }
+        var snapshot = new ToolSnapshot();
+        snapshot.setName(server.getName());
+        snapshot.setDescription(server.getDescription());
+        snapshot.setUrl(server.getUrl());
+        snapshot.setType(live.getType() != null ? live.getType().name() : null);
+        snapshot.setApiKey(live.getApiKey());
+        snapshot.setAuthMode(live.getAuthMode() != null ? live.getAuthMode().name() : null);
+        snapshot.setExecutionPolicy(mapActiveExecutionPolicy(server.getUnlistedToolPermission()));
+        snapshot.setToolRules(mapActiveRules(server.getToolRules()));
+        return snapshot;
+    }
+
+    private ToolSnapshot.ExecutionPolicyEnum mapActiveExecutionPolicy(
+            McpServerConfigurationDTOV1.UnlistedToolPermissionEnum permission) {
+        return permission == McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ALLOW
+                ? ToolSnapshot.ExecutionPolicyEnum.NEVER_ASK
+                : ToolSnapshot.ExecutionPolicyEnum.ALWAYS_ASK;
+    }
+
+    private List<ToolRuleSnapshot> mapActiveRules(List<ToolRuleConfigurationDTOV1> rules) {
+        if (rules == null) {
+            return List.of();
+        }
+        return rules.stream().map(rule -> {
+            var snapshot = new ToolRuleSnapshot();
+            snapshot.setToolName(rule.getToolName());
+            snapshot.setAllowed(mapActivePermission(rule.getPermission()));
+            return snapshot;
+        }).toList();
+    }
+
+    private ToolRuleSnapshot.AllowedEnum mapActivePermission(ToolRuleConfigurationDTOV1.PermissionEnum permission) {
+        if (permission == ToolRuleConfigurationDTOV1.PermissionEnum.ALWAYS_ALLOW) {
+            return ToolRuleSnapshot.AllowedEnum.ALLOW;
+        }
+        if (permission == ToolRuleConfigurationDTOV1.PermissionEnum.DENY) {
+            return ToolRuleSnapshot.AllowedEnum.DENY;
+        }
+        return ToolRuleSnapshot.AllowedEnum.ALWAYS_ASK;
     }
 
     public AgentSnapshot mapAgent(Agent agent) {

@@ -16,24 +16,32 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 
 import org.eclipse.microprofile.rest.client.inject.RestClient;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.tkit.onecx.ai.provider.common.services.agent.AgentConfigurationService;
 import org.tkit.onecx.ai.provider.common.services.agent.AgentService;
 import org.tkit.onecx.ai.provider.domain.daos.AgentDAO;
 import org.tkit.onecx.ai.provider.domain.daos.AgentMcpToolRuleDAO;
 import org.tkit.onecx.ai.provider.domain.daos.ExternalAgentDAO;
+import org.tkit.onecx.ai.provider.domain.daos.GlobalToolDAO;
+import org.tkit.onecx.ai.provider.domain.daos.ProviderDAO;
+import org.tkit.onecx.ai.provider.domain.daos.ToolDAO;
 import org.tkit.onecx.ai.provider.domain.models.Agent;
 import org.tkit.onecx.ai.provider.domain.models.AgentGroup;
-import org.tkit.onecx.ai.provider.domain.models.AgentMcpToolRule;
 import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
 import org.tkit.onecx.ai.provider.domain.models.Tool;
 import org.tkit.onecx.ai.provider.domain.models.enums.ProviderType;
-import org.tkit.onecx.ai.provider.domain.models.enums.ToolPermission;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.McpServerConfigurationDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ModelConfigurationDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ProviderConfigurationDTOV1;
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.RequestContextDTOV1;
+import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ToolRuleConfigurationDTOV1;
 import gen.org.tkit.onecx.ai.provider.runtime.client.api.RuntimeInternalApi;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeChatRequest;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeChatResponse;
@@ -50,6 +58,9 @@ class ChatDispatchServiceTest extends AbstractTest {
     AgentService agentService;
 
     @InjectMock
+    AgentConfigurationService agentConfigurationService;
+
+    @InjectMock
     @RestClient
     RuntimeInternalApi providerRuntimeClient;
 
@@ -61,6 +72,22 @@ class ChatDispatchServiceTest extends AbstractTest {
 
     @InjectMock
     AgentMcpToolRuleDAO agentMcpToolRuleDAO;
+
+    @InjectMock
+    ProviderDAO providerDAO;
+
+    @InjectMock
+    ToolDAO toolDAO;
+
+    @InjectMock
+    GlobalToolDAO globalToolDAO;
+
+    @BeforeEach
+    void setUpActiveConfiguration() {
+        when(agentConfigurationService.getAgentConfiguration(any(), any()))
+                .thenReturn(Response.ok(activeConfiguration()).build());
+        when(providerDAO.findById(any())).thenReturn(new Provider());
+    }
 
     @Test
     void chat_noAgentFound_returnsNotFound() {
@@ -278,42 +305,35 @@ class ChatDispatchServiceTest extends AbstractTest {
     }
 
     @Test
-    void chat_agentWithTools_mapsToolRulesFromDao() {
-        // Covers: RuntimeSnapshotMapper.agentRulesByToolId non-empty branch + mapRules non-empty branch
-        var provider = new Provider();
-        provider.setType(ProviderType.OLLAMA);
-        provider.setLlmUrl("http://ollama.local");
-        var model = new Model();
-        model.setProvider(provider);
-        model.setModelIdentifier("mistral");
-
+    void chat_agentWithTools_mapsToolRulesFromActiveVersion() {
         var tool = new Tool();
         tool.setId("tool-1");
-        tool.setName("searchTool");
         tool.setType(org.tkit.onecx.ai.provider.domain.models.enums.ToolType.MCP);
         tool.setUrl("http://mcp.local");
+        when(toolDAO.findById("tool-1")).thenReturn(tool);
+
+        var rule = new ToolRuleConfigurationDTOV1();
+        rule.setToolName("searchTool");
+        rule.setPermission(ToolRuleConfigurationDTOV1.PermissionEnum.ALWAYS_ALLOW);
+        var server = new McpServerConfigurationDTOV1();
+        server.setId("tool-1");
+        server.setName("searchTool");
+        server.setToolRules(List.of(rule));
+        var configuration = activeConfiguration();
+        configuration.setMcpServers(List.of(server));
+        when(agentConfigurationService.getAgentConfiguration(any(), any()))
+                .thenReturn(Response.ok(configuration).build());
 
         var agent = new Agent();
         agent.setId("agent-1");
-        agent.setModel(model);
-        agent.setTools(Set.of(tool));
-
-        var rule = new AgentMcpToolRule();
-        rule.setTool(tool);
-        rule.setToolName("searchTool");
-        rule.setAllowed(ToolPermission.ALLOW);
-
         when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
-        when(agentMcpToolRuleDAO.findByAgentAndToolIds("agent-1", java.util.List.of("tool-1")))
-                .thenReturn(java.util.List.of(rule));
 
-        var request = new ChatRequestDTOV1();
         var runtimeResponse = new RuntimeChatResponse();
         runtimeResponse.setMessage("ok");
         when(providerRuntimeClient.chat(any()))
                 .thenReturn(Response.ok(runtimeResponse).build());
 
-        try (var response = chatDispatchService.chat(request)) {
+        try (var response = chatDispatchService.chat(new ChatRequestDTOV1())) {
             assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
         }
 
@@ -323,5 +343,35 @@ class ChatDispatchServiceTest extends AbstractTest {
         assertThat(snapshot.getTools()).hasSize(1);
         assertThat(snapshot.getTools().get(0).getToolRules()).hasSize(1);
         assertThat(snapshot.getTools().get(0).getToolRules().get(0).getToolName()).isEqualTo("searchTool");
+    }
+
+    @Test
+    void chat_activeConfigurationUnavailable_returnsItsResponse() {
+        var agent = new Agent();
+        agent.setId("agent-1");
+        when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
+        when(agentConfigurationService.getAgentConfiguration(any(), any()))
+                .thenReturn(Response.status(Response.Status.CONFLICT).build());
+
+        try (var response = chatDispatchService.chat(new ChatRequestDTOV1())) {
+            assertThat(response.getStatus()).isEqualTo(Response.Status.CONFLICT.getStatusCode());
+        }
+
+        verify(providerRuntimeClient, never()).chat(any());
+    }
+
+    private AgentConfigurationDTOV1 activeConfiguration() {
+        var provider = new ProviderConfigurationDTOV1();
+        provider.setId("provider-1");
+        provider.setType("OLLAMA");
+        provider.setLlmUrl("http://ollama.local");
+
+        var model = new ModelConfigurationDTOV1();
+        model.setModelIdentifier("mistral");
+
+        var configuration = new AgentConfigurationDTOV1();
+        configuration.setProvider(provider);
+        configuration.setModel(model);
+        return configuration;
     }
 }
