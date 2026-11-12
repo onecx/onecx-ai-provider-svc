@@ -3,10 +3,11 @@ package org.tkit.onecx.ai.provider.rs.external.v1.mappers;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
 
 import org.mapstruct.Mapper;
 import org.tkit.onecx.ai.provider.domain.daos.AgentMcpToolRuleDAO;
@@ -118,8 +119,9 @@ public abstract class RuntimeSnapshotMapper {
         }
         var live = providerDAO.findById(provider.getId());
         if (live == null) {
-            log.warn("Provider '{}' from the active configuration no longer exists, skipping it", provider.getId());
-            return null;
+            throw new WebApplicationException(
+                    "Provider '" + provider.getId() + "' from the active configuration no longer exists",
+                    Response.Status.CONFLICT);
         }
         var snapshot = new ProviderSnapshot();
         snapshot.setName(provider.getName());
@@ -156,7 +158,7 @@ public abstract class RuntimeSnapshotMapper {
         if (servers == null) {
             return List.of();
         }
-        return servers.stream().map(this::mapActiveTool).filter(Objects::nonNull).toList();
+        return servers.stream().map(this::mapActiveTool).toList();
     }
 
     private ToolSnapshot mapActiveTool(McpServerConfigurationDTOV1 server) {
@@ -165,8 +167,9 @@ public abstract class RuntimeSnapshotMapper {
             live = globalToolDAO.findById(server.getId());
         }
         if (live == null) {
-            log.warn("Tool '{}' from the active configuration no longer exists, skipping it", server.getId());
-            return null;
+            throw new WebApplicationException(
+                    "Tool '" + server.getId() + "' from the active configuration no longer exists",
+                    Response.Status.CONFLICT);
         }
         var snapshot = new ToolSnapshot();
         snapshot.setName(server.getName());

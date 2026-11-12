@@ -19,6 +19,7 @@ import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationDTO
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.ChatRequestDTOV1;
 import gen.org.tkit.onecx.ai.provider.runtime.client.api.RuntimeInternalApi;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.AgentGroupSnapshot;
+import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeChatRequest;
 import gen.org.tkit.onecx.ai.provider.runtime.client.model.RuntimeChatResponse;
 import lombok.extern.slf4j.Slf4j;
 
@@ -65,14 +66,19 @@ public class ChatDispatchService {
             if (configurationResponse.getStatus() != Response.Status.OK.getStatusCode()) {
                 return Response.fromResponse(configurationResponse).build();
             }
-            configuration = (AgentConfigurationDTOV1) configurationResponse.getEntity();
+            if (!(configurationResponse.getEntity() instanceof AgentConfigurationDTOV1 activeConfiguration)) {
+                log.error("Unexpected entity returned for the active configuration of agent {}", agent.getId());
+                return Response.serverError().entity("Active configuration is unavailable").build();
+            }
+            configuration = activeConfiguration;
         } finally {
             configurationResponse.close();
         }
+        RuntimeChatRequest runtimeRequest = runtimeSnapshotMapper.toRuntimeRequest(configuration, agent,
+                chatRequestDTO, mapGroups(agent));
         int runtimeStatus;
         RuntimeChatResponse result;
-        try (Response response = providerRuntimeClient.chat(
-                runtimeSnapshotMapper.toRuntimeRequest(configuration, agent, chatRequestDTO, mapGroups(agent)))) {
+        try (Response response = providerRuntimeClient.chat(runtimeRequest)) {
             runtimeStatus = response.getStatus();
             result = response.readEntity(RuntimeChatResponse.class);
         } catch (Exception e) {

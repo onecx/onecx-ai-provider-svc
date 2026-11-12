@@ -1,6 +1,7 @@
 package org.tkit.onecx.ai.provider.rs.external.v1.mappers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -10,6 +11,8 @@ import java.util.List;
 import java.util.Set;
 
 import jakarta.inject.Inject;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -621,12 +624,27 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
     }
 
     @Test
-    void toRuntimeRequest_missingLiveProvider_keepsModelWithoutProvider() {
+    void toRuntimeRequest_missingLiveProvider_failsWithConflict() {
         when(providerDAO.findById("provider-1")).thenReturn(null);
 
-        var result = mapper.toRuntimeRequest(activeConfiguration(), new Agent(), new ChatRequestDTOV1(), List.of());
-        assertThat(result.getRootAgent().getModel().getModelIdentifier()).isEqualTo("mistral");
-        assertThat(result.getRootAgent().getModel().getProvider()).isNull();
+        var error = assertThrows(WebApplicationException.class,
+                () -> mapper.toRuntimeRequest(activeConfiguration(), new Agent(), new ChatRequestDTOV1(), List.of()));
+        assertThat(error.getResponse().getStatus()).isEqualTo(Response.Status.CONFLICT.getStatusCode());
+        assertThat(error.getMessage()).contains("provider-1");
+    }
+
+    @Test
+    void toRuntimeRequest_versionValuesWinOverLiveAgentValues() {
+        when(providerDAO.findById("provider-1")).thenReturn(new Provider());
+        var agent = new Agent();
+        agent.setName("live-name");
+        agent.setDescription("live-description");
+        agent.setAdditionalPrompt("live-prompt");
+
+        var result = mapper.toRuntimeRequest(activeConfiguration(), agent, new ChatRequestDTOV1(), List.of());
+        assertThat(result.getRootAgent().getName()).isEqualTo("agent-1");
+        assertThat(result.getRootAgent().getDescription()).isEqualTo("agent description");
+        assertThat(result.getRootAgent().getAdditionalPrompt()).isEqualTo("live-prompt");
     }
 
     @Test
@@ -640,15 +658,14 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
     }
 
     @Test
-    void toRuntimeRequest_toolLookup_fallsBackToGlobalToolAndSkipsUnknown() {
-        when(toolDAO.findById("tool-1")).thenReturn(null);
+    void toRuntimeRequest_toolLookup_fallsBackToGlobalTool() {
         var globalTool = new GlobalTool();
         globalTool.setType(ToolType.HTTP);
+        when(toolDAO.findById("global-1")).thenReturn(null);
         when(globalToolDAO.findById("global-1")).thenReturn(globalTool);
 
         var configuration = new AgentConfigurationDTOV1();
         configuration.setMcpServers(List.of(
-                server("tool-1", McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ASK, List.of()),
                 server("global-1", McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.DENY, null)));
 
         var tools = mapper.toRuntimeRequest(configuration, new Agent(), new ChatRequestDTOV1(), List.of())
@@ -659,6 +676,21 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
         assertThat(tools.get(0).getAuthMode()).isNull();
         assertThat(tools.get(0).getExecutionPolicy()).isEqualTo(ToolSnapshot.ExecutionPolicyEnum.ALWAYS_ASK);
         assertThat(tools.get(0).getToolRules()).isEmpty();
+    }
+
+    @Test
+    void toRuntimeRequest_unknownTool_failsWithConflict() {
+        when(toolDAO.findById("tool-1")).thenReturn(null);
+        when(globalToolDAO.findById("tool-1")).thenReturn(null);
+
+        var configuration = new AgentConfigurationDTOV1();
+        configuration.setMcpServers(List.of(
+                server("tool-1", McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ASK, List.of())));
+
+        var error = assertThrows(WebApplicationException.class,
+                () -> mapper.toRuntimeRequest(configuration, new Agent(), new ChatRequestDTOV1(), List.of()));
+        assertThat(error.getResponse().getStatus()).isEqualTo(Response.Status.CONFLICT.getStatusCode());
+        assertThat(error.getMessage()).contains("tool-1");
     }
 
     @Test

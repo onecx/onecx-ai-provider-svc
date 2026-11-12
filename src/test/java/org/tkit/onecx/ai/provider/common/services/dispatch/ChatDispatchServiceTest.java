@@ -1,6 +1,7 @@
 package org.tkit.onecx.ai.provider.common.services.dispatch;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Set;
 
 import jakarta.inject.Inject;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 
 import org.eclipse.microprofile.rest.client.inject.RestClient;
@@ -357,6 +359,42 @@ class ChatDispatchServiceTest extends AbstractTest {
             assertThat(response.getStatus()).isEqualTo(Response.Status.CONFLICT.getStatusCode());
         }
 
+        verify(providerRuntimeClient, never()).chat(any());
+    }
+
+    @Test
+    void chat_activeConfigurationWithUnexpectedEntity_returnsServerError() {
+        var agent = new Agent();
+        agent.setId("agent-1");
+        when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
+        when(agentConfigurationService.getAgentConfiguration(any(), any()))
+                .thenReturn(Response.ok("unexpected").build());
+
+        try (var response = chatDispatchService.chat(new ChatRequestDTOV1())) {
+            assertThat(response.getStatus()).isEqualTo(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+        }
+
+        verify(providerRuntimeClient, never()).chat(any());
+    }
+
+    @Test
+    void chat_activeConfigurationReferencesMissingTool_failsWithConflictWithoutCallingRuntime() {
+        var agent = new Agent();
+        agent.setId("agent-1");
+        when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
+        when(toolDAO.findById("missing-tool")).thenReturn(null);
+        when(globalToolDAO.findById("missing-tool")).thenReturn(null);
+        var configuration = activeConfiguration();
+        var server = new McpServerConfigurationDTOV1();
+        server.setId("missing-tool");
+        server.setName("missingTool");
+        configuration.setMcpServers(List.of(server));
+        when(agentConfigurationService.getAgentConfiguration(any(), any()))
+                .thenReturn(Response.ok(configuration).build());
+
+        var error = assertThrows(WebApplicationException.class,
+                () -> chatDispatchService.chat(new ChatRequestDTOV1()));
+        assertThat(error.getResponse().getStatus()).isEqualTo(Response.Status.CONFLICT.getStatusCode());
         verify(providerRuntimeClient, never()).chat(any());
     }
 
