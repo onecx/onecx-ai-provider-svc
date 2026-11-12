@@ -75,6 +75,7 @@ class AgentRestV1ControllerTest extends AbstractTest {
         assertThat(response.statusCode()).isEqualTo(OK.getStatusCode());
 
         var config = response.as(AgentConfigurationDTOV1.class);
+        assertThat(config.getAgent().getAdditionalPrompt()).isEqualTo("agent_additional_prompt_1");
         assertThat(List.of(
                 config.getSchemaVersion(),
                 config.getContext().getTenantId(),
