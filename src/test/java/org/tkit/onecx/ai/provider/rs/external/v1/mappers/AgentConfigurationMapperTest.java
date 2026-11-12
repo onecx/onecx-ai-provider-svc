@@ -73,6 +73,7 @@ class AgentConfigurationMapperTest {
     @Test
     void build_mapsTopLevelFields() {
         var agent = baseAgent();
+        agent.setAdditionalPrompt("Ask for tenant first.");
 
         var config = mapper.build(agent, List.of(), TENANT_ID, PRINCIPAL);
 
@@ -82,6 +83,7 @@ class AgentConfigurationMapperTest {
         assertThat(config.getAgent().getId()).isEqualTo("agent-1");
         assertThat(config.getAgent().getName()).isEqualTo("agent1");
         assertThat(config.getAgent().getDescription()).isEqualTo("agent_description");
+        assertThat(config.getAgent().getAdditionalPrompt()).isEqualTo("Ask for tenant first.");
         assertThat(config.getVoice().getVoiceEnabled()).isTrue();
         assertThat(config.getVoice().getLanguageCode()).isEqualTo("en");
         assertThat(config.getModel().getId()).isEqualTo("model-1");

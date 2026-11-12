@@ -51,6 +51,7 @@ public abstract class AgentConfigurationMapper {
 
     @Mapping(target = "name", source = "agent.name")
     @Mapping(target = "description", source = "agent.description")
+    @Mapping(target = "additionalPrompt", source = "agent.additionalPrompt")
     abstract AgentConfigurationAgentDTOV1 agentObject(Agent agent);
 
     @Mapping(target = "name", source = "scaffold.name")
