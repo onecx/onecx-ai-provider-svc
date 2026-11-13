@@ -1,7 +1,6 @@
 package org.tkit.onecx.ai.provider.common.services.agent;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static jakarta.ws.rs.core.Response.Status.CONFLICT;
 import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
@@ -278,13 +277,26 @@ class AgentConfigurationServiceTest {
     }
 
     @Test
-    void getActiveConfiguration_withoutPublishedVersion_throwsConflictWithoutWriting() {
+    void getActiveConfiguration_withoutPublishedVersion_initializesInitialVersion() {
         var agent = agentWithTools(Set.of());
         when(dao.findById(AGENT_ID)).thenReturn(agent);
 
+        var configuration = service.getActiveConfiguration(AGENT_ID);
+
+        assertThat(configuration.getAgent().getName()).isEqualTo("agent-config");
+        assertThat(agent.getActiveConfigurationVersionId()).isNotNull();
+        verify(service.versionDAO).create(any());
+    }
+
+    @Test
+    void getActiveConfiguration_withoutPublishedVersion_invalidDependencies_throwsConflictWithoutWriting() {
+        var agent = agentWithTools(Set.of());
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+        when(service.dependencyValidator.validate(any())).thenReturn(List.of("Referenced tool is missing"));
+
         assertThatThrownBy(() -> service.getActiveConfiguration(AGENT_ID))
                 .isInstanceOfSatisfying(WebApplicationException.class,
-                        error -> assertThat(error.getResponse().getStatus()).isEqualTo(CONFLICT.getStatusCode()));
+                        error -> assertThat(error.getResponse().getStatus()).isEqualTo(BAD_REQUEST.getStatusCode()));
         assertThat(agent.getActiveConfigurationVersionId()).isNull();
         verify(service.versionDAO, never()).create(any());
     }

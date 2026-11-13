@@ -83,19 +83,27 @@ public class AgentConfigurationService {
     }
 
     /**
-     * Read-only lookup of the active configuration used by chat dispatch. Unlike {@link #getAgentConfiguration} it
-     * never initializes or writes a version, so a chat request cannot change the stored configuration.
+     * Returns the active configuration used by chat dispatch. When the agent has no active version yet, the current
+     * configuration is validated and stored as the initial version, the same way {@link #getAgentConfiguration} does.
+     * Validation errors are returned to the caller as they are.
      */
+    @Transactional(REQUIRED)
     public AgentConfigurationDTOV1 getActiveConfiguration(String id) {
         var agent = dao.findById(id);
         if (agent == null) {
             throw new WebApplicationException("Agent '" + id + "' not found", Response.Status.NOT_FOUND);
         }
-        var versionId = agent.getActiveConfigurationVersionId();
-        if (versionId == null) {
-            throw new WebApplicationException("Agent '" + id + "' has no published configuration",
-                    Response.Status.CONFLICT);
+        dao.lockConfiguration(agent);
+        if (agent.getActiveConfigurationVersionId() == null) {
+            // Chat has no principal, so the initial version is stored without one.
+            try (var resolved = resolveConfiguration(agent, null)) {
+                if (resolved.getStatus() != Response.Status.OK.getStatusCode()) {
+                    throw new WebApplicationException(Response.fromResponse(resolved).build());
+                }
+                saveVersion(agent, "Initial configuration", (AgentConfigurationDTOV1) resolved.getEntity());
+            }
         }
+        var versionId = agent.getActiveConfigurationVersionId();
         var version = versionDAO.findByAgentAndId(id, versionId);
         if (version == null) {
             throw new WebApplicationException("Active configuration version " + versionId + " of agent " + id + " is missing",
