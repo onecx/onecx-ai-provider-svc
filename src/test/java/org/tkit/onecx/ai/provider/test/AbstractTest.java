@@ -6,6 +6,7 @@ import static io.restassured.config.ObjectMapperConfig.objectMapperConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.security.PrivateKey;
+import java.util.UUID;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObjectBuilder;
@@ -51,7 +52,8 @@ public class AbstractTest {
      * Chat only runs against an active published configuration.
      */
     protected static void publishActiveConfiguration(AgentConfigurationService service, String agentId) {
-        var created = service.createVersion(agentId, "Published for test", "test-user");
+        // Version names must be unique per agent and test data is not reset between test methods.
+        var created = service.createVersion(agentId, "Published for test " + UUID.randomUUID(), "test-user");
         assertThat(created.getStatus()).isEqualTo(201);
         var versionId = ((AgentConfigurationVersionDTO) created.getEntity()).getId();
         assertThat(service.activateAgentConfigurationVersion(agentId, versionId).getStatus()).isEqualTo(200);

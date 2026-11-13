@@ -692,7 +692,7 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
 
     @Test
     void toRuntimeRequest_toolWithoutLiveSecrets_mapsMcpTypeAndNullApiKey() {
-        when(toolDAO.findById("tool-1")).thenReturn(liveTool("tool-1", null, null, null));
+        when(toolDAO.findById("tool-1")).thenReturn(liveTool("tool-1", ToolType.MCP, null, null));
 
         var configuration = new AgentConfigurationDTOV1();
         configuration.setMcpServers(List.of(server("tool-1", null, List.of())));
