@@ -3,6 +3,7 @@ package org.tkit.onecx.ai.provider.rs.external.v1.mappers;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
@@ -120,9 +121,7 @@ public abstract class RuntimeSnapshotMapper {
         // Only the API key is read from the live entity; everything else comes from the active configuration.
         var live = providerDAO.findById(provider.getId());
         if (live == null) {
-            throw new WebApplicationException(
-                    "Provider '" + provider.getId() + "' from the active configuration no longer exists",
-                    Response.Status.CONFLICT);
+            throw missingLiveEntity("Provider", provider.getId());
         }
         var snapshot = new ProviderSnapshot();
         snapshot.setName(provider.getName());
@@ -169,9 +168,7 @@ public abstract class RuntimeSnapshotMapper {
             live = globalToolDAO.findById(server.getId());
         }
         if (live == null) {
-            throw new WebApplicationException(
-                    "Tool '" + server.getId() + "' from the active configuration no longer exists",
-                    Response.Status.CONFLICT);
+            throw missingLiveEntity("Tool", server.getId());
         }
         var snapshot = new ToolSnapshot();
         snapshot.setName(server.getName());
@@ -453,8 +450,14 @@ public abstract class RuntimeSnapshotMapper {
         }).toList();
     }
 
+    private static WebApplicationException missingLiveEntity(String kind, String id) {
+        return new WebApplicationException(
+                kind + " '" + id + "' from the active configuration no longer exists",
+                Response.Status.CONFLICT);
+    }
+
     private ToolSnapshot.ExecutionPolicyEnum mapExecutionPolicy(ExecutionPolicy policy) {
-        var canonical = (policy == null ? ExecutionPolicy.DEFAULT : policy).toCanonical();
+        var canonical = Objects.requireNonNullElse(policy, ExecutionPolicy.DEFAULT).toCanonical();
         if (canonical == ExecutionPolicy.ALWAYS_ALLOW) {
             return ToolSnapshot.ExecutionPolicyEnum.NEVER_ASK;
         }
@@ -462,7 +465,7 @@ public abstract class RuntimeSnapshotMapper {
     }
 
     private ToolRuleSnapshot.AllowedEnum mapToolPermission(ToolPermission permission) {
-        var canonical = (permission == null ? ToolPermission.DEFAULT : permission).toCanonical();
+        var canonical = Objects.requireNonNullElse(permission, ToolPermission.DEFAULT).toCanonical();
         if (canonical == ToolPermission.ALWAYS_ALLOW) {
             return ToolRuleSnapshot.AllowedEnum.ALLOW;
         }

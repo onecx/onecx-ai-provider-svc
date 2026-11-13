@@ -2,6 +2,7 @@ package org.tkit.onecx.ai.provider.common.services.agent;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.CONFLICT;
+import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -286,6 +287,19 @@ class AgentConfigurationServiceTest {
                         error -> assertThat(error.getResponse().getStatus()).isEqualTo(CONFLICT.getStatusCode()));
         assertThat(agent.getActiveConfigurationVersionId()).isNull();
         verify(service.versionDAO, never()).create(any());
+    }
+
+    @Test
+    void getActiveConfiguration_missingActiveVersionRow_throwsInternalServerError() {
+        var agent = agentWithTools(Set.of());
+        agent.setActiveConfigurationVersionId("missing-version");
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+        when(service.versionDAO.findByAgentAndId(AGENT_ID, "missing-version")).thenReturn(null);
+
+        assertThatThrownBy(() -> service.getActiveConfiguration(AGENT_ID))
+                .isInstanceOfSatisfying(WebApplicationException.class,
+                        error -> assertThat(error.getResponse().getStatus())
+                                .isEqualTo(INTERNAL_SERVER_ERROR.getStatusCode()));
     }
 
     @Test

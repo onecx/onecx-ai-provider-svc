@@ -98,7 +98,8 @@ public class AgentConfigurationService {
         }
         var version = versionDAO.findByAgentAndId(id, versionId);
         if (version == null) {
-            throw new IllegalStateException("Active configuration version " + versionId + " of agent " + id + " is missing");
+            throw new WebApplicationException("Active configuration version " + versionId + " of agent " + id + " is missing",
+                    Response.Status.INTERNAL_SERVER_ERROR);
         }
         return readConfiguration(version);
     }
