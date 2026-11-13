@@ -392,8 +392,9 @@ class ChatDispatchServiceTest extends AbstractTest {
         when(agentConfigurationService.getAgentConfiguration(any(), any()))
                 .thenReturn(Response.ok(configuration).build());
 
+        var request = new ChatRequestDTOV1();
         var error = assertThrows(WebApplicationException.class,
-                () -> chatDispatchService.chat(new ChatRequestDTOV1()));
+                () -> chatDispatchService.chat(request));
         assertThat(error.getResponse().getStatus()).isEqualTo(Response.Status.CONFLICT.getStatusCode());
         verify(providerRuntimeClient, never()).chat(any());
     }

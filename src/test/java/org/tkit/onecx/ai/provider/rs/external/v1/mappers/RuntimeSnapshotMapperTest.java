@@ -627,8 +627,11 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
     void toRuntimeRequest_missingLiveProvider_failsWithConflict() {
         when(providerDAO.findById("provider-1")).thenReturn(null);
 
+        var configuration = activeConfiguration();
+        var agent = new Agent();
+        var request = new ChatRequestDTOV1();
         var error = assertThrows(WebApplicationException.class,
-                () -> mapper.toRuntimeRequest(activeConfiguration(), new Agent(), new ChatRequestDTOV1(), List.of()));
+                () -> mapper.toRuntimeRequest(configuration, agent, request, List.of()));
         assertThat(error.getResponse().getStatus()).isEqualTo(Response.Status.CONFLICT.getStatusCode());
         assertThat(error.getMessage()).contains("provider-1");
     }
@@ -687,8 +690,10 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
         configuration.setMcpServers(List.of(
                 server("tool-1", McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ASK, List.of())));
 
+        var agent = new Agent();
+        var request = new ChatRequestDTOV1();
         var error = assertThrows(WebApplicationException.class,
-                () -> mapper.toRuntimeRequest(configuration, new Agent(), new ChatRequestDTOV1(), List.of()));
+                () -> mapper.toRuntimeRequest(configuration, agent, request, List.of()));
         assertThat(error.getResponse().getStatus()).isEqualTo(Response.Status.CONFLICT.getStatusCode());
         assertThat(error.getMessage()).contains("tool-1");
     }
