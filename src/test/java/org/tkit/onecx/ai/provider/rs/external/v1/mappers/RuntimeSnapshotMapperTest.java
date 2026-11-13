@@ -309,6 +309,15 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
     }
 
     @Test
+    void mapModel_preservesModelConfigVerbatim() {
+        var modelConfig = "{\"api\":\"responses\", \"reasoningEffort\":\" medium \"}";
+        var model = new Model();
+        model.setModelConfig(modelConfig);
+
+        assertThat(mapper.mapModel(model).getModelConfig()).isEqualTo(modelConfig);
+    }
+
+    @Test
     void mapModel_withNullProvider_setsNullProvider() {
         var model = new Model();
         model.setName("model-1");
