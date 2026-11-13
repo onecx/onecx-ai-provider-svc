@@ -7,6 +7,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 
+import java.util.List;
+
+import jakarta.inject.Inject;
 import jakarta.ws.rs.HttpMethod;
 import jakarta.ws.rs.core.Response;
 
@@ -15,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.mockserver.client.MockServerClient;
 import org.mockserver.model.JsonBody;
 import org.mockserver.model.MediaType;
+import org.tkit.onecx.ai.provider.common.services.agent.AgentConfigurationService;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 import org.tkit.quarkus.security.test.GenerateKeycloakClient;
 import org.tkit.quarkus.test.WithDBData;
@@ -35,6 +39,9 @@ class DispatchRestControllerTest extends AbstractTest {
     @InjectMockServerClient
     MockServerClient mockServerClient;
 
+    @Inject
+    AgentConfigurationService agentConfigurationService;
+
     static final String MOCK_ID = "MOCK";
 
     @BeforeEach
@@ -43,6 +50,9 @@ class DispatchRestControllerTest extends AbstractTest {
             mockServerClient.clear(MOCK_ID);
         } catch (Exception _) {
             //  mockId not existing
+        }
+        for (var agentId : List.of("agent-11-111", "agent-22-222", "agent-33-333", "agent-44-444")) {
+            publishActiveConfiguration(agentConfigurationService, agentId);
         }
     }
 

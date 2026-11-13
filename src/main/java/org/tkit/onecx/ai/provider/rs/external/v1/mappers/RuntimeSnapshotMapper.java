@@ -29,7 +29,6 @@ import org.tkit.onecx.ai.provider.domain.models.Skill;
 import org.tkit.onecx.ai.provider.domain.models.Tool;
 import org.tkit.onecx.ai.provider.domain.models.enums.ExecutionPolicy;
 import org.tkit.onecx.ai.provider.domain.models.enums.ToolPermission;
-import org.tkit.onecx.ai.provider.domain.models.enums.ToolType;
 import org.tkit.quarkus.rs.mappers.OffsetDateTimeMapper;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationDTOV1;
@@ -164,7 +163,7 @@ public abstract class RuntimeSnapshotMapper {
     }
 
     private ToolSnapshot mapActiveTool(McpServerConfigurationDTOV1 server) {
-        // Only the API key is read from the live entity; everything else comes from the active configuration.
+        // Tool type and API key are read from the live entity because the configuration does not carry them.
         AbstractTool live = toolDAO.findById(server.getId());
         if (live == null) {
             live = globalToolDAO.findById(server.getId());
@@ -178,7 +177,7 @@ public abstract class RuntimeSnapshotMapper {
         snapshot.setName(server.getName());
         snapshot.setDescription(server.getDescription());
         snapshot.setUrl(server.getUrl());
-        snapshot.setType(ToolType.MCP.name());
+        snapshot.setType(live.getType() != null ? live.getType().name() : null);
         snapshot.setApiKey(live.getApiKey());
         snapshot.setAuthMode(server.getAuthMode());
         snapshot.setExecutionPolicy(mapExecutionPolicy(toExecutionPolicy(server.getUnlistedToolPermission())));
