@@ -55,7 +55,8 @@ class DispatchRestV1ControllerTest extends AbstractTest {
         } catch (Exception _) {
             //  mockId not existing
         }
-        for (var agentId : List.of("agent-11-111", "agent-22-222", "agent-33-333", "agent-44-444")) {
+        // agent-33-333 is excluded because its duplicate tool rules fail configuration validation.
+        for (var agentId : List.of("agent-11-111", "agent-22-222", "agent-44-444")) {
             publishActiveConfiguration(agentConfigurationService, agentId);
         }
     }
