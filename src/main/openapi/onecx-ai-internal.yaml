@@ -2579,6 +2579,10 @@ components:
           type: string
         description:
           type: string
+        additionalPrompt:
+          type: string
+        a2aEnabled:
+          type: boolean
     VoiceSettings:
       type: object
       properties:
@@ -2654,6 +2658,8 @@ components:
         url:
           type: string
         credentialRef:
+          type: string
+        authMode:
           type: string
         unlistedToolPermission:
           type: string

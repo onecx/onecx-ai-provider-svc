@@ -52,6 +52,7 @@ public abstract class AgentConfigurationMapper {
     @Mapping(target = "name", source = "agent.name")
     @Mapping(target = "description", source = "agent.description")
     @Mapping(target = "additionalPrompt", source = "agent.additionalPrompt")
+    @Mapping(target = "a2aEnabled", source = "agent.a2aEnabled")
     abstract AgentConfigurationAgentDTOV1 agentObject(Agent agent);
 
     @Mapping(target = "name", source = "scaffold.name")
@@ -210,6 +211,7 @@ public abstract class AgentConfigurationMapper {
         server.setName(tool.getName());
         server.setDescription(tool.getDescription());
         server.setUrl(tool.getUrl());
+        server.setAuthMode(tool.getAuthMode() != null ? tool.getAuthMode().name() : null);
         server.setCredentialRef(CREDENTIAL_PREFIX_TOOL + tool.getId() + CREDENTIAL_SUFFIX);
         server.setUnlistedToolPermission(mapUnlistedPermission(tool.getExecutionPolicy()));
         server.setUnlistedToolPermissionSource(mapUnlistedSource(tool.getExecutionPolicy()));

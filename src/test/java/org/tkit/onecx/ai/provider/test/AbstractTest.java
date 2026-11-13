@@ -3,18 +3,22 @@ package org.tkit.onecx.ai.provider.test;
 import static com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS;
 import static io.restassured.RestAssured.config;
 import static io.restassured.config.ObjectMapperConfig.objectMapperConfig;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.security.PrivateKey;
+import java.util.UUID;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObjectBuilder;
 
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.jwt.Claims;
+import org.tkit.onecx.ai.provider.common.services.agent.AgentConfigurationService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import gen.org.tkit.onecx.ai.provider.rs.internal.model.AgentConfigurationVersionDTO;
 import io.quarkiverse.mockserver.test.MockServerTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.keycloak.client.KeycloakTestClient;
@@ -41,6 +45,18 @@ public class AbstractTest {
                             objectMapper.configure(WRITE_DATES_AS_TIMESTAMPS, false);
                             return objectMapper;
                         }));
+    }
+
+    /**
+     * Publishes the current agent configuration as a new version and activates it, the same way the UI does.
+     * Chat only runs against an active published configuration.
+     */
+    protected static void publishActiveConfiguration(AgentConfigurationService service, String agentId) {
+        // Version names must be unique per agent and test data is not reset between test methods.
+        var created = service.createVersion(agentId, "Published for test " + UUID.randomUUID(), "test-user");
+        assertThat(created.getStatus()).isEqualTo(201);
+        var versionId = ((AgentConfigurationVersionDTO) created.getEntity()).getId();
+        assertThat(service.activateAgentConfigurationVersion(agentId, versionId).getStatus()).isEqualTo(200);
     }
 
     protected String getKeycloakClientToken(String clientId) {
