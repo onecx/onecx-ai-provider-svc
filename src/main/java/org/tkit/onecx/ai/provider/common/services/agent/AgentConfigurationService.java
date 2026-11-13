@@ -11,6 +11,7 @@ import java.util.List;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
 
@@ -78,6 +79,27 @@ public class AgentConfigurationService {
             }
         }
         return configuration(versionDAO.findByAgentAndId(id, agent.getActiveConfigurationVersionId()), principal);
+    }
+
+    /**
+     * Read-only lookup of the active configuration used by chat dispatch. Unlike {@link #getAgentConfiguration} it
+     * never initializes or writes a version, so a chat request cannot change the stored configuration.
+     */
+    public AgentConfigurationDTOV1 getActiveConfiguration(String id) {
+        var agent = dao.findById(id);
+        if (agent == null) {
+            throw new WebApplicationException("Agent '" + id + "' not found", Response.Status.NOT_FOUND);
+        }
+        var versionId = agent.getActiveConfigurationVersionId();
+        if (versionId == null) {
+            throw new WebApplicationException("Agent '" + id + "' has no published configuration",
+                    Response.Status.CONFLICT);
+        }
+        var version = versionDAO.findByAgentAndId(id, versionId);
+        if (version == null) {
+            throw new IllegalStateException("Active configuration version " + versionId + " of agent " + id + " is missing");
+        }
+        return readConfiguration(version);
     }
 
     @Transactional(REQUIRED)

@@ -563,12 +563,12 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
         server.setId("tool-1");
         server.setName("searchTool");
         server.setUrl("http://mcp.local");
+        server.setAuthMode("API_KEY");
         server.setUnlistedToolPermission(McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ALLOW);
         configuration.setMcpServers(List.of(server));
 
-        var agent = new Agent();
-        agent.setAdditionalPrompt("extra");
-        agent.setA2aEnabled(true);
+        configuration.getAgent().setAdditionalPrompt("extra");
+        configuration.getAgent().setA2aEnabled(true);
 
         var request = new ChatRequestDTOV1();
         var msg = new ChatMessageDTOV1();
@@ -577,7 +577,7 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
         msg.setConversationId("conv-1");
         request.setChatMessage(msg);
 
-        var result = mapper.toRuntimeRequest(configuration, agent, request, List.of());
+        var result = mapper.toRuntimeRequest(configuration, request, List.of());
         var root = result.getRootAgent();
         assertThat(root.getName()).isEqualTo("agent-1");
         assertThat(root.getDescription()).isEqualTo("agent description");
@@ -599,10 +599,9 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
 
     @Test
     void toRuntimeRequest_emptyConfiguration_mapsDefaults() {
-        var agent = new Agent();
         var groups = List.<AgentGroupSnapshot> of();
 
-        var result = mapper.toRuntimeRequest(new AgentConfigurationDTOV1(), agent, new ChatRequestDTOV1(), groups);
+        var result = mapper.toRuntimeRequest(new AgentConfigurationDTOV1(), new ChatRequestDTOV1(), groups);
         assertThat(result.getRootAgent().getName()).isNull();
         assertThat(result.getRootAgent().getDescription()).isNull();
         assertThat(result.getRootAgent().getModel()).isNull();
@@ -618,7 +617,7 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
         scaffold.setName("scaffold-1");
         configuration.setScaffold(scaffold);
 
-        var result = mapper.toRuntimeRequest(configuration, new Agent(), new ChatRequestDTOV1(), List.of());
+        var result = mapper.toRuntimeRequest(configuration, new ChatRequestDTOV1(), List.of());
         assertThat(result.getRootAgent().getScaffold().getName()).isEqualTo("scaffold-1");
         assertThat(result.getRootAgent().getScaffold().getSkills()).isEmpty();
     }
@@ -628,26 +627,11 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
         when(providerDAO.findById("provider-1")).thenReturn(null);
 
         var configuration = activeConfiguration();
-        var agent = new Agent();
         var request = new ChatRequestDTOV1();
         var error = assertThrows(WebApplicationException.class,
-                () -> mapper.toRuntimeRequest(configuration, agent, request, List.of()));
+                () -> mapper.toRuntimeRequest(configuration, request, List.of()));
         assertThat(error.getResponse().getStatus()).isEqualTo(Response.Status.CONFLICT.getStatusCode());
         assertThat(error.getMessage()).contains("provider-1");
-    }
-
-    @Test
-    void toRuntimeRequest_versionValuesWinOverLiveAgentValues() {
-        when(providerDAO.findById("provider-1")).thenReturn(new Provider());
-        var agent = new Agent();
-        agent.setName("live-name");
-        agent.setDescription("live-description");
-        agent.setAdditionalPrompt("live-prompt");
-
-        var result = mapper.toRuntimeRequest(activeConfiguration(), agent, new ChatRequestDTOV1(), List.of());
-        assertThat(result.getRootAgent().getName()).isEqualTo("agent-1");
-        assertThat(result.getRootAgent().getDescription()).isEqualTo("agent description");
-        assertThat(result.getRootAgent().getAdditionalPrompt()).isEqualTo("live-prompt");
     }
 
     @Test
@@ -655,7 +639,7 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
         var configuration = activeConfiguration();
         configuration.setProvider(null);
 
-        var result = mapper.toRuntimeRequest(configuration, new Agent(), new ChatRequestDTOV1(), List.of());
+        var result = mapper.toRuntimeRequest(configuration, new ChatRequestDTOV1(), List.of());
         assertThat(result.getRootAgent().getModel().getProvider()).isNull();
         verify(providerDAO, never()).findById(any());
     }
@@ -671,7 +655,7 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
         configuration.setMcpServers(List.of(
                 server("global-1", McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.DENY, null)));
 
-        var tools = mapper.toRuntimeRequest(configuration, new Agent(), new ChatRequestDTOV1(), List.of())
+        var tools = mapper.toRuntimeRequest(configuration, new ChatRequestDTOV1(), List.of())
                 .getRootAgent().getTools();
         assertThat(tools).hasSize(1);
         assertThat(tools.get(0).getName()).isEqualTo("global-1-name");
@@ -690,24 +674,23 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
         configuration.setMcpServers(List.of(
                 server("tool-1", McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ASK, List.of())));
 
-        var agent = new Agent();
         var request = new ChatRequestDTOV1();
         var error = assertThrows(WebApplicationException.class,
-                () -> mapper.toRuntimeRequest(configuration, agent, request, List.of()));
+                () -> mapper.toRuntimeRequest(configuration, request, List.of()));
         assertThat(error.getResponse().getStatus()).isEqualTo(Response.Status.CONFLICT.getStatusCode());
         assertThat(error.getMessage()).contains("tool-1");
     }
 
     @Test
-    void toRuntimeRequest_toolWithoutTypeAndAuthMode_mapsNullFields() {
+    void toRuntimeRequest_toolWithoutLiveSecrets_mapsMcpTypeAndNullApiKey() {
         when(toolDAO.findById("tool-1")).thenReturn(liveTool("tool-1", null, null, null));
 
         var configuration = new AgentConfigurationDTOV1();
         configuration.setMcpServers(List.of(server("tool-1", null, List.of())));
 
-        var tool = mapper.toRuntimeRequest(configuration, new Agent(), new ChatRequestDTOV1(), List.of())
+        var tool = mapper.toRuntimeRequest(configuration, new ChatRequestDTOV1(), List.of())
                 .getRootAgent().getTools().get(0);
-        assertThat(tool.getType()).isNull();
+        assertThat(tool.getType()).isEqualTo("MCP");
         assertThat(tool.getAuthMode()).isNull();
         assertThat(tool.getApiKey()).isNull();
         assertThat(tool.getExecutionPolicy()).isEqualTo(ToolSnapshot.ExecutionPolicyEnum.ALWAYS_ASK);
@@ -723,7 +706,7 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
                 rule("deny", ToolRuleConfigurationDTOV1.PermissionEnum.DENY),
                 rule("ask", ToolRuleConfigurationDTOV1.PermissionEnum.ALWAYS_ASK)))));
 
-        var rules = mapper.toRuntimeRequest(configuration, new Agent(), new ChatRequestDTOV1(), List.of())
+        var rules = mapper.toRuntimeRequest(configuration, new ChatRequestDTOV1(), List.of())
                 .getRootAgent().getTools().get(0).getToolRules();
         assertThat(rules).extracting(ToolRuleSnapshot::getAllowed).containsExactly(
                 ToolRuleSnapshot.AllowedEnum.ALLOW,
@@ -740,7 +723,7 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
         configuration.setMcpServers(List.of(
                 server("tool-1", McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.DENY, List.of())));
 
-        var tool = mapper.toRuntimeRequest(configuration, new Agent(), new ChatRequestDTOV1(), List.of())
+        var tool = mapper.toRuntimeRequest(configuration, new ChatRequestDTOV1(), List.of())
                 .getRootAgent().getTools().get(0);
         assertThat(tool.getExecutionPolicy()).isEqualTo(ToolSnapshot.ExecutionPolicyEnum.ALWAYS_ASK);
     }

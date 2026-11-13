@@ -86,8 +86,8 @@ class ChatDispatchServiceTest extends AbstractTest {
 
     @BeforeEach
     void setUpActiveConfiguration() {
-        when(agentConfigurationService.getAgentConfiguration(any(), any()))
-                .thenReturn(Response.ok(activeConfiguration()).build());
+        when(agentConfigurationService.getActiveConfiguration(any()))
+                .thenReturn(activeConfiguration());
         when(providerDAO.findById(any())).thenReturn(new Provider());
     }
 
@@ -323,8 +323,8 @@ class ChatDispatchServiceTest extends AbstractTest {
         server.setToolRules(List.of(rule));
         var configuration = activeConfiguration();
         configuration.setMcpServers(List.of(server));
-        when(agentConfigurationService.getAgentConfiguration(any(), any()))
-                .thenReturn(Response.ok(configuration).build());
+        when(agentConfigurationService.getActiveConfiguration(any()))
+                .thenReturn(configuration);
 
         var agent = new Agent();
         agent.setId("agent-1");
@@ -348,32 +348,17 @@ class ChatDispatchServiceTest extends AbstractTest {
     }
 
     @Test
-    void chat_activeConfigurationUnavailable_returnsItsResponse() {
+    void chat_noActiveVersion_failsWithConflictWithoutCallingRuntime() {
         var agent = new Agent();
         agent.setId("agent-1");
         when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
-        when(agentConfigurationService.getAgentConfiguration(any(), any()))
-                .thenReturn(Response.status(Response.Status.CONFLICT).build());
+        when(agentConfigurationService.getActiveConfiguration(any()))
+                .thenThrow(new WebApplicationException(Response.Status.CONFLICT));
 
-        try (var response = chatDispatchService.chat(new ChatRequestDTOV1())) {
-            assertThat(response.getStatus()).isEqualTo(Response.Status.CONFLICT.getStatusCode());
-        }
-
-        verify(providerRuntimeClient, never()).chat(any());
-    }
-
-    @Test
-    void chat_activeConfigurationWithUnexpectedEntity_returnsServerError() {
-        var agent = new Agent();
-        agent.setId("agent-1");
-        when(agentService.findAgentByRequestContext(any())).thenReturn(agent);
-        when(agentConfigurationService.getAgentConfiguration(any(), any()))
-                .thenReturn(Response.ok("unexpected").build());
-
-        try (var response = chatDispatchService.chat(new ChatRequestDTOV1())) {
-            assertThat(response.getStatus()).isEqualTo(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
-        }
-
+        var request = new ChatRequestDTOV1();
+        var error = assertThrows(WebApplicationException.class,
+                () -> chatDispatchService.chat(request));
+        assertThat(error.getResponse().getStatus()).isEqualTo(Response.Status.CONFLICT.getStatusCode());
         verify(providerRuntimeClient, never()).chat(any());
     }
 
@@ -389,8 +374,8 @@ class ChatDispatchServiceTest extends AbstractTest {
         server.setId("missing-tool");
         server.setName("missingTool");
         configuration.setMcpServers(List.of(server));
-        when(agentConfigurationService.getAgentConfiguration(any(), any()))
-                .thenReturn(Response.ok(configuration).build());
+        when(agentConfigurationService.getActiveConfiguration(any()))
+                .thenReturn(configuration);
 
         var request = new ChatRequestDTOV1();
         var error = assertThrows(WebApplicationException.class,

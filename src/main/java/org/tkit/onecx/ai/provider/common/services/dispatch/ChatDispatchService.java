@@ -60,21 +60,8 @@ public class ChatDispatchService {
                     .entity("No agent found for the given request context")
                     .build();
         }
-        AgentConfigurationDTOV1 configuration;
-        Response configurationResponse = agentConfigurationService.getAgentConfiguration(agent.getId(), null);
-        try {
-            if (configurationResponse.getStatus() != Response.Status.OK.getStatusCode()) {
-                return Response.fromResponse(configurationResponse).build();
-            }
-            if (!(configurationResponse.getEntity() instanceof AgentConfigurationDTOV1 activeConfiguration)) {
-                log.error("Unexpected entity returned for the active configuration of agent {}", agent.getId());
-                return Response.serverError().entity("Active configuration is unavailable").build();
-            }
-            configuration = activeConfiguration;
-        } finally {
-            configurationResponse.close();
-        }
-        RuntimeChatRequest runtimeRequest = runtimeSnapshotMapper.toRuntimeRequest(configuration, agent,
+        AgentConfigurationDTOV1 configuration = agentConfigurationService.getActiveConfiguration(agent.getId());
+        RuntimeChatRequest runtimeRequest = runtimeSnapshotMapper.toRuntimeRequest(configuration,
                 chatRequestDTO, mapGroups(agent));
         int runtimeStatus;
         RuntimeChatResponse result;

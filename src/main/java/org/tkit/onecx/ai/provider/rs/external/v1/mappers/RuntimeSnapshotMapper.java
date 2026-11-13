@@ -29,6 +29,7 @@ import org.tkit.onecx.ai.provider.domain.models.Skill;
 import org.tkit.onecx.ai.provider.domain.models.Tool;
 import org.tkit.onecx.ai.provider.domain.models.enums.ExecutionPolicy;
 import org.tkit.onecx.ai.provider.domain.models.enums.ToolPermission;
+import org.tkit.onecx.ai.provider.domain.models.enums.ToolType;
 import org.tkit.quarkus.rs.mappers.OffsetDateTimeMapper;
 
 import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.AgentConfigurationDTOV1;
@@ -73,26 +74,26 @@ public abstract class RuntimeSnapshotMapper {
     GlobalToolDAO globalToolDAO;
 
     /**
-     * Builds the root agent from the active configuration version. Secrets and fields the version does not store
-     * (API keys, tool type and auth mode, additional prompt, A2A flag) are read from the live entities.
+     * Builds the runtime request from the active configuration version, the same source the runtime reads through
+     * GET /v1/agents/{id}/configuration. Only API keys are read from the live entities, because they are not stored
+     * in the configuration version.
      */
-    public RuntimeChatRequest toRuntimeRequest(AgentConfigurationDTOV1 configuration, Agent agent,
+    public RuntimeChatRequest toRuntimeRequest(AgentConfigurationDTOV1 configuration,
             ChatRequestDTOV1 chatRequestDTO, List<AgentGroupSnapshot> groups) {
         var request = new RuntimeChatRequest();
         request.setChatRequest(mapChatRequest(chatRequestDTO));
-        request.setRootAgent(mapActiveAgent(configuration, agent, groups));
+        request.setRootAgent(mapActiveAgent(configuration, groups));
         return request;
     }
 
-    private AgentSnapshot mapActiveAgent(AgentConfigurationDTOV1 configuration, Agent agent,
-            List<AgentGroupSnapshot> groups) {
+    private AgentSnapshot mapActiveAgent(AgentConfigurationDTOV1 configuration, List<AgentGroupSnapshot> groups) {
         var snapshot = new AgentSnapshot();
         if (configuration.getAgent() != null) {
             snapshot.setName(configuration.getAgent().getName());
             snapshot.setDescription(configuration.getAgent().getDescription());
+            snapshot.setAdditionalPrompt(configuration.getAgent().getAdditionalPrompt());
+            snapshot.setA2aEnabled(configuration.getAgent().getA2aEnabled());
         }
-        snapshot.setAdditionalPrompt(agent.getAdditionalPrompt());
-        snapshot.setA2aEnabled(agent.getA2aEnabled());
         snapshot.setModel(mapActiveModel(configuration.getModel(), configuration.getProvider()));
         snapshot.setScaffold(mapActiveScaffold(configuration.getScaffold(), configuration.getSkills()));
         snapshot.setTools(mapActiveTools(configuration.getMcpServers()));
@@ -117,6 +118,7 @@ public abstract class RuntimeSnapshotMapper {
         if (provider == null) {
             return null;
         }
+        // Only the API key is read from the live entity; everything else comes from the active configuration.
         var live = providerDAO.findById(provider.getId());
         if (live == null) {
             throw new WebApplicationException(
@@ -162,6 +164,7 @@ public abstract class RuntimeSnapshotMapper {
     }
 
     private ToolSnapshot mapActiveTool(McpServerConfigurationDTOV1 server) {
+        // Only the API key is read from the live entity; everything else comes from the active configuration.
         AbstractTool live = toolDAO.findById(server.getId());
         if (live == null) {
             live = globalToolDAO.findById(server.getId());
@@ -175,19 +178,16 @@ public abstract class RuntimeSnapshotMapper {
         snapshot.setName(server.getName());
         snapshot.setDescription(server.getDescription());
         snapshot.setUrl(server.getUrl());
-        snapshot.setType(live.getType() != null ? live.getType().name() : null);
+        snapshot.setType(ToolType.MCP.name());
         snapshot.setApiKey(live.getApiKey());
-        snapshot.setAuthMode(live.getAuthMode() != null ? live.getAuthMode().name() : null);
-        snapshot.setExecutionPolicy(mapActiveExecutionPolicy(server.getUnlistedToolPermission()));
+        snapshot.setAuthMode(server.getAuthMode());
+        snapshot.setExecutionPolicy(mapExecutionPolicy(toExecutionPolicy(server.getUnlistedToolPermission())));
         snapshot.setToolRules(mapActiveRules(server.getToolRules()));
         return snapshot;
     }
 
-    private ToolSnapshot.ExecutionPolicyEnum mapActiveExecutionPolicy(
-            McpServerConfigurationDTOV1.UnlistedToolPermissionEnum permission) {
-        return permission == McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ALLOW
-                ? ToolSnapshot.ExecutionPolicyEnum.NEVER_ASK
-                : ToolSnapshot.ExecutionPolicyEnum.ALWAYS_ASK;
+    private ExecutionPolicy toExecutionPolicy(McpServerConfigurationDTOV1.UnlistedToolPermissionEnum permission) {
+        return permission == null ? null : ExecutionPolicy.fromValueOrDefault(permission.name());
     }
 
     private List<ToolRuleSnapshot> mapActiveRules(List<ToolRuleConfigurationDTOV1> rules) {
@@ -197,19 +197,10 @@ public abstract class RuntimeSnapshotMapper {
         return rules.stream().map(rule -> {
             var snapshot = new ToolRuleSnapshot();
             snapshot.setToolName(rule.getToolName());
-            snapshot.setAllowed(mapActivePermission(rule.getPermission()));
+            snapshot.setAllowed(mapToolPermission(rule.getPermission() == null ? null
+                    : ToolPermission.fromValueOrDefault(rule.getPermission().name())));
             return snapshot;
         }).toList();
-    }
-
-    private ToolRuleSnapshot.AllowedEnum mapActivePermission(ToolRuleConfigurationDTOV1.PermissionEnum permission) {
-        if (permission == ToolRuleConfigurationDTOV1.PermissionEnum.ALWAYS_ALLOW) {
-            return ToolRuleSnapshot.AllowedEnum.ALLOW;
-        }
-        if (permission == ToolRuleConfigurationDTOV1.PermissionEnum.DENY) {
-            return ToolRuleSnapshot.AllowedEnum.DENY;
-        }
-        return ToolRuleSnapshot.AllowedEnum.ALWAYS_ASK;
     }
 
     public AgentSnapshot mapAgent(Agent agent) {
