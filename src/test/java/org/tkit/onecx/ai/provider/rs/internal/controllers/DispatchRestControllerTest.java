@@ -32,7 +32,8 @@ import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
 @TestHTTPEndpoint(DispatchRestController.class)
-@WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, rinseAndRepeat = true)
+// rinseAndRepeat must stay false: it re-imports data before each test method, after @BeforeEach has published the agents.
+@WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, rinseAndRepeat = false)
 @GenerateKeycloakClient(clientName = "testClient", scopes = { "ocx-ai:all", "ocx-ai:read", "ocx-ai:write", "ocx-ai:delete" })
 class DispatchRestControllerTest extends AbstractTest {
 
