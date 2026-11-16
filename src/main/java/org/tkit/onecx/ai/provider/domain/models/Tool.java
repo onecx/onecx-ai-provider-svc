@@ -20,6 +20,9 @@ public class Tool extends AbstractTool {
     @Column(name = "TENANT_ID")
     private String tenantId;
 
+    @Column(name = "EXTERNAL", nullable = false)
+    private boolean external;
+
     @Transient
     private String source = "TENANT";
 }
