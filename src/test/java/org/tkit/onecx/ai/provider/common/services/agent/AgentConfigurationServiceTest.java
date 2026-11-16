@@ -2,6 +2,7 @@ package org.tkit.onecx.ai.provider.common.services.agent;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.NOT_MODIFIED;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,6 +19,10 @@ import static org.mockito.Mockito.when;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
+
+import jakarta.ws.rs.core.EntityTag;
+import jakarta.ws.rs.core.Request;
+import jakarta.ws.rs.core.Response;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -112,6 +117,54 @@ class AgentConfigurationServiceTest {
 
         assertThat(response.getStatus()).isEqualTo(BAD_REQUEST.getStatusCode());
         assertThat(response.getEntity()).isNotNull();
+    }
+
+    @Test
+    void configurationReturnsEtagAndNotModifiedForMatchingIfNoneMatch() {
+        when(dao.findById(AGENT_ID)).thenReturn(agentWithTools(Set.of()));
+        var version = saveVersion("Etag");
+        EntityTag[] issued = new EntityTag[1];
+        try (var first = service.getAgentConfigurationVersion(AGENT_ID, version.getId(), "tester")) {
+            assertThat(first.getStatus()).isEqualTo(OK.getStatusCode());
+            issued[0] = first.getEntityTag();
+            assertThat(issued[0]).isNotNull();
+        }
+
+        var request = mock(Request.class);
+        when(request.evaluatePreconditions(any(EntityTag.class)))
+                .thenAnswer(inv -> issued[0].equals(inv.getArgument(0)) ? Response.notModified() : null);
+        try (var second = service.getAgentConfigurationVersion(AGENT_ID, version.getId(), "tester", request)) {
+            assertThat(second.getStatus()).isEqualTo(NOT_MODIFIED.getStatusCode());
+            assertThat(second.getEntityTag()).isEqualTo(issued[0]);
+        }
+    }
+
+    @Test
+    void etagIsScopedPerPrincipal() {
+        when(dao.findById(AGENT_ID)).thenReturn(agentWithTools(Set.of()));
+        var version = saveVersion("Etag per principal");
+        EntityTag alice;
+        EntityTag bob;
+        try (var response = service.getAgentConfigurationVersion(AGENT_ID, version.getId(), "alice")) {
+            alice = response.getEntityTag();
+        }
+        try (var response = service.getAgentConfigurationVersion(AGENT_ID, version.getId(), "bob")) {
+            bob = response.getEntityTag();
+        }
+        assertThat(alice).isNotNull();
+        assertThat(bob).isNotNull().isNotEqualTo(alice);
+    }
+
+    @Test
+    void staleIfNoneMatchReturnsFullConfiguration() {
+        when(dao.findById(AGENT_ID)).thenReturn(agentWithTools(Set.of()));
+        var version = saveVersion("Stale etag");
+        var request = mock(Request.class);
+        when(request.evaluatePreconditions(any(EntityTag.class))).thenReturn(null);
+        try (var response = service.getAgentConfigurationVersion(AGENT_ID, version.getId(), "tester", request)) {
+            assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
+            assertThat(response.getEntity()).isNotNull();
+        }
     }
 
     private Agent agentWithTools(Set<Tool> tools) {

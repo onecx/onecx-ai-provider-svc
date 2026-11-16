@@ -313,7 +313,34 @@ class ToolRestControllerTest extends AbstractTest {
     }
 
     @Test
+    void getDiscoveredTools_exposesRequiredPermissionPerTool() {
+        mockServerClient.when(request().withPath("/ai/internal/runtime/tools/discover").withMethod(HttpMethod.POST))
+                .withId(MOCK_ID)
+                .respond(httpRequest -> response().withStatusCode(OK.getStatusCode())
+                        .withContentType(MediaType.APPLICATION_JSON)
+                        .withBody("{\"tools\":[{\"name\":\"getProposal\",\"description\":\"Reads a proposal\","
+                                + "\"requiredPermission\":\"onecx:proposal#read\"},"
+                                + "{\"name\":\"ping\",\"description\":\"Health\"}]}"));
+
+        var result = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .pathParam("toolId", "tool-11-111")
+                .post("/{toolId}/discovered-tools")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(DiscoveredToolInfoListDTO.class);
+
+        var withPermission = result.getTools().stream()
+                .filter(t -> "getProposal".equals(t.getName())).findFirst().orElseThrow();
+        assertThat(withPermission.getRequiredPermission()).isEqualTo("onecx:proposal#read");
+        var withoutPermission = result.getTools().stream()
+                .filter(t -> "ping".equals(t.getName())).findFirst().orElseThrow();
+        assertThat(withoutPermission.getRequiredPermission()).isNull();
+    }
+
+    @Test
     void getDiscoveredTools_withTools_andAgentId_returnsDiscoveredTools() {
+
         // covers if branch: body != null && body.getTools() != null → body.getTools()
         // covers line 112: agentId is provided → findByAgentAndToolId
         mockServerClient.when(request().withPath("/ai/internal/runtime/tools/discover").withMethod(HttpMethod.POST))

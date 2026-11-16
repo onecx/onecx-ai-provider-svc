@@ -2475,6 +2475,9 @@ components:
           $ref: '#/components/schemas/AgentMcpToolRule'
         orphaned:
           type: boolean
+        requiredPermission:
+          type: string
+          description: OneCX permission required to invoke the tool, as published by the MCP server in tool metadata
     DiscoveredToolInfoList:
       type: object
       properties:
