@@ -20,6 +20,7 @@ import org.tkit.onecx.ai.provider.domain.daos.GlobalToolDAO;
 import org.tkit.onecx.ai.provider.domain.daos.ToolDAO;
 import org.tkit.onecx.ai.provider.domain.models.AbstractTool;
 import org.tkit.onecx.ai.provider.domain.models.AgentMcpToolRule;
+import org.tkit.onecx.ai.provider.domain.models.Tool;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.AgentMcpToolRuleMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ExceptionMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ToolMapper;
@@ -68,8 +69,25 @@ public class ToolRestController implements ToolInternalApi {
     @Override
     public Response createTool(CreateToolRequestDTO createToolRequestDTO) {
         var tool = mapper.create(createToolRequestDTO);
+        if (!applyOneCxCoordinates(tool)) {
+            return Response.status(Response.Status.BAD_REQUEST).build();
+        }
         tool = toolDAO.create(tool);
         return Response.status(Response.Status.CREATED).entity(mapper.map(tool)).build();
+    }
+
+    // External servers carry no OneCX coordinates; internal servers must name the product and app holding their permissions.
+    private static boolean applyOneCxCoordinates(Tool tool) {
+        if (tool.isExternal()) {
+            tool.setProductName(null);
+            tool.setAppId(null);
+            return true;
+        }
+        return hasText(tool.getProductName()) && hasText(tool.getAppId());
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     @Override
@@ -173,6 +191,9 @@ public class ToolRestController implements ToolInternalApi {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
         mapper.update(tool, updateToolRequestDTO);
+        if (!applyOneCxCoordinates(tool)) {
+            return Response.status(Response.Status.BAD_REQUEST).build();
+        }
         tool = toolDAO.update(tool);
         return Response.status(Response.Status.OK).entity(mapper.map(tool)).build();
     }

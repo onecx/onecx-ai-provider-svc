@@ -1638,6 +1638,12 @@ components:
         external:
           type: boolean
           description: True when the MCP server is outside OneCX; such servers have no OneCX permission coverage
+        productName:
+          type: string
+          description: OneCX product that holds the permissions of an internal MCP server; required when external is false
+        appId:
+          type: string
+          description: OneCX application id that holds the permissions of an internal MCP server; required when external is false
     CreateToolRequest:
       type: object
       properties:
@@ -1657,6 +1663,10 @@ components:
           $ref: '#/components/schemas/AuthMode'
         external:
           type: boolean
+        productName:
+          type: string
+        appId:
+          type: string
     UpdateToolRequest:
       type: object
       required: [ modificationCount ]
@@ -1680,6 +1690,10 @@ components:
           $ref: '#/components/schemas/AuthMode'
         external:
           type: boolean
+        productName:
+          type: string
+        appId:
+          type: string
     ToolSearchCriteria:
       type: object
       properties:

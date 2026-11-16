@@ -11,4 +11,5 @@
     <include relativeToChangelogFile="true" file="v1/2026-09-14-agent-voice-pilot-settings.xml"/>
     <include relativeToChangelogFile="true" file="v1/2026-10-16-agent-configuration-versions.xml"/>
     <include relativeToChangelogFile="true" file="v1/2026-11-16-tool-external.xml"/>
+    <include relativeToChangelogFile="true" file="v1/2026-11-16-tool-product-app.xml"/>
 </databaseChangeLog>

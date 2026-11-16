@@ -49,6 +49,7 @@ class ToolRestControllerTest extends AbstractTest {
         var dto = new CreateToolRequestDTO();
         dto.setName("tool-created");
         dto.setType(ToolTypeDTO.HTTP);
+        dto.setExternal(true);
 
         var created = given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
@@ -63,6 +64,46 @@ class ToolRestControllerTest extends AbstractTest {
         assertThat(created).isNotNull();
         assertThat(created.getName()).isEqualTo("tool-created");
         assertThat(created.getType()).isEqualTo(ToolTypeDTO.HTTP);
+    }
+
+    @Test
+    void createInternalToolRequiresProductAndAppTest() {
+        var dto = new CreateToolRequestDTO();
+        dto.setName("tool-internal-no-coordinates");
+        dto.setType(ToolTypeDTO.HTTP);
+        dto.setExternal(false);
+
+        given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(dto)
+                .post()
+                .then()
+                .statusCode(BAD_REQUEST.getStatusCode());
+    }
+
+    @Test
+    void createExternalToolClearsOneCxCoordinatesTest() {
+        var dto = new CreateToolRequestDTO();
+        dto.setName("tool-external-with-coordinates");
+        dto.setType(ToolTypeDTO.HTTP);
+        dto.setExternal(true);
+        dto.setProductName("onecx-product");
+        dto.setAppId("onecx-app");
+
+        var created = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(dto)
+                .post()
+                .then()
+                .statusCode(CREATED.getStatusCode())
+                .extract()
+                .as(ToolDTO.class);
+
+        assertThat(created.getExternal()).isTrue();
+        assertThat(created.getProductName()).isNull();
+        assertThat(created.getAppId()).isNull();
     }
 
     @Test
@@ -136,6 +177,7 @@ class ToolRestControllerTest extends AbstractTest {
     void deleteToolTest() {
         var create = new CreateToolRequestDTO();
         create.setName("tool-delete");
+        create.setExternal(true);
         create.setType(ToolTypeDTO.CUSTOM);
 
         var created = given()
@@ -166,6 +208,7 @@ class ToolRestControllerTest extends AbstractTest {
     void deleteToolCascadesRulesTest() {
         var create = new CreateToolRequestDTO();
         create.setName("tool-cascade");
+        create.setExternal(true);
         create.setType(ToolTypeDTO.MCP);
 
         var createdTool = given()
@@ -236,6 +279,8 @@ class ToolRestControllerTest extends AbstractTest {
         dto.setModificationCount(0);
         dto.setType(ToolTypeDTO.HTTP);
         dto.setExecutionPolicy(ExecutionPolicyDTO.ALWAYS_ASK);
+        dto.setProductName("onecx-product");
+        dto.setAppId("onecx-app");
 
         given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
