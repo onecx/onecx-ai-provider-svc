@@ -82,7 +82,8 @@ public abstract class AgentConfigurationMapper {
         var scaffold = agent.getGlobalScaffold() != null ? agent.getGlobalScaffold() : agent.getScaffold();
         config.setScaffold(scaffold != null ? scaffoldObject(scaffold) : null);
         config.setSkills(buildSkills(scaffold));
-        config.setMcpServers(buildMcpServers(agent, rules));
+        config.setMcpServers(buildServers(agent, rules, true));
+        config.setTools(buildServers(agent, rules, false));
         return config;
     }
 
@@ -153,13 +154,13 @@ public abstract class AgentConfigurationMapper {
         return skills;
     }
 
-    private List<AbstractTool> mcpTools(Set<? extends AbstractTool> tools) {
+    private List<AbstractTool> filterTools(Set<? extends AbstractTool> tools, boolean mcp) {
         if (tools == null) {
             return List.of();
         }
         var result = new ArrayList<AbstractTool>();
         for (var tool : tools) {
-            if (tool.getType() == ToolType.MCP) {
+            if ((tool.getType() == ToolType.MCP) == mcp) {
                 result.add(tool);
             }
         }
@@ -180,13 +181,13 @@ public abstract class AgentConfigurationMapper {
         return skills.stream().sorted(comparing(GlobalSkill::getId, nullsLast(naturalOrder()))).toList();
     }
 
-    private List<McpServerConfigurationDTOV1> buildMcpServers(Agent agent, List<AgentMcpToolRule> rules) {
+    private List<McpServerConfigurationDTOV1> buildServers(Agent agent, List<AgentMcpToolRule> rules, boolean mcp) {
         var servers = new ArrayList<McpServerConfigurationDTOV1>();
         var rulesByTargetId = groupRulesByTargetId(rules);
-        for (var tool : mcpTools(agent.getTools())) {
+        for (var tool : filterTools(agent.getTools(), mcp)) {
             servers.add(buildMcpServer(tool, rulesByTargetId.getOrDefault(tool.getId(), List.of())));
         }
-        for (var tool : mcpTools(agent.getGlobalTools())) {
+        for (var tool : filterTools(agent.getGlobalTools(), mcp)) {
             servers.add(buildMcpServer(tool, rulesByTargetId.getOrDefault(tool.getId(), List.of())));
         }
         return servers;
@@ -208,6 +209,7 @@ public abstract class AgentConfigurationMapper {
     private McpServerConfigurationDTOV1 buildMcpServer(AbstractTool tool, List<AgentMcpToolRule> rules) {
         var server = new McpServerConfigurationDTOV1();
         server.setId(tool.getId());
+        server.setType(tool.getType() != null ? McpServerConfigurationDTOV1.TypeEnum.valueOf(tool.getType().name()) : null);
         server.setName(tool.getName());
         server.setDescription(tool.getDescription());
         server.setUrl(tool.getUrl());

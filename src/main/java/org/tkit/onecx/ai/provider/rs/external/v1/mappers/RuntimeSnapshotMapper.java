@@ -96,7 +96,7 @@ public abstract class RuntimeSnapshotMapper {
         }
         snapshot.setModel(mapActiveModel(configuration.getModel(), configuration.getProvider()));
         snapshot.setScaffold(mapActiveScaffold(configuration.getScaffold(), configuration.getSkills()));
-        snapshot.setTools(mapActiveTools(configuration.getMcpServers()));
+        snapshot.setTools(mapActiveTools(configuration));
         snapshot.setGroups(groups);
         return snapshot;
     }
@@ -154,15 +154,20 @@ public abstract class RuntimeSnapshotMapper {
         return snapshot;
     }
 
-    private List<ToolSnapshot> mapActiveTools(List<McpServerConfigurationDTOV1> servers) {
-        if (servers == null) {
-            return List.of();
+    private List<ToolSnapshot> mapActiveTools(AgentConfigurationDTOV1 configuration) {
+        var servers = new ArrayList<McpServerConfigurationDTOV1>();
+        if (configuration.getMcpServers() != null) {
+            servers.addAll(configuration.getMcpServers());
+        }
+        if (configuration.getTools() != null) {
+            servers.addAll(configuration.getTools());
         }
         return servers.stream().map(this::mapActiveTool).toList();
     }
 
     private ToolSnapshot mapActiveTool(McpServerConfigurationDTOV1 server) {
-        // Tool type and API key are read from the live entity because the configuration does not carry them.
+        // The API key is read from the live entity because the configuration does not carry secrets.
+        // The type falls back to the live entity for configurations published before the type was stored.
         AbstractTool live = toolDAO.findById(server.getId());
         if (live == null) {
             live = globalToolDAO.findById(server.getId());
@@ -174,7 +179,11 @@ public abstract class RuntimeSnapshotMapper {
         snapshot.setName(server.getName());
         snapshot.setDescription(server.getDescription());
         snapshot.setUrl(server.getUrl());
-        snapshot.setType(live.getType() != null ? live.getType().name() : null);
+        var type = server.getType() != null ? server.getType().name() : null;
+        if (type == null && live.getType() != null) {
+            type = live.getType().name();
+        }
+        snapshot.setType(type);
         snapshot.setApiKey(live.getApiKey());
         snapshot.setAuthMode(server.getAuthMode());
         snapshot.setExecutionPolicy(mapExecutionPolicy(toExecutionPolicy(server.getUnlistedToolPermission())));

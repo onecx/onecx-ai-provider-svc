@@ -675,6 +675,22 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
     }
 
     @Test
+    void toRuntimeRequest_includesNonMcpToolsFromConfigurationTools() {
+        when(toolDAO.findById("http-1")).thenReturn(liveTool("http-1", ToolType.HTTP, AuthMode.API_KEY, "http-secret"));
+
+        var configuration = new AgentConfigurationDTOV1();
+        var httpServer = server("http-1", McpServerConfigurationDTOV1.UnlistedToolPermissionEnum.ALWAYS_ASK, List.of());
+        httpServer.setType(McpServerConfigurationDTOV1.TypeEnum.HTTP);
+        configuration.setTools(List.of(httpServer));
+
+        var tools = mapper.toRuntimeRequest(configuration, new ChatRequestDTOV1(), List.of())
+                .getRootAgent().getTools();
+        assertThat(tools).hasSize(1);
+        assertThat(tools.get(0).getType()).isEqualTo("HTTP");
+        assertThat(tools.get(0).getApiKey()).isEqualTo("http-secret");
+    }
+
+    @Test
     void toRuntimeRequest_unknownTool_failsWithConflict() {
         when(toolDAO.findById("tool-1")).thenReturn(null);
         when(globalToolDAO.findById("tool-1")).thenReturn(null);

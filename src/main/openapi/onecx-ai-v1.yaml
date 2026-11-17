@@ -262,6 +262,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/McpServerConfiguration"
+        tools:
+          type: array
+          description: Non-MCP tools (HTTP, CUSTOM) attached to the agent.
+          items:
+            $ref: "#/components/schemas/McpServerConfiguration"
     Context:
       type: object
       properties:
@@ -350,6 +355,9 @@ components:
       properties:
         id:
           type: string
+        type:
+          type: string
+          enum: [ MCP, HTTP, CUSTOM ]
         name:
           type: string
         description:
