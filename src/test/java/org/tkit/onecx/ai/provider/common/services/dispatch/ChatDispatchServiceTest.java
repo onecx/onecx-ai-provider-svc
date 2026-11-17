@@ -3,7 +3,6 @@ package org.tkit.onecx.ai.provider.common.services.dispatch;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -404,10 +403,10 @@ class ChatDispatchServiceTest extends AbstractTest {
         when(externalAgentDAO.findExternalAgentsByGroupId("group-1")).thenReturn(List.of());
 
         var rootConfiguration = activeConfiguration();
-        when(agentConfigurationService.getActiveConfiguration(eq("root-agent"))).thenReturn(rootConfiguration);
+        when(agentConfigurationService.getActiveConfiguration("root-agent")).thenReturn(rootConfiguration);
         var memberConfiguration = activeConfiguration();
         memberConfiguration.getModel().setModelIdentifier("active-model");
-        when(agentConfigurationService.getActiveConfiguration(eq("member-agent"))).thenReturn(memberConfiguration);
+        when(agentConfigurationService.getActiveConfiguration("member-agent")).thenReturn(memberConfiguration);
 
         var runtimeResponse = new RuntimeChatResponse();
         runtimeResponse.setMessage("ok");
