@@ -356,6 +356,12 @@ components:
           type: string
         credentialRef:
           type: string
+        productName:
+          type: string
+          description: OneCX product that holds the permissions of an internal MCP server; absent for external servers
+        appId:
+          type: string
+          description: OneCX application id that holds the permissions of an internal MCP server; absent for external servers
         unlistedToolPermission:
           type: string
           enum: [ DENY, ALWAYS_ASK, ALWAYS_ALLOW ]
