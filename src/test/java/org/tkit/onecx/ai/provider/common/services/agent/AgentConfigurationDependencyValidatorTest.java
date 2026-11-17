@@ -196,6 +196,16 @@ class AgentConfigurationDependencyValidatorTest {
     }
 
     @Test
+    void nonMcpToolsWithoutIdentifiersAreReported() {
+        configuration.setMcpServers(null);
+        configuration.setTools(Arrays.asList(null, new McpServerConfigurationDTOV1().id(" ")));
+
+        assertThat(validator.validate(configuration)).containsExactly(
+                "Referenced tool has no identifier",
+                "Referenced tool has no identifier");
+    }
+
+    @Test
     void optionalCredentialsMayBeAbsentButMustBeValidWhenProvided() {
         configuration.getProvider().setAuthMode(null);
         configuration.getProvider().setCredentialRef(null);
