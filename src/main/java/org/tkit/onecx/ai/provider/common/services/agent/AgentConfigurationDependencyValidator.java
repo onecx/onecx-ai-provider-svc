@@ -20,6 +20,7 @@ import gen.org.tkit.onecx.ai.provider.rs.external.v1.model.McpServerConfiguratio
 @ApplicationScoped
 public class AgentConfigurationDependencyValidator {
 
+    private static final String REFERENCED_TOOL = "Referenced tool '";
     private static final String REFERENCE_DOES_NOT_EXIST = "' does not exist";
 
     @Inject
@@ -92,14 +93,14 @@ public class AgentConfigurationDependencyValidator {
             tool = globalToolDAO.findById(id);
         }
         if (tool == null) {
-            errors.add("Referenced tool '" + id + REFERENCE_DOES_NOT_EXIST);
+            errors.add(REFERENCED_TOOL + id + REFERENCE_DOES_NOT_EXIST);
             return;
         }
         if (mcp && tool.getType() != ToolType.MCP) {
-            errors.add("Referenced tool '" + id + "' is no longer an MCP tool");
+            errors.add(REFERENCED_TOOL + id + "' is no longer an MCP tool");
         }
         if (!mcp && tool.getType() == ToolType.MCP) {
-            errors.add("Referenced tool '" + id + "' is now an MCP tool");
+            errors.add(REFERENCED_TOOL + id + "' is now an MCP tool");
         }
         validateCredential(errors, "tool", id, credentialRef,
                 tool.getAuthMode() == AuthMode.API_KEY, tool.getApiKey());

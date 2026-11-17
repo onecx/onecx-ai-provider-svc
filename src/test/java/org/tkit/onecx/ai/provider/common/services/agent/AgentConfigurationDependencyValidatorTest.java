@@ -124,6 +124,16 @@ class AgentConfigurationDependencyValidatorTest {
     }
 
     @Test
+    void mcpToolStoredAsNonMcpIsRejected() {
+        var server = configuration.getMcpServers().get(0);
+        configuration.setMcpServers(List.of());
+        configuration.setTools(List.of(server));
+
+        assertThat(validator.validate(configuration)).containsExactly(
+                "Referenced tool 'tool' is now an MCP tool");
+    }
+
+    @Test
     void snapshotApiKeyRequirementIsPreservedWhenProviderAuthModeChanges() {
         provider.setAuthMode(AuthMode.OAUTH);
         provider.setApiKey(null);
