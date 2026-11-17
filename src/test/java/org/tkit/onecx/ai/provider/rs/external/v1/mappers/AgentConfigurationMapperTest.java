@@ -151,6 +151,12 @@ class AgentConfigurationMapperTest {
         // Each server resolves an inline credential reference (never the raw key)
         assertThat(servers).allSatisfy(s -> assertThat(s.getCredentialRef())
                 .isEqualTo("credential://tool/" + s.getId() + "/api-key"));
+        assertThat(servers).extracting(McpServerConfigurationDTOV1::getType)
+                .containsOnly(McpServerConfigurationDTOV1.TypeEnum.MCP);
+        assertThat(config.getTools()).extracting(McpServerConfigurationDTOV1::getId)
+                .containsExactlyInAnyOrder("http-tool-1", "http-global-tool-1");
+        assertThat(config.getTools()).extracting(McpServerConfigurationDTOV1::getType)
+                .containsOnly(McpServerConfigurationDTOV1.TypeEnum.HTTP);
     }
 
     @Test

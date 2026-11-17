@@ -11,6 +11,7 @@ import java.util.List;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
 
@@ -79,6 +80,36 @@ public class AgentConfigurationService {
             }
         }
         return configuration(versionDAO.findByAgentAndId(id, agent.getActiveConfigurationVersionId()), principal);
+    }
+
+    /**
+     * Returns the active configuration used by chat dispatch. When the agent has no active version yet, the current
+     * configuration is validated and stored as the initial version, the same way {@link #getAgentConfiguration} does.
+     * Validation errors are returned to the caller as they are.
+     */
+    @Transactional(REQUIRED)
+    public AgentConfigurationDTOV1 getActiveConfiguration(String id) {
+        var agent = dao.findById(id);
+        if (agent == null) {
+            throw new WebApplicationException("Agent '" + id + "' not found", Response.Status.NOT_FOUND);
+        }
+        dao.lockConfiguration(agent);
+        if (agent.getActiveConfigurationVersionId() == null) {
+            // Chat has no principal, so the initial version is stored without one.
+            try (var resolved = resolveConfiguration(agent, null)) {
+                if (resolved.getStatus() != Response.Status.OK.getStatusCode()) {
+                    throw new WebApplicationException(Response.fromResponse(resolved).build());
+                }
+                saveVersion(agent, "Initial configuration", (AgentConfigurationDTOV1) resolved.getEntity());
+            }
+        }
+        var versionId = agent.getActiveConfigurationVersionId();
+        var version = versionDAO.findByAgentAndId(id, versionId);
+        if (version == null) {
+            throw new WebApplicationException("Active configuration version " + versionId + " of agent " + id + " is missing",
+                    Response.Status.INTERNAL_SERVER_ERROR);
+        }
+        return readConfiguration(version);
     }
 
     @Transactional(REQUIRED)

@@ -1,6 +1,7 @@
 package org.tkit.onecx.ai.provider.common.services.agent;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,6 +19,8 @@ import static org.mockito.Mockito.when;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
+
+import jakarta.ws.rs.WebApplicationException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -261,6 +264,66 @@ class AgentConfigurationServiceTest {
         agent.setName("Unsaved draft");
         assertThat(activeConfiguration().getAgent().getName()).isEqualTo("agent-config");
         assertThat(agent.getActiveConfigurationVersionId()).isEqualTo(initialId);
+        verify(service.versionDAO).create(any());
+    }
+
+    @Test
+    void getActiveConfiguration_unknownAgent_throwsNotFound() {
+        when(dao.findById(AGENT_ID)).thenReturn(null);
+
+        assertThatThrownBy(() -> service.getActiveConfiguration(AGENT_ID))
+                .isInstanceOfSatisfying(WebApplicationException.class,
+                        error -> assertThat(error.getResponse().getStatus()).isEqualTo(NOT_FOUND.getStatusCode()));
+    }
+
+    @Test
+    void getActiveConfiguration_withoutPublishedVersion_initializesInitialVersion() {
+        var agent = agentWithTools(Set.of());
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+
+        var configuration = service.getActiveConfiguration(AGENT_ID);
+
+        assertThat(configuration.getAgent().getName()).isEqualTo("agent-config");
+        assertThat(agent.getActiveConfigurationVersionId()).isNotNull();
+        verify(service.versionDAO).create(any());
+    }
+
+    @Test
+    void getActiveConfiguration_withoutPublishedVersion_invalidDependencies_throwsConflictWithoutWriting() {
+        var agent = agentWithTools(Set.of());
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+        when(service.dependencyValidator.validate(any())).thenReturn(List.of("Referenced tool is missing"));
+
+        assertThatThrownBy(() -> service.getActiveConfiguration(AGENT_ID))
+                .isInstanceOfSatisfying(WebApplicationException.class,
+                        error -> assertThat(error.getResponse().getStatus()).isEqualTo(BAD_REQUEST.getStatusCode()));
+        assertThat(agent.getActiveConfigurationVersionId()).isNull();
+        verify(service.versionDAO, never()).create(any());
+    }
+
+    @Test
+    void getActiveConfiguration_missingActiveVersionRow_throwsInternalServerError() {
+        var agent = agentWithTools(Set.of());
+        agent.setActiveConfigurationVersionId("missing-version");
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+        when(service.versionDAO.findByAgentAndId(AGENT_ID, "missing-version")).thenReturn(null);
+
+        assertThatThrownBy(() -> service.getActiveConfiguration(AGENT_ID))
+                .isInstanceOfSatisfying(WebApplicationException.class,
+                        error -> assertThat(error.getResponse().getStatus())
+                                .isEqualTo(INTERNAL_SERVER_ERROR.getStatusCode()));
+    }
+
+    @Test
+    void getActiveConfiguration_readsActiveVersionWithoutInitializingOrWriting() {
+        var agent = agentWithTools(Set.of());
+        when(dao.findById(AGENT_ID)).thenReturn(agent);
+        assertThat(activeConfiguration().getAgent().getName()).isEqualTo("agent-config");
+        agent.setName("Unsaved draft");
+
+        var configuration = service.getActiveConfiguration(AGENT_ID);
+
+        assertThat(configuration.getAgent().getName()).isEqualTo("agent-config");
         verify(service.versionDAO).create(any());
     }
 
