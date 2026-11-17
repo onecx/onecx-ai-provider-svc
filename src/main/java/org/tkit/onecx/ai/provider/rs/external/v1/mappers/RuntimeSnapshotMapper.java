@@ -86,7 +86,7 @@ public abstract class RuntimeSnapshotMapper {
         return request;
     }
 
-    private AgentSnapshot mapActiveAgent(AgentConfigurationDTOV1 configuration, List<AgentGroupSnapshot> groups) {
+    public AgentSnapshot mapActiveAgent(AgentConfigurationDTOV1 configuration, List<AgentGroupSnapshot> groups) {
         var snapshot = new AgentSnapshot();
         if (configuration.getAgent() != null) {
             snapshot.setName(configuration.getAgent().getName());

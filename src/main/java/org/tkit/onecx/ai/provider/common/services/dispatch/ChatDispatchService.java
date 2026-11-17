@@ -105,7 +105,8 @@ public class ChatDispatchService {
 
     private AgentGroupSnapshot mapGroup(AgentGroup group) {
         var agents = agentDAO.findAgentsByGroupId(group.getId()).stream()
-                .map(runtimeSnapshotMapper::mapAgent)
+                .map(member -> runtimeSnapshotMapper.mapActiveAgent(
+                        agentConfigurationService.getActiveConfiguration(member.getId()), List.of()))
                 .toList();
         var externalAgents = externalAgentDAO.findExternalAgentsByGroupId(group.getId()).stream()
                 .map(runtimeSnapshotMapper::mapExternalAgent)

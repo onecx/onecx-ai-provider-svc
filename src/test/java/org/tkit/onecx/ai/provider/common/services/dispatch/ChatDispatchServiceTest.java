@@ -3,6 +3,7 @@ package org.tkit.onecx.ai.provider.common.services.dispatch;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -382,6 +383,47 @@ class ChatDispatchServiceTest extends AbstractTest {
                 () -> chatDispatchService.chat(request));
         assertThat(error.getResponse().getStatus()).isEqualTo(Response.Status.CONFLICT.getStatusCode());
         verify(providerRuntimeClient, never()).chat(any());
+    }
+
+    @Test
+    void chat_agentGroup_memberSnapshotUsesActiveConfigurationNotLiveEntity() {
+        var group = new AgentGroup();
+        group.setId("group-1");
+        var root = new Agent();
+        root.setId("root-agent");
+        root.setGroups(Set.of(group));
+        when(agentService.findAgentByRequestContext(any())).thenReturn(root);
+
+        // The live member entity holds a draft model that must not reach the runtime.
+        var draftModel = new Model();
+        draftModel.setModelIdentifier("draft-model");
+        var member = new Agent();
+        member.setId("member-agent");
+        member.setModel(draftModel);
+        when(agentDAO.findAgentsByGroupId("group-1")).thenReturn(List.of(member));
+        when(externalAgentDAO.findExternalAgentsByGroupId("group-1")).thenReturn(List.of());
+
+        var rootConfiguration = activeConfiguration();
+        when(agentConfigurationService.getActiveConfiguration(eq("root-agent"))).thenReturn(rootConfiguration);
+        var memberConfiguration = activeConfiguration();
+        memberConfiguration.getModel().setModelIdentifier("active-model");
+        when(agentConfigurationService.getActiveConfiguration(eq("member-agent"))).thenReturn(memberConfiguration);
+
+        var runtimeResponse = new RuntimeChatResponse();
+        runtimeResponse.setMessage("ok");
+        when(providerRuntimeClient.chat(any())).thenReturn(Response.ok(runtimeResponse).build());
+
+        try (var response = chatDispatchService.chat(new ChatRequestDTOV1())) {
+            assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+        }
+
+        var requestCaptor = ArgumentCaptor.forClass(RuntimeChatRequest.class);
+        verify(providerRuntimeClient).chat(requestCaptor.capture());
+        var groupSnapshot = requestCaptor.getValue().getRootAgent().getGroups().get(0);
+        assertThat(groupSnapshot.getAgents()).hasSize(1);
+        assertThat(groupSnapshot.getAgents().get(0).getModel().getModelIdentifier()).isEqualTo("active-model");
+        assertThat(groupSnapshot.getAgents().get(0).getGroups()).isEmpty();
+        verify(agentConfigurationService).getActiveConfiguration("member-agent");
     }
 
     private AgentConfigurationDTOV1 activeConfiguration() {
