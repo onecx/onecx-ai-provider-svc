@@ -130,6 +130,30 @@ class RuntimeSnapshotMapperTest extends AbstractTest {
     }
 
     @Test
+    void mapTool_withOneCxCoordinates_setsProductNameAndAppId() {
+        var tool = new Tool();
+        tool.setName("createEvent");
+        tool.setProductName("onecx-event-management");
+        tool.setAppId("event-management-mcp");
+
+        var snapshot = mapper.mapTool(tool, List.of());
+
+        assertThat(snapshot.getProductName()).isEqualTo("onecx-event-management");
+        assertThat(snapshot.getAppId()).isEqualTo("event-management-mcp");
+    }
+
+    @Test
+    void mapTool_withoutOneCxCoordinates_leavesProductNameAndAppIdNull() {
+        var tool = new Tool();
+        tool.setName("external");
+
+        var snapshot = mapper.mapTool(tool, List.of());
+
+        assertThat(snapshot.getProductName()).isNull();
+        assertThat(snapshot.getAppId()).isNull();
+    }
+
+    @Test
     void mapExternalAgent_null_returnsNull() {
         assertThat(mapper.mapExternalAgent(null)).isNull();
     }

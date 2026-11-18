@@ -276,7 +276,10 @@ public abstract class RuntimeSnapshotMapper {
     }
 
     public ToolSnapshot mapTool(Tool tool, List<AgentMcpToolRule> rules) {
-        return buildToolSnapshot(tool, rules);
+        var snapshot = buildToolSnapshot(tool, rules);
+        snapshot.setProductName(tool.getProductName());
+        snapshot.setAppId(tool.getAppId());
+        return snapshot;
     }
 
     public ToolSnapshot mapGlobalTool(GlobalTool tool, List<AgentMcpToolRule> rules) {
