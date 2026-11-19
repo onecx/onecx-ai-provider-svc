@@ -8,6 +8,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 
+import java.util.List;
+
+import jakarta.inject.Inject;
 import jakarta.ws.rs.HttpMethod;
 import jakarta.ws.rs.core.Response;
 
@@ -17,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.mockserver.client.MockServerClient;
 import org.mockserver.model.JsonBody;
 import org.mockserver.model.MediaType;
+import org.tkit.onecx.ai.provider.common.services.agent.AgentConfigurationService;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 import org.tkit.quarkus.security.test.GenerateKeycloakClient;
 import org.tkit.quarkus.test.WithDBData;
@@ -32,12 +36,16 @@ import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
 @TestHTTPEndpoint(DispatchRestV1Controller.class)
-@WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, rinseAndRepeat = true)
+// rinseAndRepeat must stay false: it re-imports data before each test method, after @BeforeEach has published the agents.
+@WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, rinseAndRepeat = false)
 @GenerateKeycloakClient(clientName = "testClient", scopes = { "ocx-ai:all", "ocx-ai:read", "ocx-ai:write", "ocx-ai:delete" })
 class DispatchRestV1ControllerTest extends AbstractTest {
 
     @InjectMockServerClient
     MockServerClient mockServerClient;
+
+    @Inject
+    AgentConfigurationService agentConfigurationService;
 
     static final String MOCK_ID = "MOCK";
 
@@ -47,6 +55,10 @@ class DispatchRestV1ControllerTest extends AbstractTest {
             mockServerClient.clear(MOCK_ID);
         } catch (Exception _) {
             //  mockId not existing
+        }
+        // agent-33-333 is excluded because its duplicate tool rules fail configuration validation.
+        for (var agentId : List.of("agent-11-111", "agent-22-222", "agent-44-444")) {
+            publishActiveConfiguration(agentConfigurationService, agentId);
         }
     }
 
@@ -130,10 +142,11 @@ class DispatchRestV1ControllerTest extends AbstractTest {
         message.setMessage("hello");
         request.setChatMessage(message);
 
-        // Route to agent-33-333 which has no group associations → getGroups().isEmpty() == true
+        // Route to agent-44-444 which has no group associations → getGroups().isEmpty() == true.
+        // agent-33-333 is not used here because its duplicate tool rules fail configuration validation.
         var filter = new AgentFilterDTOV1();
         filter.setKey(AgentFilterDTOV1.KeyEnum.APP_ID);
-        filter.setValue("no-groups-app");
+        filter.setValue("onecx-test-no-groups");
         var requestContext = new RequestContextDTOV1();
         requestContext.setFilter(filter);
         request.setRequestContext(requestContext);

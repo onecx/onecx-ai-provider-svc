@@ -124,6 +124,16 @@ class AgentConfigurationDependencyValidatorTest {
     }
 
     @Test
+    void mcpToolStoredAsNonMcpIsRejected() {
+        var server = configuration.getMcpServers().get(0);
+        configuration.setMcpServers(List.of());
+        configuration.setTools(List.of(server));
+
+        assertThat(validator.validate(configuration)).containsExactly(
+                "Referenced tool 'tool' is now an MCP tool");
+    }
+
+    @Test
     void snapshotApiKeyRequirementIsPreservedWhenProviderAuthModeChanges() {
         provider.setAuthMode(AuthMode.OAUTH);
         provider.setApiKey(null);
@@ -183,6 +193,16 @@ class AgentConfigurationDependencyValidatorTest {
                 "Referenced MCP tool has no identifier",
                 "Referenced MCP tool has no identifier",
                 "Referenced MCP tool has no identifier");
+    }
+
+    @Test
+    void nonMcpToolsWithoutIdentifiersAreReported() {
+        configuration.setMcpServers(null);
+        configuration.setTools(Arrays.asList(null, new McpServerConfigurationDTOV1().id(" ")));
+
+        assertThat(validator.validate(configuration)).containsExactly(
+                "Referenced tool has no identifier",
+                "Referenced tool has no identifier");
     }
 
     @Test

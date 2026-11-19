@@ -2587,6 +2587,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/McpServerConfiguration"
+        tools:
+          type: array
+          description: Non-MCP tools (HTTP, CUSTOM) attached to the agent.
+          items:
+            $ref: "#/components/schemas/McpServerConfiguration"
     Context:
       type: object
       properties:
@@ -2605,6 +2610,8 @@ components:
           type: string
         additionalPrompt:
           type: string
+        a2aEnabled:
+          type: boolean
     VoiceSettings:
       type: object
       properties:
@@ -2673,6 +2680,9 @@ components:
       properties:
         id:
           type: string
+        type:
+          type: string
+          enum: [ MCP, HTTP, CUSTOM ]
         name:
           type: string
         description:
@@ -2680,6 +2690,8 @@ components:
         url:
           type: string
         credentialRef:
+          type: string
+        authMode:
           type: string
         unlistedToolPermission:
           type: string
