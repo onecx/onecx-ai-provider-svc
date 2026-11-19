@@ -29,6 +29,7 @@ import gen.org.tkit.onecx.ai.provider.rs.internal.ToolInternalApi;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.CreateToolRequestDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.DiscoveredToolInfoDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.DiscoveredToolInfoListDTO;
+import gen.org.tkit.onecx.ai.provider.rs.internal.model.ProblemDetailInvalidParamDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.ProblemDetailResponseDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.ToolSearchCriteriaDTO;
 import gen.org.tkit.onecx.ai.provider.rs.internal.model.UpdateToolRequestDTO;
@@ -69,25 +70,43 @@ public class ToolRestController implements ToolInternalApi {
     @Override
     public Response createTool(CreateToolRequestDTO createToolRequestDTO) {
         var tool = mapper.create(createToolRequestDTO);
-        if (!applyOneCxCoordinates(tool)) {
-            return Response.status(Response.Status.BAD_REQUEST).build();
+        var coordinatesError = applyOneCxCoordinates(tool);
+        if (coordinatesError != null) {
+            return badRequestMissingCoordinates(coordinatesError);
         }
         tool = toolDAO.create(tool);
         return Response.status(Response.Status.CREATED).entity(mapper.map(tool)).build();
     }
 
     // External servers carry no OneCX coordinates; internal servers must name the product and app holding their permissions.
-    private static boolean applyOneCxCoordinates(Tool tool) {
+    // Returns the name of the missing coordinate, or null when the coordinates are valid.
+    private static String applyOneCxCoordinates(Tool tool) {
         if (tool.isExternal()) {
             tool.setProductName(null);
             tool.setAppId(null);
-            return true;
+            return null;
         }
-        return hasText(tool.getProductName()) && hasText(tool.getAppId());
+        if (!hasText(tool.getProductName())) {
+            return "productName";
+        }
+        if (!hasText(tool.getAppId())) {
+            return "appId";
+        }
+        return null;
     }
 
     private static boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private Response badRequestMissingCoordinates(String missingField) {
+        var problem = exceptionMapper.exception("MISSING_TOOL_COORDINATES",
+                "Internal MCP tools require a OneCX product and application; '" + missingField + "' is missing");
+        var invalidParam = new ProblemDetailInvalidParamDTO();
+        invalidParam.setName(missingField);
+        invalidParam.setMessage("Internal MCP tools require a OneCX " + missingField);
+        problem.setInvalidParams(List.of(invalidParam));
+        return Response.status(Response.Status.BAD_REQUEST).entity(problem).build();
     }
 
     @Override
@@ -191,8 +210,9 @@ public class ToolRestController implements ToolInternalApi {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
         mapper.update(tool, updateToolRequestDTO);
-        if (!applyOneCxCoordinates(tool)) {
-            return Response.status(Response.Status.BAD_REQUEST).build();
+        var coordinatesError = applyOneCxCoordinates(tool);
+        if (coordinatesError != null) {
+            return badRequestMissingCoordinates(coordinatesError);
         }
         tool = toolDAO.update(tool);
         return Response.status(Response.Status.OK).entity(mapper.map(tool)).build();

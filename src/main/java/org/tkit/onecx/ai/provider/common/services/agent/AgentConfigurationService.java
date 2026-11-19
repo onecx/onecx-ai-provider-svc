@@ -64,10 +64,6 @@ public class AgentConfigurationService {
     @Inject
     AgentConfigurationDependencyValidator dependencyValidator;
 
-    public Response getAgentConfiguration(String id, String principal) {
-        return getAgentConfiguration(id, principal, null);
-    }
-
     @Transactional(REQUIRED)
     public Response getAgentConfiguration(String id, String principal, Request request) {
         Agent agent = dao.findById(id);
@@ -154,10 +150,6 @@ public class AgentConfigurationService {
             }
         }
         return response;
-    }
-
-    public Response getAgentConfigurationVersion(String id, String versionId, String principal) {
-        return getAgentConfigurationVersion(id, versionId, principal, null);
     }
 
     public Response getAgentConfigurationVersion(String id, String versionId, String principal, Request request) {

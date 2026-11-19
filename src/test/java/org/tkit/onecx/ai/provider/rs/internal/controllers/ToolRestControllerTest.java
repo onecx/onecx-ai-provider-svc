@@ -313,6 +313,78 @@ class ToolRestControllerTest extends AbstractTest {
     }
 
     @Test
+    void updateInternalToolWithoutCoordinatesReturns400Test() {
+        // tool-11-111 is a pre-existing internal tool (external=false, no product/app from migration)
+        var dto = new UpdateToolRequestDTO();
+        dto.setModificationCount(0);
+        dto.setName("tool-updated-no-coords");
+        dto.setType(ToolTypeDTO.HTTP);
+        // external defaults to false → internal tool requires productName and appId
+
+        var response = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(dto)
+                .pathParam("id", "tool-11-111")
+                .put("/{id}")
+                .then()
+                .statusCode(BAD_REQUEST.getStatusCode())
+                .extract()
+                .as(ProblemDetailResponseDTO.class);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getErrorCode()).isEqualTo("MISSING_TOOL_COORDINATES");
+        assertThat(response.getInvalidParams()).isNotNull().isNotEmpty();
+    }
+
+    @Test
+    void updateToolToExternalClearsProductAndAppTest() {
+        // First make tool-11-111 internal with coordinates
+        var internalDto = new UpdateToolRequestDTO();
+        internalDto.setModificationCount(0);
+        internalDto.setName("tool-internal");
+        internalDto.setType(ToolTypeDTO.HTTP);
+        internalDto.setExternal(false);
+        internalDto.setProductName("onecx-product");
+        internalDto.setAppId("onecx-app");
+
+        var internal = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(internalDto)
+                .pathParam("id", "tool-11-111")
+                .put("/{id}")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(ToolDTO.class);
+
+        assertThat(internal.getExternal()).isFalse();
+        assertThat(internal.getProductName()).isEqualTo("onecx-product");
+        assertThat(internal.getAppId()).isEqualTo("onecx-app");
+
+        // Now switch to external — product and app must be cleared
+        var externalDto = new UpdateToolRequestDTO();
+        externalDto.setModificationCount(internal.getModificationCount());
+        externalDto.setName("tool-external");
+        externalDto.setType(ToolTypeDTO.HTTP);
+        externalDto.setExternal(true);
+        externalDto.setProductName("should-be-cleared");
+        externalDto.setAppId("should-be-cleared");
+
+        var external = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(externalDto)
+                .pathParam("id", "tool-11-111")
+                .put("/{id}")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(ToolDTO.class);
+
+        assertThat(external.getExternal()).isTrue();
+        assertThat(external.getProductName()).isNull();
+        assertThat(external.getAppId()).isNull();
+    }
+
+    @Test
     void getDiscoveredTools_nullToolsInBody_noAgentId_returnsEmptyList() {
         // covers else branch: body != null but body.getTools() == null → List.of()
         // covers line 112: agentId is null → List.of()
@@ -385,7 +457,6 @@ class ToolRestControllerTest extends AbstractTest {
 
     @Test
     void getDiscoveredTools_withTools_andAgentId_returnsDiscoveredTools() {
-
         // covers if branch: body != null && body.getTools() != null → body.getTools()
         // covers line 112: agentId is provided → findByAgentAndToolId
         mockServerClient.when(request().withPath("/ai/internal/runtime/tools/discover").withMethod(HttpMethod.POST))
