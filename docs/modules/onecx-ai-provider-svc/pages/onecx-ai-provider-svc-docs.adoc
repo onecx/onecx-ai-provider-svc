@@ -54,12 +54,12 @@ include::onecx-ai-provider-svc-extensions.adoc[opts=optional]
 
 Each MCP tool carries an `external` flag and optional OneCX coordinates (`productName`, `appId`).
 
-* `external=true` — the MCP server is outside OneCX; `productName` and `appId` are cleared and not required.
-* `external=false` (default) — the MCP server is internal; `productName` and `appId` are **required** and identify the OneCX product/application that holds the tool's permissions. Create and update requests for internal tools without both coordinates are rejected with `400 MISSING_TOOL_COORDINATES`.
+* `external=true` (default) — the MCP server is outside OneCX; `productName` and `appId` are cleared and not required.
+* `external=false` — the MCP server is internal; `productName` and `appId` are **required** and identify the OneCX product/application that holds the tool's permissions. Create and update requests for internal tools without both coordinates are rejected with `400 MISSING_TOOL_COORDINATES`.
 
 === Migration note
 
-The `2026-11-16-tool-external` change set adds the `external` column with `defaultValueBoolean=false`, so every existing tool row becomes internal. The `2026-11-16-tool-product-app` change set adds nullable `product_name` and `app_id` columns, so existing rows have null coordinates. After the migration, existing internal tools cannot be updated until `productName` and `appId` are supplied. Operators must backfill these columns for existing internal MCP tools before or right after the deployment.
+The `2026-11-16-tool-external` change set adds the `external` column with `defaultValueBoolean=true`, so every existing tool row becomes external (no OneCX permission coverage). The `2026-11-16-tool-product-app` change set adds nullable `product_name` and `app_id` columns, so existing rows have null coordinates. Existing tools can be updated without supplying coordinates because they default to external. Operators who want an existing tool to be internal must set `external=false` and supply `productName` and `appId` in an update request.
 
 == Helm
 

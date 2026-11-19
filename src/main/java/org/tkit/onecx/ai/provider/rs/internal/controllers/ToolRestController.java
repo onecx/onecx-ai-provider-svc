@@ -82,8 +82,10 @@ public class ToolRestController implements ToolInternalApi {
     // External servers carry no OneCX coordinates; internal servers must name the product and app holding their permissions.
     // Returns the name of the missing coordinate, or null when the coordinates are valid.
     private static String applyOneCxCoordinates(Tool tool) {
-        // Only MCP tools are subject to OneCX coordinate validation; other tool types are left untouched.
+        // Only MCP tools carry OneCX coordinates; clear them for all other tool types.
         if (tool.getType() != ToolType.MCP) {
+            tool.setProductName(null);
+            tool.setAppId(null);
             return null;
         }
         if (tool.isExternal()) {
