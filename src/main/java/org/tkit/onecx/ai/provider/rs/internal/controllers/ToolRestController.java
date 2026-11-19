@@ -21,6 +21,7 @@ import org.tkit.onecx.ai.provider.domain.daos.ToolDAO;
 import org.tkit.onecx.ai.provider.domain.models.AbstractTool;
 import org.tkit.onecx.ai.provider.domain.models.AgentMcpToolRule;
 import org.tkit.onecx.ai.provider.domain.models.Tool;
+import org.tkit.onecx.ai.provider.domain.models.enums.ToolType;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.AgentMcpToolRuleMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ExceptionMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ToolMapper;
@@ -81,6 +82,10 @@ public class ToolRestController implements ToolInternalApi {
     // External servers carry no OneCX coordinates; internal servers must name the product and app holding their permissions.
     // Returns the name of the missing coordinate, or null when the coordinates are valid.
     private static String applyOneCxCoordinates(Tool tool) {
+        // Only MCP tools are subject to OneCX coordinate validation; other tool types are left untouched.
+        if (tool.getType() != ToolType.MCP) {
+            return null;
+        }
         if (tool.isExternal()) {
             tool.setProductName(null);
             tool.setAppId(null);

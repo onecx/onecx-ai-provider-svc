@@ -70,7 +70,7 @@ class ToolRestControllerTest extends AbstractTest {
     void createInternalToolRequiresProductAndAppTest() {
         var dto = new CreateToolRequestDTO();
         dto.setName("tool-internal-no-coordinates");
-        dto.setType(ToolTypeDTO.HTTP);
+        dto.setType(ToolTypeDTO.MCP);
         dto.setExternal(false);
 
         given()
@@ -86,7 +86,7 @@ class ToolRestControllerTest extends AbstractTest {
     void createExternalToolClearsOneCxCoordinatesTest() {
         var dto = new CreateToolRequestDTO();
         dto.setName("tool-external-with-coordinates");
-        dto.setType(ToolTypeDTO.HTTP);
+        dto.setType(ToolTypeDTO.MCP);
         dto.setExternal(true);
         dto.setProductName("onecx-product");
         dto.setAppId("onecx-app");
@@ -314,12 +314,14 @@ class ToolRestControllerTest extends AbstractTest {
 
     @Test
     void updateInternalToolWithoutCoordinatesReturns400Test() {
-        // tool-11-111 is a pre-existing internal tool (external=false, no product/app from migration)
+        // tool-11-111 is a pre-existing tool (external=true from migration, no product/app).
+        // The update DTO leaves external unset, which MapStruct maps to false (primitive boolean),
+        // making it an internal MCP tool that requires productName and appId.
         var dto = new UpdateToolRequestDTO();
         dto.setModificationCount(0);
         dto.setName("tool-updated-no-coords");
-        dto.setType(ToolTypeDTO.HTTP);
-        // external defaults to false → internal tool requires productName and appId
+        dto.setType(ToolTypeDTO.MCP);
+        // external is unset in the DTO → maps to false → internal MCP tool requires productName and appId
 
         var response = given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
@@ -343,7 +345,7 @@ class ToolRestControllerTest extends AbstractTest {
         var internalDto = new UpdateToolRequestDTO();
         internalDto.setModificationCount(0);
         internalDto.setName("tool-internal");
-        internalDto.setType(ToolTypeDTO.HTTP);
+        internalDto.setType(ToolTypeDTO.MCP);
         internalDto.setExternal(false);
         internalDto.setProductName("onecx-product");
         internalDto.setAppId("onecx-app");
@@ -365,7 +367,7 @@ class ToolRestControllerTest extends AbstractTest {
         var externalDto = new UpdateToolRequestDTO();
         externalDto.setModificationCount(internal.getModificationCount());
         externalDto.setName("tool-external");
-        externalDto.setType(ToolTypeDTO.HTTP);
+        externalDto.setType(ToolTypeDTO.MCP);
         externalDto.setExternal(true);
         externalDto.setProductName("should-be-cleared");
         externalDto.setAppId("should-be-cleared");

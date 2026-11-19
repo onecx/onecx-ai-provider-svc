@@ -179,6 +179,8 @@ public abstract class RuntimeSnapshotMapper {
         snapshot.setName(server.getName());
         snapshot.setDescription(server.getDescription());
         snapshot.setUrl(server.getUrl());
+        snapshot.setProductName(server.getProductName());
+        snapshot.setAppId(server.getAppId());
         var type = server.getType() != null ? server.getType().name() : null;
         if (type == null && live.getType() != null) {
             type = live.getType().name();
