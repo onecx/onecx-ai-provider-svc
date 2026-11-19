@@ -8,6 +8,8 @@ import jakarta.ws.rs.core.Response;
 
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
+import org.tkit.onecx.ai.provider.common.services.configuration.ModelConfigValidationException;
+import org.tkit.onecx.ai.provider.common.services.configuration.ModelService;
 import org.tkit.onecx.ai.provider.domain.daos.ModelDAO;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ExceptionMapper;
 import org.tkit.onecx.ai.provider.rs.internal.mappers.ModelMapper;
@@ -32,10 +34,13 @@ public class ModelRestController implements ModelInternalApi {
     @Inject
     ModelMapper mapper;
 
+    @Inject
+    ModelService modelService;
+
     @Override
     public Response createModel(CreateModelRequestDTO createModelRequestDTO) {
         var item = mapper.create(createModelRequestDTO);
-        item = dao.create(item);
+        item = modelService.create(item);
         return Response.status(Response.Status.CREATED).entity(mapper.map(item)).build();
     }
 
@@ -67,9 +72,24 @@ public class ModelRestController implements ModelInternalApi {
         if (item == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
+        var existingModelConfig = item.getModelConfig();
+        var existingProvider = item.getProvider();
+        var modelConfigChanged = updateModelRequestDTO.getModelConfig() != null;
         mapper.update(item, updateModelRequestDTO);
-        item = dao.update(item);
+        if (updateModelRequestDTO.getProvider() == null) {
+            item.setProvider(existingProvider);
+        }
+        if (!modelConfigChanged) {
+            item.setModelConfig(existingModelConfig);
+        }
+        item = modelService.update(item, modelConfigChanged);
         return Response.status(Response.Status.OK).entity(mapper.map(item)).build();
+    }
+
+    @ServerExceptionMapper
+    public RestResponse<ProblemDetailResponseDTO> invalidModelConfig(ModelConfigValidationException ex) {
+        return RestResponse.status(Response.Status.BAD_REQUEST,
+                exceptionMapper.exception("INVALID_MODEL_CONFIG", ex.getMessage()));
     }
 
     @ServerExceptionMapper

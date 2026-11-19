@@ -148,6 +148,28 @@ paths:
           description: Agent not found
 
   /internal/agents/{id}/configuration/versions:
+    get:
+      security:
+        - oauth2: [ ocx-ai:all, ocx-ai:read ]
+      tags:
+        - agentInternal
+      operationId: getAgentConfigurationVersions
+      description: List all saved configuration versions for an agent, including which one is active.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of configuration versions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentConfigurationVersionList'
+        "404":
+          description: Agent not found
     post:
       security:
         - oauth2: [ ocx-ai:all, ocx-ai:write ]
@@ -1715,6 +1737,10 @@ components:
           type: string
         modelConfig:
           type: string
+          description: >-
+            Opaque model configuration, limited to 255 characters. For OpenAI providers, supported JSON
+            properties are api (chat-completions or responses) and optional string reasoningEffort.
+            Blank strings are accepted as unset.
         communicationMode:
           $ref: '#/components/schemas/CommunicationMode'
         provider:
@@ -1728,6 +1754,9 @@ components:
           type: string
         modelConfig:
           type: string
+          description: >-
+            Opaque model configuration, limited to 255 characters. For OpenAI providers, supported JSON
+            properties are api (chat-completions or responses) and optional string reasoningEffort.
         communicationMode:
           $ref: '#/components/schemas/CommunicationMode'
         provider:
@@ -1745,6 +1774,10 @@ components:
           type: string
         modelConfig:
           type: string
+          description: >-
+            Opaque model configuration, limited to 255 characters. For OpenAI providers, supported JSON
+            properties are api (chat-completions or responses) and optional string reasoningEffort.
+            Null or omitted on update preserves the existing configuration; blank strings are accepted as unset.
         communicationMode:
           $ref: '#/components/schemas/CommunicationMode'
         provider:
@@ -2530,6 +2563,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/McpServerConfiguration"
+        tools:
+          type: array
+          description: Non-MCP tools (HTTP, CUSTOM) attached to the agent.
+          items:
+            $ref: "#/components/schemas/McpServerConfiguration"
     Context:
       type: object
       properties:
@@ -2546,6 +2584,10 @@ components:
           type: string
         description:
           type: string
+        additionalPrompt:
+          type: string
+        a2aEnabled:
+          type: boolean
     VoiceSettings:
       type: object
       properties:
@@ -2614,6 +2656,9 @@ components:
       properties:
         id:
           type: string
+        type:
+          type: string
+          enum: [ MCP, HTTP, CUSTOM ]
         name:
           type: string
         description:
@@ -2621,6 +2666,8 @@ components:
         url:
           type: string
         credentialRef:
+          type: string
+        authMode:
           type: string
         unlistedToolPermission:
           type: string
@@ -2658,6 +2705,15 @@ components:
           type: string
         active:
           type: boolean
+    AgentConfigurationVersionList:
+      type: object
+      required:
+        - versions
+      properties:
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentConfigurationVersion'
     ProblemDetailResponse:
       type: object
       properties:

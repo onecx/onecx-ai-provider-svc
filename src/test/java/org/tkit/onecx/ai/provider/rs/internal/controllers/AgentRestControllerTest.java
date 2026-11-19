@@ -9,6 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 import org.tkit.quarkus.security.test.GenerateKeycloakClient;
 import org.tkit.quarkus.test.WithDBData;
@@ -22,6 +24,72 @@ import io.quarkus.test.junit.QuarkusTest;
 @WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, rinseAndRepeat = true)
 @GenerateKeycloakClient(clientName = "testClient", scopes = { "ocx-ai:all", "ocx-ai:read", "ocx-ai:write", "ocx-ai:delete" })
 class AgentRestControllerTest extends AbstractTest {
+
+    @ParameterizedTest
+    @CsvSource({
+            "provider-11-111, {",
+            "provider-22-222, oversized",
+            "no-provider, oversized"
+    })
+    void inlineModelValidationAppliesToAgentCreateAndUpdate(String providerId, String config) {
+        var model = new ModelDTO().name("inline-model")
+                .modelConfig("oversized".equals(config) ? "x".repeat(256) : config);
+        if (!"no-provider".equals(providerId)) {
+            model.setProvider(new ProviderDTO().id(providerId).name("test-provider"));
+        }
+        var create = new CreateAgentRequestDTO().name("invalid-inline-agent").status(AgentStatusDTO.DRAFT).model(model);
+        var update = new UpdateAgentRequestDTO().modificationCount(0).model(model);
+
+        var createError = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(create)
+                .post()
+                .then().statusCode(BAD_REQUEST.getStatusCode())
+                .extract().as(ProblemDetailResponseDTO.class);
+        assertThat(createError.getErrorCode()).isEqualTo("INVALID_MODEL_CONFIG");
+
+        var updateError = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(update)
+                .pathParam("id", "agent-11-111")
+                .put("/{id}")
+                .then().statusCode(BAD_REQUEST.getStatusCode())
+                .extract().as(ProblemDetailResponseDTO.class);
+        assertThat(updateError.getErrorCode()).isEqualTo("INVALID_MODEL_CONFIG");
+    }
+
+    @Test
+    void inlineModelWithoutIdCanBeCreatedAndUpdatedWithValidOpenAiConfig() {
+        var model = new ModelDTO().name("inline-model").modelConfig("{\"api\":\"responses\"}")
+                .provider(new ProviderDTO().id("provider-11-111").name("test-provider"));
+        var create = new CreateAgentRequestDTO().name("valid-inline-agent").status(AgentStatusDTO.DRAFT).model(model);
+        var created = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(create)
+                .post()
+                .then().statusCode(CREATED.getStatusCode())
+                .extract().as(AgentDTO.class);
+        assertThat(created.getModel().getId()).isNotBlank();
+        assertThat(created.getModel().getModelConfig()).isEqualTo("{\"api\":\"responses\"}");
+        assertThat(created.getModel().getProvider().getId()).isEqualTo("provider-11-111");
+
+        model.setModelConfig("{\"reasoningEffort\":\"low\"}");
+        var update = new UpdateAgentRequestDTO().modificationCount(0).model(model);
+        var updated = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(update)
+                .pathParam("id", "agent-11-111")
+                .put("/{id}")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(AgentDTO.class);
+        assertThat(updated.getModel().getId()).isNotBlank().isNotEqualTo(created.getModel().getId());
+        assertThat(updated.getModel().getModelConfig()).isEqualTo("{\"reasoningEffort\":\"low\"}");
+        assertThat(updated.getModel().getProvider().getId()).isEqualTo("provider-11-111");
+    }
 
     @Test
     void createAgentTest() {

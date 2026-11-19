@@ -7,6 +7,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 
+import java.util.List;
+
+import jakarta.inject.Inject;
 import jakarta.ws.rs.HttpMethod;
 import jakarta.ws.rs.core.Response;
 
@@ -15,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.mockserver.client.MockServerClient;
 import org.mockserver.model.JsonBody;
 import org.mockserver.model.MediaType;
+import org.tkit.onecx.ai.provider.common.services.agent.AgentConfigurationService;
 import org.tkit.onecx.ai.provider.test.AbstractTest;
 import org.tkit.quarkus.security.test.GenerateKeycloakClient;
 import org.tkit.quarkus.test.WithDBData;
@@ -28,12 +32,16 @@ import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
 @TestHTTPEndpoint(DispatchRestController.class)
-@WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, rinseAndRepeat = true)
+// rinseAndRepeat must stay false: it re-imports data before each test method, after @BeforeEach has published the agents.
+@WithDBData(value = "data/testdata-internal.xml", deleteBeforeInsert = true, rinseAndRepeat = false)
 @GenerateKeycloakClient(clientName = "testClient", scopes = { "ocx-ai:all", "ocx-ai:read", "ocx-ai:write", "ocx-ai:delete" })
 class DispatchRestControllerTest extends AbstractTest {
 
     @InjectMockServerClient
     MockServerClient mockServerClient;
+
+    @Inject
+    AgentConfigurationService agentConfigurationService;
 
     static final String MOCK_ID = "MOCK";
 
@@ -43,6 +51,10 @@ class DispatchRestControllerTest extends AbstractTest {
             mockServerClient.clear(MOCK_ID);
         } catch (Exception _) {
             //  mockId not existing
+        }
+        // agent-33-333 is excluded because its duplicate tool rules fail configuration validation.
+        for (var agentId : List.of("agent-11-111", "agent-22-222", "agent-44-444")) {
+            publishActiveConfiguration(agentConfigurationService, agentId);
         }
     }
 

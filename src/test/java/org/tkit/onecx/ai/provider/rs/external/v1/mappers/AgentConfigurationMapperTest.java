@@ -73,6 +73,7 @@ class AgentConfigurationMapperTest {
     @Test
     void build_mapsTopLevelFields() {
         var agent = baseAgent();
+        agent.setAdditionalPrompt("Ask for tenant first.");
 
         var config = mapper.build(agent, List.of(), TENANT_ID, PRINCIPAL);
 
@@ -82,6 +83,7 @@ class AgentConfigurationMapperTest {
         assertThat(config.getAgent().getId()).isEqualTo("agent-1");
         assertThat(config.getAgent().getName()).isEqualTo("agent1");
         assertThat(config.getAgent().getDescription()).isEqualTo("agent_description");
+        assertThat(config.getAgent().getAdditionalPrompt()).isEqualTo("Ask for tenant first.");
         assertThat(config.getVoice().getVoiceEnabled()).isTrue();
         assertThat(config.getVoice().getLanguageCode()).isEqualTo("en");
         assertThat(config.getModel().getId()).isEqualTo("model-1");
@@ -149,6 +151,12 @@ class AgentConfigurationMapperTest {
         // Each server resolves an inline credential reference (never the raw key)
         assertThat(servers).allSatisfy(s -> assertThat(s.getCredentialRef())
                 .isEqualTo("credential://tool/" + s.getId() + "/api-key"));
+        assertThat(servers).extracting(McpServerConfigurationDTOV1::getType)
+                .containsOnly(McpServerConfigurationDTOV1.TypeEnum.MCP);
+        assertThat(config.getTools()).extracting(McpServerConfigurationDTOV1::getId)
+                .containsExactlyInAnyOrder("http-tool-1", "http-global-tool-1");
+        assertThat(config.getTools()).extracting(McpServerConfigurationDTOV1::getType)
+                .containsOnly(McpServerConfigurationDTOV1.TypeEnum.HTTP);
     }
 
     @Test

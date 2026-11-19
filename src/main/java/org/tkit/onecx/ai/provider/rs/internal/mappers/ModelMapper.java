@@ -33,6 +33,7 @@ public interface ModelMapper {
     @Mapping(target = "tenantId", ignore = true)
     @Mapping(target = "persisted", ignore = true)
     @Mapping(target = "controlTraceabilityManual", ignore = true)
+    @Mapping(target = "id", conditionExpression = "java(dto.getId() != null)")
     Model map(ModelDTO dto);
 
     @Mapping(target = "tenantId", ignore = true)
