@@ -10,6 +10,9 @@ import org.tkit.quarkus.rs.mappers.OffsetDateTimeMapper;
 public interface ToolMapper {
 
     @Mapping(target = "tenantId", ignore = true)
+    @Mapping(target = "external", constant = "true")
+    @Mapping(target = "productName", ignore = true)
+    @Mapping(target = "appId", ignore = true)
     @Mapping(target = "source", constant = "GLOBAL")
     Tool fromGlobal(GlobalTool globalTool);
 

@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.Request;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 
@@ -32,6 +33,9 @@ public class AgentRestV1Controller implements AgentV1Api {
     @Context
     SecurityContext securityContext;
 
+    @Context
+    Request request;
+
     @Override
     public Response findAgentBySearchCriteria(AgentSearchCriteriaDTOV1 agentSearchCriteriaDTO) {
         var criteria = mapper.mapCriteria(agentSearchCriteriaDTO);
@@ -40,7 +44,7 @@ public class AgentRestV1Controller implements AgentV1Api {
     }
 
     @Override
-    public Response getAgentConfiguration(String id) {
-        return configurationService.getAgentConfiguration(id, securityContext.getUserPrincipal().getName());
+    public Response getAgentConfiguration(String id, String ifNoneMatch) {
+        return configurationService.getAgentConfiguration(id, securityContext.getUserPrincipal().getName(), request);
     }
 }
