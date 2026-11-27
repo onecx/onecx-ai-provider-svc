@@ -16,6 +16,7 @@ import jakarta.persistence.OptimisticLockException;
 import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.Request;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 
@@ -74,6 +75,9 @@ public class AgentRestController implements AgentInternalApi {
 
     @Context
     SecurityContext securityContext;
+
+    @Context
+    Request request;
 
     @Inject
     ToolDAO toolDAO;
@@ -159,8 +163,9 @@ public class AgentRestController implements AgentInternalApi {
     }
 
     @Override
-    public Response getAgentConfigurationVersion(String id, String versionId) {
-        return configurationService.getAgentConfigurationVersion(id, versionId, securityContext.getUserPrincipal().getName());
+    public Response getAgentConfigurationVersion(String id, String versionId, String ifNoneMatch) {
+        return configurationService.getAgentConfigurationVersion(id, versionId, securityContext.getUserPrincipal().getName(),
+                request);
     }
 
     @Override

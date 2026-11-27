@@ -4,14 +4,20 @@ import static jakarta.transaction.Transactional.TxType.NOT_SUPPORTED;
 import static jakarta.transaction.Transactional.TxType.REQUIRED;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.List;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.EntityTag;
+import jakarta.ws.rs.core.Request;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
 
@@ -59,7 +65,7 @@ public class AgentConfigurationService {
     AgentConfigurationDependencyValidator dependencyValidator;
 
     @Transactional(REQUIRED)
-    public Response getAgentConfiguration(String id, String principal) {
+    public Response getAgentConfiguration(String id, String principal, Request request) {
         Agent agent = dao.findById(id);
         if (agent == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
@@ -79,7 +85,7 @@ public class AgentConfigurationService {
                 return initializationError;
             }
         }
-        return configuration(versionDAO.findByAgentAndId(id, agent.getActiveConfigurationVersionId()), principal);
+        return configuration(versionDAO.findByAgentAndId(id, agent.getActiveConfigurationVersionId()), principal, request);
     }
 
     /**
@@ -146,11 +152,11 @@ public class AgentConfigurationService {
         return response;
     }
 
-    public Response getAgentConfigurationVersion(String id, String versionId, String principal) {
+    public Response getAgentConfigurationVersion(String id, String versionId, String principal, Request request) {
         if (dao.findById(id) == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
-        return configuration(versionDAO.findByAgentAndId(id, versionId), principal);
+        return configuration(versionDAO.findByAgentAndId(id, versionId), principal, request);
     }
 
     public Response getAgentConfigurationVersions(String id) {
@@ -201,15 +207,35 @@ public class AgentConfigurationService {
         }
     }
 
-    private Response configuration(AgentConfigurationVersion version, String principal) {
+    private Response configuration(AgentConfigurationVersion version, String principal, Request request) {
         if (version == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        var tag = entityTag(version, principal);
+        var precondition = request != null ? request.evaluatePreconditions(tag) : null;
+        if (precondition != null) {
+            return precondition.tag(tag).build();
         }
         var payload = readConfiguration(version);
         if (payload != null && payload.getContext() != null) {
             payload.getContext().setPrincipal(principal);
         }
-        return Response.ok(payload).contentLocation(versionLocation(version)).build();
+        return Response.ok(payload).contentLocation(versionLocation(version)).tag(tag).build();
+    }
+
+    // The payload carries the requesting principal, so the tag must be scoped per principal.
+    private static EntityTag entityTag(AgentConfigurationVersion version, String principal) {
+        try {
+            var digest = MessageDigest.getInstance("SHA-256");
+            digest.update(String.valueOf(version.getId()).getBytes(StandardCharsets.UTF_8));
+            digest.update((byte) 0);
+            digest.update(String.valueOf(version.getConfiguration()).getBytes(StandardCharsets.UTF_8));
+            digest.update((byte) 0);
+            digest.update(String.valueOf(principal).getBytes(StandardCharsets.UTF_8));
+            return new EntityTag(HexFormat.of().formatHex(digest.digest()));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is not available", ex);
+        }
     }
 
     private AgentConfigurationDTOV1 readConfiguration(AgentConfigurationVersion version) {

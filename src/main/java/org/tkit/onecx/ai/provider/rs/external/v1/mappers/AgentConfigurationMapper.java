@@ -22,6 +22,7 @@ import org.tkit.onecx.ai.provider.domain.models.Model;
 import org.tkit.onecx.ai.provider.domain.models.Provider;
 import org.tkit.onecx.ai.provider.domain.models.Scaffold;
 import org.tkit.onecx.ai.provider.domain.models.Skill;
+import org.tkit.onecx.ai.provider.domain.models.Tool;
 import org.tkit.onecx.ai.provider.domain.models.enums.ExecutionPolicy;
 import org.tkit.onecx.ai.provider.domain.models.enums.ToolPermission;
 import org.tkit.onecx.ai.provider.domain.models.enums.ToolType;
@@ -215,6 +216,10 @@ public abstract class AgentConfigurationMapper {
         server.setUrl(tool.getUrl());
         server.setAuthMode(tool.getAuthMode() != null ? tool.getAuthMode().name() : null);
         server.setCredentialRef(CREDENTIAL_PREFIX_TOOL + tool.getId() + CREDENTIAL_SUFFIX);
+        if (tool instanceof Tool internalTool) {
+            server.setProductName(internalTool.getProductName());
+            server.setAppId(internalTool.getAppId());
+        }
         server.setUnlistedToolPermission(mapUnlistedPermission(tool.getExecutionPolicy()));
         server.setUnlistedToolPermissionSource(mapUnlistedSource(tool.getExecutionPolicy()));
         server.setToolRules(rules.stream().map(this::mapRule).toList());

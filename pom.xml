@@ -15,7 +15,7 @@
     <version>999-SNAPSHOT</version>
     <packaging>quarkus</packaging>
     <properties>
-        <onecx-ai-provider-runtime.contract-version>0.1.0</onecx-ai-provider-runtime.contract-version>
+        <onecx-ai-provider-runtime.contract-version>0.2.0</onecx-ai-provider-runtime.contract-version>
     </properties>
     <dependencies>
         <dependency>

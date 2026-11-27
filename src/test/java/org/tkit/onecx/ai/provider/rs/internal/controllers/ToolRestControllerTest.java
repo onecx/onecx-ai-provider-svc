@@ -49,6 +49,7 @@ class ToolRestControllerTest extends AbstractTest {
         var dto = new CreateToolRequestDTO();
         dto.setName("tool-created");
         dto.setType(ToolTypeDTO.HTTP);
+        dto.setExternal(true);
 
         var created = given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
@@ -63,6 +64,46 @@ class ToolRestControllerTest extends AbstractTest {
         assertThat(created).isNotNull();
         assertThat(created.getName()).isEqualTo("tool-created");
         assertThat(created.getType()).isEqualTo(ToolTypeDTO.HTTP);
+    }
+
+    @Test
+    void createInternalToolRequiresProductAndAppTest() {
+        var dto = new CreateToolRequestDTO();
+        dto.setName("tool-internal-no-coordinates");
+        dto.setType(ToolTypeDTO.MCP);
+        dto.setExternal(false);
+
+        given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(dto)
+                .post()
+                .then()
+                .statusCode(BAD_REQUEST.getStatusCode());
+    }
+
+    @Test
+    void createExternalToolClearsOneCxCoordinatesTest() {
+        var dto = new CreateToolRequestDTO();
+        dto.setName("tool-external-with-coordinates");
+        dto.setType(ToolTypeDTO.MCP);
+        dto.setExternal(true);
+        dto.setProductName("onecx-product");
+        dto.setAppId("onecx-app");
+
+        var created = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(dto)
+                .post()
+                .then()
+                .statusCode(CREATED.getStatusCode())
+                .extract()
+                .as(ToolDTO.class);
+
+        assertThat(created.getExternal()).isTrue();
+        assertThat(created.getProductName()).isNull();
+        assertThat(created.getAppId()).isNull();
     }
 
     @Test
@@ -136,6 +177,7 @@ class ToolRestControllerTest extends AbstractTest {
     void deleteToolTest() {
         var create = new CreateToolRequestDTO();
         create.setName("tool-delete");
+        create.setExternal(true);
         create.setType(ToolTypeDTO.CUSTOM);
 
         var created = given()
@@ -166,6 +208,7 @@ class ToolRestControllerTest extends AbstractTest {
     void deleteToolCascadesRulesTest() {
         var create = new CreateToolRequestDTO();
         create.setName("tool-cascade");
+        create.setExternal(true);
         create.setType(ToolTypeDTO.MCP);
 
         var createdTool = given()
@@ -236,6 +279,8 @@ class ToolRestControllerTest extends AbstractTest {
         dto.setModificationCount(0);
         dto.setType(ToolTypeDTO.HTTP);
         dto.setExecutionPolicy(ExecutionPolicyDTO.ALWAYS_ASK);
+        dto.setProductName("onecx-product");
+        dto.setAppId("onecx-app");
 
         given()
                 .auth().oauth2(getKeycloakClientToken("testClient"))
@@ -265,6 +310,80 @@ class ToolRestControllerTest extends AbstractTest {
                 .pathParam("id", "tool-11-111")
                 .put("/{id}")
                 .then().statusCode(BAD_REQUEST.getStatusCode());
+    }
+
+    @Test
+    void updateInternalToolWithoutCoordinatesReturns400Test() {
+        // tool-11-111 is a pre-existing tool (external=true from migration, no product/app).
+        // The update DTO leaves external unset, which MapStruct maps to false (primitive boolean),
+        // making it an internal MCP tool that requires productName and appId.
+        var dto = new UpdateToolRequestDTO();
+        dto.setModificationCount(0);
+        dto.setName("tool-updated-no-coords");
+        dto.setType(ToolTypeDTO.MCP);
+        // external is unset in the DTO → maps to false → internal MCP tool requires productName and appId
+
+        var response = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(dto)
+                .pathParam("id", "tool-11-111")
+                .put("/{id}")
+                .then()
+                .statusCode(BAD_REQUEST.getStatusCode())
+                .extract()
+                .as(ProblemDetailResponseDTO.class);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getErrorCode()).isEqualTo("MISSING_TOOL_COORDINATES");
+        assertThat(response.getInvalidParams()).isNotNull().isNotEmpty();
+    }
+
+    @Test
+    void updateToolToExternalClearsProductAndAppTest() {
+        // First make tool-11-111 internal with coordinates
+        var internalDto = new UpdateToolRequestDTO();
+        internalDto.setModificationCount(0);
+        internalDto.setName("tool-internal");
+        internalDto.setType(ToolTypeDTO.MCP);
+        internalDto.setExternal(false);
+        internalDto.setProductName("onecx-product");
+        internalDto.setAppId("onecx-app");
+
+        var internal = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(internalDto)
+                .pathParam("id", "tool-11-111")
+                .put("/{id}")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(ToolDTO.class);
+
+        assertThat(internal.getExternal()).isFalse();
+        assertThat(internal.getProductName()).isEqualTo("onecx-product");
+        assertThat(internal.getAppId()).isEqualTo("onecx-app");
+
+        // Now switch to external — product and app must be cleared
+        var externalDto = new UpdateToolRequestDTO();
+        externalDto.setModificationCount(internal.getModificationCount());
+        externalDto.setName("tool-external");
+        externalDto.setType(ToolTypeDTO.MCP);
+        externalDto.setExternal(true);
+        externalDto.setProductName("should-be-cleared");
+        externalDto.setAppId("should-be-cleared");
+
+        var external = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .body(externalDto)
+                .pathParam("id", "tool-11-111")
+                .put("/{id}")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(ToolDTO.class);
+
+        assertThat(external.getExternal()).isTrue();
+        assertThat(external.getProductName()).isNull();
+        assertThat(external.getAppId()).isNull();
     }
 
     @Test
@@ -310,6 +429,32 @@ class ToolRestControllerTest extends AbstractTest {
 
         assertThat(result).isNotNull();
         assertThat(result.getTools()).isNotNull().isEmpty();
+    }
+
+    @Test
+    void getDiscoveredTools_exposesRequiredPermissionPerTool() {
+        mockServerClient.when(request().withPath("/ai/internal/runtime/tools/discover").withMethod(HttpMethod.POST))
+                .withId(MOCK_ID)
+                .respond(httpRequest -> response().withStatusCode(OK.getStatusCode())
+                        .withContentType(MediaType.APPLICATION_JSON)
+                        .withBody("{\"tools\":[{\"name\":\"getProposal\",\"description\":\"Reads a proposal\","
+                                + "\"requiredPermission\":\"onecx:proposal#read\"},"
+                                + "{\"name\":\"ping\",\"description\":\"Health\"}]}"));
+
+        var result = given()
+                .auth().oauth2(getKeycloakClientToken("testClient"))
+                .contentType(APPLICATION_JSON)
+                .pathParam("toolId", "tool-11-111")
+                .post("/{toolId}/discovered-tools")
+                .then().statusCode(OK.getStatusCode())
+                .extract().as(DiscoveredToolInfoListDTO.class);
+
+        var withPermission = result.getTools().stream()
+                .filter(t -> "getProposal".equals(t.getName())).findFirst().orElseThrow();
+        assertThat(withPermission.getRequiredPermission()).isEqualTo("onecx:proposal#read");
+        var withoutPermission = result.getTools().stream()
+                .filter(t -> "ping".equals(t.getName())).findFirst().orElseThrow();
+        assertThat(withoutPermission.getRequiredPermission()).isNull();
     }
 
     @Test

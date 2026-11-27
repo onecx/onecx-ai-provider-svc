@@ -227,13 +227,26 @@ paths:
           required: true
           schema:
             type: string
+        - name: If-None-Match
+          in: header
+          required: false
+          schema:
+            type: string
+          description: ETag from a previous response; the server returns 304 Not Modified when it matches the current configuration.
       responses:
         "200":
           description: Saved configuration
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Opaque hash of the configuration and requesting principal; send it back as If-None-Match to get 304 Not Modified.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AgentConfiguration'
+        "304":
+          description: Not Modified — the If-None-Match header matched the current configuration ETag.
         "404":
           description: Agent or version not found
   /internal/agents/{id}/configuration/versions/{versionId}/activate:
@@ -1635,6 +1648,15 @@ components:
           $ref: '#/components/schemas/ExecutionPolicy'
         authMode:
           $ref: '#/components/schemas/AuthMode'
+        external:
+          type: boolean
+          description: True when the MCP server is outside OneCX; such servers have no OneCX permission coverage
+        productName:
+          type: string
+          description: OneCX product that holds the permissions of an internal MCP server; required when external is false
+        appId:
+          type: string
+          description: OneCX application id that holds the permissions of an internal MCP server; required when external is false
     CreateToolRequest:
       type: object
       properties:
@@ -1652,6 +1674,16 @@ components:
           $ref: '#/components/schemas/ExecutionPolicy'
         authMode:
           $ref: '#/components/schemas/AuthMode'
+        external:
+          type: boolean
+          default: false
+          description: True when the MCP server is outside OneCX; such servers have no OneCX permission coverage. Defaults to false, so omitting it makes the tool internal and requires productName/appId.
+        productName:
+          type: string
+          description: OneCX product that holds the permissions of an internal MCP server; required when external is false
+        appId:
+          type: string
+          description: OneCX application id that holds the permissions of an internal MCP server; required when external is false
     UpdateToolRequest:
       type: object
       required: [ modificationCount ]
@@ -1673,6 +1705,16 @@ components:
           $ref: '#/components/schemas/ExecutionPolicy'
         authMode:
           $ref: '#/components/schemas/AuthMode'
+        external:
+          type: boolean
+          default: false
+          description: True when the MCP server is outside OneCX. Defaults to false; setting it to true clears productName and appId.
+        productName:
+          type: string
+          description: OneCX product that holds the permissions of an internal MCP server; required when external is false
+        appId:
+          type: string
+          description: OneCX application id that holds the permissions of an internal MCP server; required when external is false
     ToolSearchCriteria:
       type: object
       properties:
@@ -2475,6 +2517,9 @@ components:
           $ref: '#/components/schemas/AgentMcpToolRule'
         orphaned:
           type: boolean
+        requiredPermission:
+          type: string
+          description: OneCX permission required to invoke the tool, as published by the MCP server in tool metadata
     DiscoveredToolInfoList:
       type: object
       properties:
